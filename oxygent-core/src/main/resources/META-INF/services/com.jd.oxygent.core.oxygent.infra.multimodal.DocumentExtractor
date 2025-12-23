@@ -1,0 +1,4 @@
+com.jd.oxygent.core.oxygent.infra.impl.multimodal.PdfDocumentExtractor
+com.jd.oxygent.core.oxygent.infra.impl.multimodal.WordDocumentExtractor
+com.jd.oxygent.core.oxygent.infra.impl.multimodal.ExcelDocumentExtractor
+com.jd.oxygent.core.oxygent.infra.impl.multimodal.CsvDocumentExtractor

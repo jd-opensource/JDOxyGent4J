@@ -1,0 +1,49 @@
+<configuration>
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
+
+    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
+
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%date{HH:mm:ss.SSS} [%boldYellow(%thread)] %highlight(%-5level) %boldGreen(%logger{36}) %boldMagenta(%M) \(%file:%line\) - %highlight(%msg) %n"/>
+
+    <!-- Define log output format and storage path -->
+    <!-- %date: date, %thread: thread name, %-5level: level padded to 5 chars,
+    %logger{36}: logger name max 36 chars, %msg: log message, %n: newline -->
+    <property name="FILE_LOG_PATTERN"
+              value="%date{HH:mm:ss.SSS} [%thread] %-5level %logger{36} %M \(%file:%line\) - %msg%n"/>
+
+    <property name="FILE_PATH" value="log/oxygent.%d{yyyy-MM-dd}.%i.log"/>
+
+    <!-- Define console output -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!-- Print logs using the above LOG_PATTERN -->
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Define local log file parameters -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Save logs according to the FILE_PATH configured above -->
+            <fileNamePattern>${FILE_PATH}</fileNamePattern>
+            <!-- Keep logs for 15 days -->
+            <maxHistory>15</maxHistory>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <!-- Max size of a single log file; rollover when exceeded -->
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+
+        <encoder>
+            <!-- Print logs using the above LOG_PATTERN -->
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+    <!--    Define log output levels; name corresponds to specific package -->
+    <logger name="com.jd.oxygent" level="INFO"/>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

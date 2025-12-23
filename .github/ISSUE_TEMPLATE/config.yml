@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: http://oxygent.jd.com/docs/
+    about: Check out the project documentation
+  - name: 💬 Discussions
+    url: https://github.com/jd-opensource/JDOxyGent4J/discussions
+    about: Join community discussions
+  - name: 🌟 Examples
+    url: https://github.com/jd-opensource/JDOxyGent4J/tree/main/oxygent-studio/src/main/java/com/jd/oxygent/web/examples/examples
+    about: Browse code examples

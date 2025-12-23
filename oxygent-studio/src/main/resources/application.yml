@@ -1,0 +1,80 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: oxygent
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 100MB
+      file-size-threshold: 2KB
+
+logging:
+  level:
+    com.jd.oxygent: info
+
+oxygent:
+
+  cache: local # local,redis
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    database: 0
+    password: "" # set via REDIS_PASSWORD; do not commit real secrets
+    timeout: 5000
+
+  database:
+    es: local # local,es
+
+  message:
+    # Controls emission of internal events to clients/observers
+    send-tool-call: true
+    detailed-tool-call: true
+    send-observation: true
+    detailed-observation: true
+    send-think: true
+    send-answer: true
+    stored: true
+    show-in-terminal: true
+    send-full-arguments: false
+
+  server:
+    host: 127.0.0.1
+    port: 8080
+    auto-open-webpage: true
+    log-level: INFO
+    first-question: "What is the meaning of life?"
+    welcome-message: "Hi, I'm Oxygent. How can I help you?"
+
+  xfile:
+    save-dir: ./cache_dir/xfile
+  app:
+    name: app
+    biz-type: oxygent
+    version: 1.0.0
+    scan-oxygent-path: com.jd.oxygent
+
+# Infra config (vector DB / search)
+vearch:
+  url: # e.g. http://localhost:4101
+  DBName: # e.g. oxygent_java_memory
+  SpaceName: # e.g. long_memory_space
+  rag:
+    token:  # recommended: 32000
+    dimension:  # recommended: 1024 (text-embedding-3-large)
+    embeddingModel: # e.g. text-embedding-3-large or bge-m3
+    rerankerModel: # e.g. bge-reranker-v2-m3
+
+es:
+  clusterNodes: # e.g. localhost:9200,es-node2:9200
+  clusterName: # e.g. elasticsearch
+  schema:  # http or https
+  securityUser: # e.g. elastic
+  securityPassword: "" # set via env; do not commit
+  connectTimeout:  # ms
+  socketTimeout:  # ms
+  connectionRequestTimeout:  # ms

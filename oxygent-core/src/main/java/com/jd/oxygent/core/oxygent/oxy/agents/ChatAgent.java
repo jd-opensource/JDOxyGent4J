@@ -1,0 +1,151 @@
+/*
+ * Copyright 2025 JD.com
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this project except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.jd.oxygent.core.oxygent.oxy.agents;
+
+import com.jd.oxygent.core.oxygent.schemas.memory.Memory;
+import com.jd.oxygent.core.oxygent.schemas.memory.Message;
+import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
+import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Chat Agent - Manages conversational interactions with large language models
+ *
+ * <p>ChatAgent is an agent specifically designed for handling conversational scenarios in the OxyGent system,
+ * inheriting from LocalAgent. It is responsible for managing session memory, processing user queries,
+ * and coordinating with large language models to generate responses.</p>
+ *
+ * <p>Main features:</p>
+ * <ul>
+ *     <li>Multi-turn conversation capability: Maintains session context and supports continuous dialogue</li>
+ *     <li>Memory management: Automatically handles short-term and long-term conversation history</li>
+ *     <li>Intelligent prompts: Provides default assistant prompts that can be customized</li>
+ *     <li>LLM integration: Seamlessly integrates with various large language models</li>
+ *     <li>Parameter flexibility: Supports rich conversation configuration parameters</li>
+ * </ul>
+ *
+ * <p>Applicable scenarios:</p>
+ * <ul>
+ *     <li>Intelligent customer service systems</li>
+ *     <li>Personal AI assistants</li>
+ *     <li>Educational Q&amp;A systems</li>
+ *     <li>Creative writing assistants</li>
+ *     <li>Code assistants and technical consulting</li>
+ * </ul>
+ *
+ * <p>Usage example:</p>
+ * <pre>{@code
+ * ChatAgent chatAgent = ChatAgent.builder()
+ *     .name("Smart Assistant")
+ *     .prompt("You are a professional AI assistant, please answer user questions kindly and accurately.")
+ *     .llmModel("claude-3-sonnet")
+ *     .build();
+ *
+ * OxyRequest request = OxyRequest.builder()
+ *     .query("Please explain what machine learning is?")
+ *     .build();
+ *
+ * OxyResponse response = chatAgent.execute(request);
+ * }</pre>
+ *
+ * @author OxyGent Team
+ * @version 1.0.0
+ * @since 1.0.0
+ */
+@EqualsAndHashCode(callSuper = true)
+@Data
+@SuperBuilder
+@ToString(callSuper = true)
+@Slf4j
+public class ChatAgent extends LocalAgent {
+
+    /**
+     * Initialize chat agent
+     *
+     * <p>Execute agent initialization process, including calling parent class initialization logic
+     * and setting default prompts. This method ensures the chat agent has complete conversational capabilities.</p>
+     */
+    @Override
+    public void init() {
+        super.init();
+        setDefaultPrompt();
+        log.debug("ChatAgent initialization completed: {}", this.getName());
+    }
+
+    /**
+     * Set default prompt
+     *
+     * <p>If the user has not provided a custom prompt, use the system default assistant prompt.
+     * This method ensures that each chat agent has basic conversational guidance.</p>
+     */
+    protected void setDefaultPrompt() {
+        if (this.prompt == null || this.prompt.trim().isEmpty()) {
+            this.prompt = "You are a helpful assistant.";
+            log.debug("Set default prompt for ChatAgent: {}", this.getName());
+        }
+    }
+
+    /**
+     * Execute chat conversation interaction
+     *
+     * <p>This is the core execution method of ChatAgent, responsible for handling the complete conversation process. This method will:</p>
+     * <ul>
+     *     <li>Build session memory containing system prompts</li>
+     *     <li>Load historical conversation context</li>
+     *     <li>Add user's current query</li>
+     *     <li>Call large language model to generate response</li>
+     * </ul>
+     *
+     * <p>Conversation memory structure:</p>
+     * <ol>
+     *     <li>System Message: Agent role definition and behavior guidance</li>
+     *     <li>History Messages: Short-term conversation history, maintaining context coherence</li>
+     *     <li>User Message: User's current query or question</li>
+     * </ol>
+     *
+     * @param oxyRequest Request object containing user query, conversation history and other parameters, cannot be null
+     * @return Response object containing the answer generated by the large language model
+     * @throws IllegalArgumentException if oxyRequest is null
+     */
+    public OxyResponse _execute(OxyRequest oxyRequest) {
+        Memory tempMemory = new Memory();
+        tempMemory.addMessage(Message.systemMessage(buildInstruction(oxyRequest.getArguments())));
+
+        // Load short-term memory (recent conversation history)
+        tempMemory.addMessages(Message.dictListToMessages(oxyRequest.getShortMemory(false)));
+
+        // Add user's current question to enable multi-turn conversation
+        tempMemory.addMessage(Message.userMessage(oxyRequest.getQueryObject(false)));
+
+        // Construct LLM call parameters
+        Map<String, Object> kwags = new HashMap<>();
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("messages", tempMemory);
+        kwags.put("arguments", arguments);
+        kwags.put("callee", llmModel);
+
+        // Call LLM model
+        return oxyRequest.call(kwags);
+    }
+
+}

@@ -1,0 +1,12 @@
+oxygent-studio/src/main/resources/web/** linguist-vendored
+oxygent-core/src/main/resources/static/** linguist-vendored
+
+node_modules/** linguist-vendored
+target/** linguist-vendored
+build/** linguist-vendored
+dist/** linguist-vendored
+*.jar linguist-vendored
+*.war linguist-vendored
+*.min.js linguist-vendored
+*.min.css linguist-vendored
+
