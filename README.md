@@ -152,7 +152,7 @@ import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
 import com.jd.oxygent.core.oxygent.oxy.agents.ReActAgent;
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.tools.PresetTools;
-import com.jd.oxygent.core.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.EnvUtils;
 
 import java.util.Arrays;
 import java.util.HashMap;
