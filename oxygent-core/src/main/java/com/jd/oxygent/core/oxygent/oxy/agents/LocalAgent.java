@@ -663,21 +663,23 @@ public class LocalAgent extends BaseAgent {
         return req;
     }
 
+    /**
+     *  Build instruction prompt by substituting template variables.
+     *
+     * @param arguments Dictionary containing variable values for substitution.
+     * @return The formatted instruction string with variables substituted.
+     */
     protected String buildInstruction(Map<String, Object> arguments) {
-        // Define regex pattern to match ${variable}
-        Matcher matcher = INSTRUCTION_PATTERN.matcher(this.prompt.strip());
-
-        StringBuilder sb = new StringBuilder();
-        while (matcher.find()) {
-            String key = matcher.group(1);
-            // Get value from arguments, if not exists use original matched string
-            String replacement = arguments.getOrDefault(key, matcher.group(0)).toString();
-            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-        }
-        matcher.appendTail(sb);
         // Use resolved prompt (with live prompt support) instead of static prompt
-        String promptToUse = resolvedPrompt != null ? resolvedPrompt : (prompt != null ? prompt : "");
-        return sb.append(promptToUse.trim()).toString();
+        String prompt_to_use = this.resolvedPrompt != null ? this.resolvedPrompt :
+                (this.prompt != null ? this.prompt : "");
+
+        return INSTRUCTION_PATTERN.matcher(prompt_to_use.strip())
+                .replaceAll(match -> {
+                    String key = match.group(1);
+                    Object value = arguments.get(key);
+                    return value != null ? String.valueOf(value) : match.group(0);
+                });
     }
 
     @Override
