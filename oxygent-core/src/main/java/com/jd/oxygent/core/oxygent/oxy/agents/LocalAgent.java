@@ -664,10 +664,17 @@ public class LocalAgent extends BaseAgent {
     }
 
     protected String buildInstruction(Map<String, Object> arguments) {
-        // Define regex pattern to match ${variable}
-        Matcher matcher = INSTRUCTION_PATTERN.matcher(this.prompt.strip());
+        // Use resolved prompt (with live prompt support) instead of static prompt
+        String promptToUse = resolvedPrompt != null ? resolvedPrompt : (prompt != null ? prompt : "");
 
-        StringBuilder sb = new StringBuilder();
+        if (promptToUse == null || promptToUse.trim().isEmpty()) {
+            return "";
+        }
+
+        // Define regex pattern to match ${variable}
+        Matcher matcher = INSTRUCTION_PATTERN.matcher(promptToUse.trim());
+
+        StringBuffer sb = new StringBuffer();
         while (matcher.find()) {
             String key = matcher.group(1);
             // Get value from arguments, if not exists use original matched string
@@ -675,9 +682,8 @@ public class LocalAgent extends BaseAgent {
             matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(sb);
-        // Use resolved prompt (with live prompt support) instead of static prompt
-        String promptToUse = resolvedPrompt != null ? resolvedPrompt : (prompt != null ? prompt : "");
-        return sb.append(promptToUse.trim()).toString();
+
+        return sb.toString();
     }
 
     @Override

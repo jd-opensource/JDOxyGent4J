@@ -16,7 +16,7 @@ import java.util.Map;
 public class BankManagerByManualApi {
 
     static {
-        Config.getServer().setPort(8997);
+        Config.getServer().setPort(8090);
     }
 
     private Map<String, String> userProfiles = new HashMap<>();
@@ -85,7 +85,7 @@ public class BankManagerByManualApi {
     public Object[] listBanks() {
         return new Object[] {
                 Map.of(
-                        "name", "user_profile_retrieve",
+                        "name", "userProfileRetrieve",
                         "endpoint", "/user_profile_retrieve",
                         "type", "retrieve",
                         "description", "A tool for querying user profile",
@@ -100,7 +100,7 @@ public class BankManagerByManualApi {
                         )
                 ),
                 Map.of(
-                        "name", "user_profile_deposit",
+                        "name", "userProfileDeposit",
                         "endpoint", "/user_profile_deposit",
                         "type", "deposit",
                         "description", "A tool for updating user profile",

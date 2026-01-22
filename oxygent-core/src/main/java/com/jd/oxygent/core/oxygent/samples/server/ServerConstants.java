@@ -1,6 +1,8 @@
 package com.jd.oxygent.core.oxygent.samples.server;
 
 import com.jd.oxygent.core.Config;
+import com.jd.oxygent.core.oxygent.utils.StringUtils;
+import org.apache.logging.log4j.util.Strings;
 
 import java.util.HashMap;
 import java.util.List;
@@ -15,7 +17,7 @@ public final class ServerConstants {
 
     public static final String DEFAULT_TOMCAT_BASE_TMP_DIR = "tomcat_oxygent";
 
-    public static String DEFAULT_API_ENDPOINT_SCANNER_PATH = "";
+    public static String DEFAULT_API_ENDPOINT_SCANNER_PATH =getOrDefaultValue(Config.getApp().getScanApiEndpointPath(),"");
 
     public static final String DEFAULT_CONTEXT_PATH = "";
 
@@ -104,6 +106,14 @@ public final class ServerConstants {
             return defaultValue;
         }else{
             return port;
+        }
+    }
+
+    public static String getOrDefaultValue(String value,String defaultValue){
+        if(Strings.isEmpty(value)){
+            return defaultValue;
+        }else{
+            return value;
         }
     }
 }

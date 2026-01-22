@@ -63,10 +63,12 @@ public class DemoBankChatAgentDumpMemory {
                             // Build history record
                             Map<String, String> history = new HashMap<>();
                             history.put("query", (String) oxyRequest.getArguments().get("query"));
-                            history.put("answer", (String) oxyRequest.getArguments().get("output"));
+                            history.put("answer", (String) oxyResponse.getOutput());
                             oxyRequest.callAsync(new HashMap<String, Object>(){{
                                 this.put("callee","userProfileDeposit");
-                                this.put("arguments",Map.of("content",history));
+                                this.put("arguments",new HashMap<String,Object>(){{
+                                    this.put("content",history);
+                                }});
                                 this.put("is_send_message",false);
                             }});
                             return oxyResponse;

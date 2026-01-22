@@ -1,5 +1,6 @@
 package com.jd.oxygent.core.oxygent.samples.server.scanner;
 import com.jd.oxygent.core.oxygent.samples.server.annotation.ApiEndpoint;
+import com.jd.oxygent.core.oxygent.samples.server.annotation.ApiParam;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -114,7 +115,9 @@ public class ApiEndpointScanner {
                     }
                 }
             }
-
+            if(!ENDPOINT_REGISTRY.containsKey("GET:/list_banks")){
+                registerBuiltinEndpoints();
+            }
             log.info("API endpoint scanning completed. Found {} endpoints.", ENDPOINT_REGISTRY.size());
 
         } catch (Exception e) {
@@ -451,5 +454,159 @@ public class ApiEndpointScanner {
      */
     public static Map<String, Object> getServiceInstances() {
         return new HashMap<>(SERVICE_INSTANCES);
+    }
+
+    /**
+     * Get all bank endpoints (endpoints with "bank" tag)
+     */
+    @ApiEndpoint(
+            path = "/list_banks",
+            method = ApiEndpoint.HttpMethod.GET,
+            description = "Get all bank endpoints",
+            tags = {"system"}
+    )
+    public List<Map<String, Object>> listBanks() {
+        return getBanksFromApiEndpoints();
+    }
+
+    /**
+     * Extract bank information from registered API endpoints
+     */
+    private List<Map<String, Object>> getBanksFromApiEndpoints() {
+        List<Map<String, Object>> banks = new ArrayList<>();
+
+        try {
+            // 遍历所有注册的端点
+            for (EndpointInfo endpoint : ENDPOINT_REGISTRY.values()) {
+                // 检查是否有 "bank" 标签
+                boolean hasBankTag = false;
+                String[] tags = endpoint.getTags();
+                if (tags != null) {
+                    for (String tag : tags) {
+                        if ("bank".equals(tag)) {
+                            hasBankTag = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasBankTag) {
+                    Map<String, Object> inputSchema = new HashMap<>();
+                    Map<String, Object> properties = new HashMap<>();
+                    List<String> required = new ArrayList<>();
+
+                    // 获取方法参数信息
+                    Method method = endpoint.getMethod();
+                    java.lang.reflect.Parameter[] parameters = method.getParameters();
+
+                    for (java.lang.reflect.Parameter param : parameters) {
+                        if (param.isAnnotationPresent(ApiParam.class)) {
+                            java.lang.annotation.Annotation apiParam = param.getAnnotation(ApiParam.class);
+
+                            try {
+                                // 使用反射获取注解属性值
+                                Method nameMethod = ApiParam.class.getMethod("name");
+                                Method descriptionMethod = ApiParam.class.getMethod("description");
+
+                                String paramName = (String) nameMethod.invoke(apiParam);
+                                String paramDescription = (String) descriptionMethod.invoke(apiParam);
+
+                                // 确定参数类型
+                                String paramType = getParamType(param.getType());
+
+                                Map<String, Object> paramSchema = new HashMap<>();
+                                paramSchema.put("type", paramType);
+                                paramSchema.put("description", paramDescription);
+
+                                properties.put(paramName, paramSchema);
+                                required.add(paramName);
+                            } catch (Exception e) {
+                                log.warn("Failed to extract ApiParam annotation values", e);
+                            }
+                        }
+                    }
+
+                    if (!properties.isEmpty()) {
+                        inputSchema.put("type", "object");
+                        inputSchema.put("properties", properties);
+                        inputSchema.put("required", required);
+                    } else {
+                        inputSchema = null; // 如果没有参数，不包含 inputSchema
+                    }
+
+                    Map<String, Object> bankInfo = new HashMap<>();
+                    bankInfo.put("name", method.getName());
+                    bankInfo.put("endpoint", endpoint.getPath());
+                    bankInfo.put("method", endpoint.getHttpMethod().toString());
+                    bankInfo.put("description", endpoint.getDescription());
+
+                    if (inputSchema != null) {
+                        bankInfo.put("inputSchema", inputSchema);
+                    }
+
+                    // 添加类和方法信息
+                    bankInfo.put("className", endpoint.getServiceInstance().getClass().getName());
+                    bankInfo.put("methodName", method.getName());
+
+                    banks.add(bankInfo);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error getting banks from API endpoints", e);
+        }
+
+        return banks;
+    }
+
+    /**
+     * Convert Java class to JSON schema type
+     */
+    private String getParamType(Class<?> paramClass) {
+        if (paramClass == String.class) {
+            return "string";
+        } else if (paramClass == Integer.class || paramClass == int.class ||
+                paramClass == Long.class || paramClass == long.class) {
+            return "integer";
+        } else if (paramClass == Double.class || paramClass == double.class ||
+                paramClass == Float.class || paramClass == float.class) {
+            return "number";
+        } else if (paramClass == Boolean.class || paramClass == boolean.class) {
+            return "boolean";
+        } else if (paramClass.isArray() || Collection.class.isAssignableFrom(paramClass)) {
+            return "array";
+        } else if (Map.class.isAssignableFrom(paramClass)) {
+            return "object";
+        } else {
+            return "object"; // 复杂对象
+        }
+    }
+
+    /**
+     * 自动注册内置端点
+     */
+    private static void registerBuiltinEndpoints() {
+        try {
+            // 创建 ApiEndpointScanner 实例
+            ApiEndpointScanner scannerInstance = new ApiEndpointScanner();
+
+            // 获取 listBanks 方法
+            Method listBanksMethod = ApiEndpointScanner.class.getDeclaredMethod("listBanks");
+
+            // 获取注解
+            ApiEndpoint annotation = listBanksMethod.getAnnotation(ApiEndpoint.class);
+            if (annotation != null) {
+                // 注册端点
+                registerEndpoint(annotation, listBanksMethod, scannerInstance);
+
+                // 将实例保存到 SERVICE_INSTANCES
+                String className = ApiEndpointScanner.class.getName();
+                if (!SERVICE_INSTANCES.containsKey(className)) {
+                    SERVICE_INSTANCES.put(className, scannerInstance);
+                    log.debug("Created instance for built-in class: {}", className);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to register built-in endpoints", e);
+        }
     }
 }

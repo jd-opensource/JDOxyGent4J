@@ -3,6 +3,7 @@ package com.jd.oxygent.core.oxygent.oxy.bank_tools;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyState;
+import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -112,7 +113,7 @@ public class BankTool extends BaseBank {
             if (arguments != null && !arguments.isEmpty()) {
                 // In a real implementation, you would serialize arguments to JSON
                 // For now, we'll create a simple JSON string
-                requestBody = serializeArguments(arguments);
+                requestBody = JsonUtils.toJSONString(arguments);
                 requestBuilder.header("Content-Type", "application/json");
             }
 
@@ -154,36 +155,6 @@ public class BankTool extends BaseBank {
             return new OxyResponse(OxyState.FAILED, "Unexpected error: " + e.getMessage());
         }
     }
-
-    /**
-     * Simple method to serialize arguments to JSON string.
-     * In a real implementation, you would use a JSON library like Jackson.
-     */
-    private String serializeArguments(Map<String, Object> arguments) {
-        // This is a simple serialization for demonstration
-        // In production, use a proper JSON library
-        StringBuilder sb = new StringBuilder("{");
-        boolean first = true;
-
-        for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-            if (!first) {
-                sb.append(", ");
-            }
-            sb.append("\"").append(entry.getKey()).append("\": ");
-
-            if (entry.getValue() instanceof String) {
-                sb.append("\"").append(entry.getValue()).append("\"");
-            } else {
-                sb.append(entry.getValue());
-            }
-
-            first = false;
-        }
-
-        sb.append("}");
-        return sb.toString();
-    }
-
     /**
      * Async version of execute method for non-blocking operations.
      * This is the equivalent of Python's async _execute method.

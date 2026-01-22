@@ -1,5 +1,6 @@
 package com.jd.oxygent.core.oxygent.samples.server.servlet;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jd.oxygent.core.oxygent.samples.server.scanner.ApiEndpointScanner;
 import jakarta.servlet.ServletException;
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,6 +27,13 @@ import java.util.stream.Collectors;
 public class AnnotationApiServlet extends HttpServlet {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    static {
+        // 配置 ObjectMapper 忽略未知属性
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper.configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, false);
+        objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
+    }
 
     @Override
     public void init() throws ServletException {
@@ -138,42 +147,156 @@ public class AnnotationApiServlet extends HttpServlet {
 
         // Prepare method parameters
         Class<?>[] paramTypes = method.getParameterTypes();
-        String[] paramNames = Arrays.stream(method.getParameters())
-                .map(p -> p.getName())
-                .toArray(String[]::new);
-
         Object[] args = new Object[paramTypes.length];
 
-        for (int i = 0; i < paramTypes.length; i++) {
-            String paramName = paramNames[i];
-            Class<?> paramType = paramTypes[i];
+        // 检查是否只有一个参数且是复杂对象
+        if (paramTypes.length == 1 && !isSimpleType(paramTypes[0])) {
+            // 在调用前预处理 params
+            Map<String, Object> processedParams = preprocessParamsForType(params, paramTypes[0]);
+            // 单个复杂对象参数：直接将整个params映射到对象
+            args[0] = objectMapper.convertValue(processedParams, paramTypes[0]);
+        } else {
+            // 多个参数或简单类型参数：使用原有的逻辑
+            String[] paramNames = Arrays.stream(method.getParameters())
+                    .map(p -> p.getName())
+                    .toArray(String[]::new);
 
-            // Get value from parameter map
-            Object paramValue = params.get(paramName);
+            for (int i = 0; i < paramTypes.length; i++) {
+                String paramName = paramNames[i];
+                Class<?> paramType = paramTypes[i];
 
-            if (paramValue == null) {
-                // Parameter type conversion (set default value based on type)
-                if (paramType == String.class) {
-                    args[i] = "";
-                } else if (paramType == Integer.class || paramType == int.class) {
-                    args[i] = 0;
-                } else if (paramType == Long.class || paramType == long.class) {
-                    args[i] = 0L;
-                } else if (paramType == Double.class || paramType == double.class) {
-                    args[i] = 0.0;
-                } else if (paramType == Boolean.class || paramType == boolean.class) {
-                    args[i] = false;
+                if (isSimpleType(paramType)) {
+                    // 简单类型：使用原有的逻辑
+                    Object paramValue = params.get(paramName);
+                    args[i] = (paramValue != null) ? convertType(paramValue, paramType) : getDefaultValue(paramType);
                 } else {
-                    args[i] = null;
+                    // 复杂对象类型：尝试从params中提取对应字段
+                    Object paramValue = params.get(paramName);
+                    if (paramValue != null) {
+                        if (paramValue instanceof Map) {
+                            // 如果是Map，转换为目标类型
+                            args[i] = objectMapper.convertValue(paramValue, paramType);
+                        } else {
+                            // 其他类型，尝试直接转换
+                            args[i] = objectMapper.convertValue(paramValue, paramType);
+                        }
+                    } else {
+                        // 如果参数名不在params中，尝试检查是否有单独的字段
+                        args[i] = tryCreateFromFields(params, paramType);
+                    }
                 }
-            } else {
-                // Type conversion
-                args[i] = convertType(paramValue, paramType);
             }
         }
 
         // 调用方法
         return method.invoke(serviceInstance, args);
+    }
+
+    /**
+     * 检查是否是简单类型
+     */
+    private boolean isSimpleType(Class<?> type) {
+        return type == String.class ||
+                type == Integer.class || type == int.class ||
+                type == Long.class || type == long.class ||
+                type == Double.class || type == double.class ||
+                type == Float.class || type == float.class ||
+                type == Boolean.class || type == boolean.class ||
+                type == Byte.class || type == byte.class ||
+                type == Short.class || type == short.class ||
+                type == Character.class || type == char.class ||
+                type.isPrimitive();
+    }
+
+    /**
+     * 获取类型的默认值
+     */
+    private Object getDefaultValue(Class<?> type) {
+        if (type == String.class) {
+            return "";
+        } else if (type == Integer.class || type == int.class) {
+            return 0;
+        } else if (type == Long.class || type == long.class) {
+            return 0L;
+        } else if (type == Double.class || type == double.class) {
+            return 0.0;
+        } else if (type == Float.class || type == float.class) {
+            return 0.0f;
+        } else if (type == Boolean.class || type == boolean.class) {
+            return false;
+        } else if (type == Byte.class || type == byte.class) {
+            return (byte) 0;
+        } else if (type == Short.class || type == short.class) {
+            return (short) 0;
+        } else if (type == Character.class || type == char.class) {
+            return '\u0000';
+        }
+        return null;
+    }
+
+    /**
+     * 尝试从params的字段创建对象
+     */
+    private Object tryCreateFromFields(Map<String, Object> params, Class<?> targetType) {
+        try {
+            // 使用反射创建对象实例
+            Object instance = targetType.getDeclaredConstructor().newInstance();
+
+            // 遍历所有字段，从params中设置值
+            for (java.lang.reflect.Field field : targetType.getDeclaredFields()) {
+                if (params.containsKey(field.getName())) {
+                    field.setAccessible(true);
+                    Object value = params.get(field.getName());
+                    if (value != null) {
+                        field.set(instance, convertType(value, field.getType()));
+                    }
+                }
+            }
+            return instance;
+        } catch (Exception e) {
+            log.warn("Failed to create instance of {} from params", targetType.getName(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 根据目标类型预处理 params，处理类型不匹配
+     */
+    private Map<String, Object> preprocessParamsForType(Map<String, Object> params, Class<?> targetType) {
+        // 创建 params 的副本，避免修改原始数据
+        Map<String, Object> processed = new HashMap<>(params);
+
+        // 获取目标类的字段信息
+        Map<String, Class<?>> fieldTypes = new HashMap<>();
+        for (java.lang.reflect.Field field : targetType.getDeclaredFields()) {
+            field.setAccessible(true);
+            fieldTypes.put(field.getName(), field.getType());
+        }
+
+        // 预处理每个字段
+        for (Map.Entry<String, Class<?>> entry : fieldTypes.entrySet()) {
+            String fieldName = entry.getKey();
+            Class<?> fieldType = entry.getValue();
+
+            if (processed.containsKey(fieldName)) {
+                Object value = processed.get(fieldName);
+
+                // 特殊处理：String字段但收到对象或数组
+                if (fieldType == String.class && value != null) {
+                    if (value instanceof Map || value instanceof Collection ||
+                            (value.getClass().isArray() && !(value instanceof byte[]))) {
+                        // 将对象/数组转换为JSON字符串
+                        try {
+                            processed.put(fieldName, objectMapper.writeValueAsString(value));
+                        } catch (Exception e) {
+                            log.debug("Failed to convert {} to JSON string: {}", fieldName, e.getMessage());
+                        }
+                    }
+                }
+            }
+        }
+
+        return processed;
     }
 
     /**

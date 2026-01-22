@@ -257,6 +257,7 @@ public class Config {
         private String version = "1.0.0";
         private String bizType = "oxygent";
         private String scanOxygentPath = "com.jd";
+        private String scanApiEndpointPath = "";
     }
 
     @Data

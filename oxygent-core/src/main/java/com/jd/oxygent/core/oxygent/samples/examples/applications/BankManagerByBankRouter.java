@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BankManagerByBankRouter {
 
     static {
-        Config.getServer().setPort(8998);
+        Config.getServer().setPort(8090);
     }
 
     private static Map<String, String> userProfileDict = new ConcurrentHashMap<>();
