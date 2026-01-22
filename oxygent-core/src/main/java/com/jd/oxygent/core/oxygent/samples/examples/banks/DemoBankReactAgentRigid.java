@@ -31,7 +31,7 @@ public class DemoBankReactAgentRigid {
     @OxySpaceBean(value = "demoBankReactAgentRigid", defaultStart = true, query = "Who I am")
     public static List<BaseOxy> getDemoBankReactAgentOxySpace() {
         return Arrays.asList(
-                // 默认LLM
+                // Default LLM
                 HttpLlm.builder()
                         .name("default_llm")
                         .apiKey(EnvUtils.getEnv("DEFAULT_LLM_API_KEY"))
@@ -43,7 +43,7 @@ public class DemoBankReactAgentRigid {
                         .semaphore(new Semaphore(4))
                         .build(),
 
-                // ReActAgent - 使用固定系统提示和前置oxy
+                // ReActAgent - using fixed system prompt and preceding oxy
                 ReActAgent.builder()
                         .name("qa_agent")
                         .llmModel("default_llm")
@@ -53,7 +53,7 @@ public class DemoBankReactAgentRigid {
                         .banks(Arrays.asList("remote_user_profile_banks"))
                         .build(),
 
-                // 远程用户资料银行客户端
+                // Remote user profile bank client
                 BankClient.builder()
                         .name("remote_user_profile_banks")
                         .serverUrl("http://127.0.0.1:8090/api")
@@ -63,7 +63,7 @@ public class DemoBankReactAgentRigid {
 
     public static void main(String[] args) throws Exception {
         GlobalDefaultOxySpaceMapping.searchCurrentThreadStackAnnotationOxySpaceName(Thread.currentThread().getStackTrace()[1].getClassName());
-        // 设置过滤器
+        // Set filter
         MasFactoryRegistry.getFactory().createMas().setFuncFilter(payload -> {
             payload.put("group_data", Map.of("user_pin", "002"));
             return payload;

@@ -31,7 +31,7 @@ public class DemoBankReactAgentAutonomy {
     @OxySpaceBean(value = "demoBankReactAgentAutonomy", defaultStart = true, query = "Who I am")
     public static List<BaseOxy> getDemoBankReactAgentOxySpace() {
         return Arrays.asList(
-                // 默认LLM
+                // Default LLM
                 HttpLlm.builder()
                         .name("default_llm")
                         .apiKey(EnvUtils.getEnv("DEFAULT_LLM_API_KEY"))
@@ -42,7 +42,7 @@ public class DemoBankReactAgentAutonomy {
                         }})
                         .semaphore(new Semaphore(4))
                         .build(),
-                // 时间工具MCP客户端
+                // Time tool MCP client
                 new StdioMCPClient("time_tools", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai")),
                 // ReActAgent
                 ReActAgent.builder()
@@ -51,7 +51,7 @@ public class DemoBankReactAgentAutonomy {
                         .tools(Arrays.asList("time_tools"))
                         .banks(Arrays.asList("remote_user_profile_banks"))
                         .build(),
-                // 远程用户资料银行客户端
+                // Remote user profile bank client
                 BankClient.builder()
                         .name("remote_user_profile_banks")
                         .serverUrl("http://127.0.0.1:8090/api")
@@ -61,7 +61,7 @@ public class DemoBankReactAgentAutonomy {
 
     public static void main(String[] args) throws Exception {
         GlobalDefaultOxySpaceMapping.searchCurrentThreadStackAnnotationOxySpaceName(Thread.currentThread().getStackTrace()[1].getClassName());
-        // 设置过滤器
+        // Set filter
         MasFactoryRegistry.getFactory().createMas().setFuncFilter(payload -> {
             payload.put("group_data", Map.of("user_pin", "002"));
             return payload;

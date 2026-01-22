@@ -29,7 +29,7 @@ public class AnnotationApiServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     static {
-        // 配置 ObjectMapper 忽略未知属性
+        // Configure ObjectMapper to ignore unknown properties
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         objectMapper.configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, false);
         objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
@@ -81,13 +81,13 @@ public class AnnotationApiServlet extends HttpServlet {
         }
 
         try {
-            // 解析请求参数
+            // Parse request parameters
             Map<String, Object> params = parseParameters(req, endpoint);
 
-            // 调用目标方法
+            // Invoke target method
             Object result = invokeEndpoint(endpoint, params);
 
-            // 返回结果
+            // Return result
             sendJsonResponse(resp, result);
 
         } catch (Exception e) {
@@ -108,7 +108,7 @@ public class AnnotationApiServlet extends HttpServlet {
         Map<String, Object> params = new HashMap<>();
 
         // Parse path parameters
-        // TODO: 这里可以根据需要实现路径参数解析
+        // TODO: Path parameter parsing can be implemented here if needed
 
         // Parse query parameters
         req.getParameterMap().forEach((key, values) -> {
@@ -149,14 +149,14 @@ public class AnnotationApiServlet extends HttpServlet {
         Class<?>[] paramTypes = method.getParameterTypes();
         Object[] args = new Object[paramTypes.length];
 
-        // 检查是否只有一个参数且是复杂对象
+        // Check if there's only one parameter and it's a complex object
         if (paramTypes.length == 1 && !isSimpleType(paramTypes[0])) {
-            // 在调用前预处理 params
+            // Preprocess params before invocation
             Map<String, Object> processedParams = preprocessParamsForType(params, paramTypes[0]);
-            // 单个复杂对象参数：直接将整个params映射到对象
+            // Single complex object parameter: directly map entire params to object
             args[0] = objectMapper.convertValue(processedParams, paramTypes[0]);
         } else {
-            // 多个参数或简单类型参数：使用原有的逻辑
+            // Multiple parameters or simple type parameters: use existing logic
             String[] paramNames = Arrays.stream(method.getParameters())
                     .map(p -> p.getName())
                     .toArray(String[]::new);
@@ -166,34 +166,34 @@ public class AnnotationApiServlet extends HttpServlet {
                 Class<?> paramType = paramTypes[i];
 
                 if (isSimpleType(paramType)) {
-                    // 简单类型：使用原有的逻辑
+                    // Simple type: use existing logic
                     Object paramValue = params.get(paramName);
                     args[i] = (paramValue != null) ? convertType(paramValue, paramType) : getDefaultValue(paramType);
                 } else {
-                    // 复杂对象类型：尝试从params中提取对应字段
+                    // Complex object type: try to extract corresponding fields from params
                     Object paramValue = params.get(paramName);
                     if (paramValue != null) {
                         if (paramValue instanceof Map) {
-                            // 如果是Map，转换为目标类型
+                            // If it's a Map, convert to target type
                             args[i] = objectMapper.convertValue(paramValue, paramType);
                         } else {
-                            // 其他类型，尝试直接转换
+                            // Other types, try direct conversion
                             args[i] = objectMapper.convertValue(paramValue, paramType);
                         }
                     } else {
-                        // 如果参数名不在params中，尝试检查是否有单独的字段
+                        // If parameter name is not in params, try to check if there are separate fields
                         args[i] = tryCreateFromFields(params, paramType);
                     }
                 }
             }
         }
 
-        // 调用方法
+        // Invoke method
         return method.invoke(serviceInstance, args);
     }
 
     /**
-     * 检查是否是简单类型
+     * Check if it's a simple type
      */
     private boolean isSimpleType(Class<?> type) {
         return type == String.class ||
@@ -209,7 +209,7 @@ public class AnnotationApiServlet extends HttpServlet {
     }
 
     /**
-     * 获取类型的默认值
+     * Get default value for type
      */
     private Object getDefaultValue(Class<?> type) {
         if (type == String.class) {
@@ -235,14 +235,14 @@ public class AnnotationApiServlet extends HttpServlet {
     }
 
     /**
-     * 尝试从params的字段创建对象
+     * Try to create object from params fields
      */
     private Object tryCreateFromFields(Map<String, Object> params, Class<?> targetType) {
         try {
-            // 使用反射创建对象实例
+            // Use reflection to create object instance
             Object instance = targetType.getDeclaredConstructor().newInstance();
 
-            // 遍历所有字段，从params中设置值
+            // Iterate through all fields, set values from params
             for (java.lang.reflect.Field field : targetType.getDeclaredFields()) {
                 if (params.containsKey(field.getName())) {
                     field.setAccessible(true);
@@ -260,20 +260,20 @@ public class AnnotationApiServlet extends HttpServlet {
     }
 
     /**
-     * 根据目标类型预处理 params，处理类型不匹配
+     * Preprocess params according to target type, handle type mismatches
      */
     private Map<String, Object> preprocessParamsForType(Map<String, Object> params, Class<?> targetType) {
-        // 创建 params 的副本，避免修改原始数据
+        // Create a copy of params to avoid modifying original data
         Map<String, Object> processed = new HashMap<>(params);
 
-        // 获取目标类的字段信息
+        // Get field information of the target class
         Map<String, Class<?>> fieldTypes = new HashMap<>();
         for (java.lang.reflect.Field field : targetType.getDeclaredFields()) {
             field.setAccessible(true);
             fieldTypes.put(field.getName(), field.getType());
         }
 
-        // 预处理每个字段
+        // Preprocess each field
         for (Map.Entry<String, Class<?>> entry : fieldTypes.entrySet()) {
             String fieldName = entry.getKey();
             Class<?> fieldType = entry.getValue();
@@ -281,11 +281,11 @@ public class AnnotationApiServlet extends HttpServlet {
             if (processed.containsKey(fieldName)) {
                 Object value = processed.get(fieldName);
 
-                // 特殊处理：String字段但收到对象或数组
+                // Special handling: String field but received object or array
                 if (fieldType == String.class && value != null) {
                     if (value instanceof Map || value instanceof Collection ||
                             (value.getClass().isArray() && !(value instanceof byte[]))) {
-                        // 将对象/数组转换为JSON字符串
+                        // Convert object/array to JSON string
                         try {
                             processed.put(fieldName, objectMapper.writeValueAsString(value));
                         } catch (Exception e) {

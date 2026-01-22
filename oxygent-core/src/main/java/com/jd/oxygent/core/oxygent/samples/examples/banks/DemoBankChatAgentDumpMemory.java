@@ -85,7 +85,7 @@ public class DemoBankChatAgentDumpMemory {
      * Start MAS and set filter
      */
     public static void main(String[] args) throws Exception {
-        // 启动服务
+        // Start service
         GlobalDefaultOxySpaceMapping.searchCurrentThreadStackAnnotationOxySpaceName(Thread.currentThread().getStackTrace()[1].getClassName());
         MasFactoryRegistry.getFactory().createMas().setFuncFilter((payload)->{
             payload.put("group_data",Map.of("user_pin","002"));

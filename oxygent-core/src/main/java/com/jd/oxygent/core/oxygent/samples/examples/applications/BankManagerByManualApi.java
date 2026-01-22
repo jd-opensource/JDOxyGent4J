@@ -71,7 +71,7 @@ public class BankManagerByManualApi {
         log.info("Updating user profile - user_pin: {}, agent_pin: {}, content: {}",
                 request.getUser_pin(), request.getAgent_pin(), request.getContent());
 
-        // 这里可以添加实际的存储逻辑
+        // Actual storage logic can be added here
         userProfiles.put(request.getUser_pin(), request.getContent());
         return "updated user_profile";
     }
