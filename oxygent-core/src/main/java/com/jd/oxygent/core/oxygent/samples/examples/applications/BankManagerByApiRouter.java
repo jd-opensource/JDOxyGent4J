@@ -102,7 +102,7 @@ public class BankManagerByApiRouter {
                         Map<String, Object> properties = new HashMap<>();
                         List<String> required = new ArrayList<>();
 
-                        // 获取方法参数信息
+                        // Get method parameter information
                         java.lang.reflect.Parameter[] parameters = method.getParameters();
                         for (java.lang.reflect.Parameter param : parameters) {
                             if (param.isAnnotationPresent(ApiParam.class)) {

@@ -1,5 +1,6 @@
 package com.jd.oxygent.core.oxygent.samples.server.scanner;
 import com.jd.oxygent.core.oxygent.samples.server.annotation.ApiEndpoint;
+import com.jd.oxygent.core.oxygent.samples.server.annotation.ApiParam;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -72,7 +73,7 @@ public class ApiEndpointScanner {
     }
 
     /**
-     * 参数信息类
+     * Parameter information class
      */
     public static class ParamInfo {
         private final String name;
@@ -98,23 +99,25 @@ public class ApiEndpointScanner {
             ENDPOINT_REGISTRY.clear();
             SERVICE_INSTANCES.clear();
 
-            // 扫描每个包或类
+            // Scan each package or class
             for (String name : basePackages) {
                 try {
-                    // 尝试直接作为类加载
+                    // Try to load directly as a class
                     Class<?> clazz = Class.forName(name);
-                    // 如果加载成功，说明是完整类名
+                    // If loading succeeds, it's a complete class name
                     log.debug("Processing as class: {}", name);
                     processClass(clazz);
                 } catch (ClassNotFoundException e) {
-                    // 如果不是类名，当作包名处理
+                    // If it's not a class name, treat it as a package name
                     log.debug("Processing as package: {}", name);
                     if(!name.isEmpty()){
                         scanPackage(name);
                     }
                 }
             }
-
+            if(!ENDPOINT_REGISTRY.containsKey("GET:/list_banks")){
+                registerBuiltinEndpoints();
+            }
             log.info("API endpoint scanning completed. Found {} endpoints.", ENDPOINT_REGISTRY.size());
 
         } catch (Exception e) {
@@ -134,10 +137,10 @@ public class ApiEndpointScanner {
             URL resource = resources.nextElement();
 
             if (resource.getProtocol().equals("file")) {
-                // 文件系统（开发环境）
+                // File system (development environment)
                 scanFileSystemClasses(packagePath, resource, basePackage);
             } else if (resource.getProtocol().equals("jar")) {
-                // JAR文件（生产环境）
+                // JAR file (production environment)
                 scanJarClasses(packagePath, resource, basePackage);
             }
         }
@@ -191,9 +194,9 @@ public class ApiEndpointScanner {
                 JarEntry entry = entries.nextElement();
                 String entryName = entry.getName();
 
-                // 检查是否是指定包下的类文件
+                // Check if it's a class file under the specified package
                 if (entryName.startsWith(packagePath) && entryName.endsWith(".class")) {
-                    // 转换为类名
+                    // Convert to class name
                     String className = entryName.replace('/', '.')
                             .replace(".class", "");
 
@@ -212,7 +215,7 @@ public class ApiEndpointScanner {
      */
     private static void processClass(Class<?> clazz) {
         try {
-            // 检查类是否需要处理（可选的过滤条件）
+            // Check if the class needs to be processed (optional filtering conditions)
             if (!shouldProcessClass(clazz)) {
                 log.debug("Skipping class: {}", clazz.getName());
                 return;
@@ -220,10 +223,10 @@ public class ApiEndpointScanner {
 
             log.debug("Processing class: {}", clazz.getName());
 
-            // 获取类实例
+            // Get class instance
             Object instance = getOrCreateServiceInstance(clazz);
 
-            // 扫描类中的所有方法
+            // Scan all methods in the class
             boolean foundEndpoints = false;
             for (Method method : clazz.getDeclaredMethods()) {
                 ApiEndpoint annotation = method.getAnnotation(ApiEndpoint.class);
@@ -249,37 +252,37 @@ public class ApiEndpointScanner {
         try {
             String className = clazz.getName();
 
-            // 1. 排除接口和抽象类
+            // 1. Exclude interfaces and abstract classes
             if (clazz.isInterface() || java.lang.reflect.Modifier.isAbstract(clazz.getModifiers())) {
                 log.trace("Skipping interface/abstract class: {}", className);
                 return false;
             }
 
-            // 2. 排除所有内部类（包含$符号的类）
+            // 2. Exclude all inner classes (classes containing $ symbol)
             if (className.contains("$")) {
                 log.trace("Skipping inner class: {}", className);
                 return false;
             }
 
-            // 3. 排除匿名内部类、局部内部类、成员内部类
+            // 3. Exclude anonymous inner classes, local inner classes, and member inner classes
             if (clazz.isAnonymousClass() || clazz.isLocalClass()) {
                 log.trace("Skipping anonymous/local class: {}", className);
                 return false;
             }
 
-            // 4. 排除枚举类型
+            // 4. Exclude enum types
             if (clazz.isEnum()) {
                 log.trace("Skipping enum class: {}", className);
                 return false;
             }
 
-            // 5. 排除注解类型
+            // 5. Exclude annotation types
             if (clazz.isAnnotation()) {
                 log.trace("Skipping annotation class: {}", className);
                 return false;
             }
 
-            // 6. 检查是否有无参构造函数
+            // 6. Check if there is a no-argument constructor
             try {
                 clazz.getDeclaredConstructor();
             } catch (NoSuchMethodException e) {
@@ -287,20 +290,20 @@ public class ApiEndpointScanner {
                 return false;
             }
 
-            // 7. 检查是否是合成类（编译器生成的）
+            // 7. Check if it's a synthetic class (compiler-generated)
             if (clazz.isSynthetic()) {
                 log.trace("Skipping synthetic class: {}", className);
                 return false;
             }
 
-            // 8. 只处理特定包下的类（可选，如果需要的话）
+            // 8. Only process classes under specific packages (optional, if needed)
             // String packageName = clazz.getPackage().getName();
             // if (!packageName.startsWith("com.jd.oxygent.core.oxygent.samples.server.service")) {
             //     log.trace("Skipping class not in target package: {}", className);
             //     return false;
             // }
 
-            // 9. 检查是否有@ApiEndpoint注解的方法
+            // 9. Check if there are methods annotated with @ApiEndpoint
             boolean hasApiEndpoint = false;
             for (Method method : clazz.getDeclaredMethods()) {
                 if (method.isAnnotationPresent(ApiEndpoint.class)) {
@@ -314,7 +317,7 @@ public class ApiEndpointScanner {
                 return false;
             }
 
-            // 10. 确保类可以被实例化（公共类或静态内部类）
+            // 10. Ensure the class can be instantiated (public class or static inner class)
             if (!java.lang.reflect.Modifier.isPublic(clazz.getModifiers())) {
                 log.trace("Class {} is not public, skipping", className);
                 return false;
@@ -339,7 +342,7 @@ public class ApiEndpointScanner {
             return SERVICE_INSTANCES.get(className);
         }
 
-        // 创建新实例并缓存
+        // Create new instance and cache
         Object instance = serviceClass.getDeclaredConstructor().newInstance();
         SERVICE_INSTANCES.put(className, instance);
         log.debug("Created instance for class: {}", className);
@@ -395,12 +398,12 @@ public class ApiEndpointScanner {
             return "/";
         }
 
-        // 确保以/开头
+        // Ensure starts with /
         if (!path.startsWith("/")) {
             path = "/" + path;
         }
 
-        // 移除末尾的/
+        // Remove trailing /
         if (path.endsWith("/") && path.length() > 1) {
             path = path.substring(0, path.length() - 1);
         }
@@ -451,5 +454,159 @@ public class ApiEndpointScanner {
      */
     public static Map<String, Object> getServiceInstances() {
         return new HashMap<>(SERVICE_INSTANCES);
+    }
+
+    /**
+     * Get all bank endpoints (endpoints with "bank" tag)
+     */
+    @ApiEndpoint(
+            path = "/list_banks",
+            method = ApiEndpoint.HttpMethod.GET,
+            description = "Get all bank endpoints",
+            tags = {"system"}
+    )
+    public List<Map<String, Object>> listBanks() {
+        return getBanksFromApiEndpoints();
+    }
+
+    /**
+     * Extract bank information from registered API endpoints
+     */
+    private List<Map<String, Object>> getBanksFromApiEndpoints() {
+        List<Map<String, Object>> banks = new ArrayList<>();
+
+        try {
+            // 遍历所有注册的端点
+            for (EndpointInfo endpoint : ENDPOINT_REGISTRY.values()) {
+                // 检查是否有 "bank" 标签
+                boolean hasBankTag = false;
+                String[] tags = endpoint.getTags();
+                if (tags != null) {
+                    for (String tag : tags) {
+                        if ("bank".equals(tag)) {
+                            hasBankTag = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasBankTag) {
+                    Map<String, Object> inputSchema = new HashMap<>();
+                    Map<String, Object> properties = new HashMap<>();
+                    List<String> required = new ArrayList<>();
+
+                    // 获取方法参数信息
+                    Method method = endpoint.getMethod();
+                    java.lang.reflect.Parameter[] parameters = method.getParameters();
+
+                    for (java.lang.reflect.Parameter param : parameters) {
+                        if (param.isAnnotationPresent(ApiParam.class)) {
+                            java.lang.annotation.Annotation apiParam = param.getAnnotation(ApiParam.class);
+
+                            try {
+                                // 使用反射获取注解属性值
+                                Method nameMethod = ApiParam.class.getMethod("name");
+                                Method descriptionMethod = ApiParam.class.getMethod("description");
+
+                                String paramName = (String) nameMethod.invoke(apiParam);
+                                String paramDescription = (String) descriptionMethod.invoke(apiParam);
+
+                                // 确定参数类型
+                                String paramType = getParamType(param.getType());
+
+                                Map<String, Object> paramSchema = new HashMap<>();
+                                paramSchema.put("type", paramType);
+                                paramSchema.put("description", paramDescription);
+
+                                properties.put(paramName, paramSchema);
+                                required.add(paramName);
+                            } catch (Exception e) {
+                                log.warn("Failed to extract ApiParam annotation values", e);
+                            }
+                        }
+                    }
+
+                    if (!properties.isEmpty()) {
+                        inputSchema.put("type", "object");
+                        inputSchema.put("properties", properties);
+                        inputSchema.put("required", required);
+                    } else {
+                        inputSchema = null; // 如果没有参数，不包含 inputSchema
+                    }
+
+                    Map<String, Object> bankInfo = new HashMap<>();
+                    bankInfo.put("name", method.getName());
+                    bankInfo.put("endpoint", endpoint.getPath());
+                    bankInfo.put("method", endpoint.getHttpMethod().toString());
+                    bankInfo.put("description", endpoint.getDescription());
+
+                    if (inputSchema != null) {
+                        bankInfo.put("inputSchema", inputSchema);
+                    }
+
+                    // 添加类和方法信息
+                    bankInfo.put("className", endpoint.getServiceInstance().getClass().getName());
+                    bankInfo.put("methodName", method.getName());
+
+                    banks.add(bankInfo);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error getting banks from API endpoints", e);
+        }
+
+        return banks;
+    }
+
+    /**
+     * Convert Java class to JSON schema type
+     */
+    private String getParamType(Class<?> paramClass) {
+        if (paramClass == String.class) {
+            return "string";
+        } else if (paramClass == Integer.class || paramClass == int.class ||
+                paramClass == Long.class || paramClass == long.class) {
+            return "integer";
+        } else if (paramClass == Double.class || paramClass == double.class ||
+                paramClass == Float.class || paramClass == float.class) {
+            return "number";
+        } else if (paramClass == Boolean.class || paramClass == boolean.class) {
+            return "boolean";
+        } else if (paramClass.isArray() || Collection.class.isAssignableFrom(paramClass)) {
+            return "array";
+        } else if (Map.class.isAssignableFrom(paramClass)) {
+            return "object";
+        } else {
+            return "object"; // 复杂对象
+        }
+    }
+
+    /**
+     * 自动注册内置端点
+     */
+    private static void registerBuiltinEndpoints() {
+        try {
+            // 创建 ApiEndpointScanner 实例
+            ApiEndpointScanner scannerInstance = new ApiEndpointScanner();
+
+            // 获取 listBanks 方法
+            Method listBanksMethod = ApiEndpointScanner.class.getDeclaredMethod("listBanks");
+
+            // 获取注解
+            ApiEndpoint annotation = listBanksMethod.getAnnotation(ApiEndpoint.class);
+            if (annotation != null) {
+                // 注册端点
+                registerEndpoint(annotation, listBanksMethod, scannerInstance);
+
+                // 将实例保存到 SERVICE_INSTANCES
+                String className = ApiEndpointScanner.class.getName();
+                if (!SERVICE_INSTANCES.containsKey(className)) {
+                    SERVICE_INSTANCES.put(className, scannerInstance);
+                    log.debug("Created instance for built-in class: {}", className);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to register built-in endpoints", e);
+        }
     }
 }

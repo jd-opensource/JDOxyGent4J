@@ -603,7 +603,7 @@ public class RouteServlet extends HttpServlet {
             }
 
             String currentTraceId = payload.getOrDefault("current_trace_id", "").toString();
-            log.info("Async task created。trace_id: {}", currentTraceId);
+            log.info("Async task created. trace_id: {}", currentTraceId);
 
             String redisKey = mas.getMessagePrefix() + ":" + mas.getName() + ":" + currentTraceId;
 
@@ -1014,7 +1014,7 @@ public class RouteServlet extends HttpServlet {
                     // Check if it is a close event
                     if (msgMap.containsKey("event")) {
                         sendSseEvent(response, (String) msgMap.get("event"), msgMap);
-                        log.info("SSE connection terminated。trace_id: {}", currentTraceId);
+                        log.info("SSE connection terminated. trace_id: {}", currentTraceId);
                         return;
                     }
 
@@ -1047,7 +1047,7 @@ public class RouteServlet extends HttpServlet {
                 }
             }
         } catch (InterruptedException e) {
-            log.info("SSE connection terminated。trace_id: {}", currentTraceId);
+            log.info("SSE connection terminated. trace_id: {}", currentTraceId);
             if (this.mas.getActiveTasks().containsKey(currentTraceId)) {
                 ((CompletableFuture<?>) this.mas.getActiveTasks().get(currentTraceId)).cancel(true);
             }

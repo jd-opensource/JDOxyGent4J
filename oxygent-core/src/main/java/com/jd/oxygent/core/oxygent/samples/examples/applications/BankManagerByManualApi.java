@@ -16,7 +16,7 @@ import java.util.Map;
 public class BankManagerByManualApi {
 
     static {
-        Config.getServer().setPort(8997);
+        Config.getServer().setPort(8090);
     }
 
     private Map<String, String> userProfiles = new HashMap<>();
@@ -71,7 +71,7 @@ public class BankManagerByManualApi {
         log.info("Updating user profile - user_pin: {}, agent_pin: {}, content: {}",
                 request.getUser_pin(), request.getAgent_pin(), request.getContent());
 
-        // 这里可以添加实际的存储逻辑
+        // Actual storage logic can be added here
         userProfiles.put(request.getUser_pin(), request.getContent());
         return "updated user_profile";
     }
@@ -85,7 +85,7 @@ public class BankManagerByManualApi {
     public Object[] listBanks() {
         return new Object[] {
                 Map.of(
-                        "name", "user_profile_retrieve",
+                        "name", "userProfileRetrieve",
                         "endpoint", "/user_profile_retrieve",
                         "type", "retrieve",
                         "description", "A tool for querying user profile",
@@ -100,7 +100,7 @@ public class BankManagerByManualApi {
                         )
                 ),
                 Map.of(
-                        "name", "user_profile_deposit",
+                        "name", "userProfileDeposit",
                         "endpoint", "/user_profile_deposit",
                         "type", "deposit",
                         "description", "A tool for updating user profile",

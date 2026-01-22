@@ -31,6 +31,7 @@ import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 
 import com.jd.oxygent.core.oxygent.utils.JsonUtils;
+import com.jd.oxygent.core.oxygent.utils.StringUtils;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -137,7 +138,7 @@ public class LocalAgent extends BaseAgent {
      * Whether to use live prompt system. If False, only uses the static 'prompt' parameter from code.
      */
     @Builder.Default
-    protected boolean userLivePrompt = true;
+    protected boolean userLivePrompt = false;
 
     /**
      * Additional prompt
@@ -671,7 +672,7 @@ public class LocalAgent extends BaseAgent {
      */
     protected String buildInstruction(Map<String, Object> arguments) {
         // Use resolved prompt (with live prompt support) instead of static prompt
-        String prompt_to_use = this.resolvedPrompt != null ? this.resolvedPrompt :
+        String prompt_to_use = StringUtils.isNotBlank(resolvedPrompt) ? this.resolvedPrompt :
                 (this.prompt != null ? this.prompt : "");
 
         return INSTRUCTION_PATTERN.matcher(prompt_to_use.strip())
