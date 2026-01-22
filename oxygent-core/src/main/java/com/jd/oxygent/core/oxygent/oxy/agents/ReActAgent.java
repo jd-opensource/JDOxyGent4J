@@ -233,12 +233,11 @@ public class ReActAgent extends LocalAgent {
 
     @Override
     public void init() {
-        super.init();
         // Initialize prompt
         if (this.getPrompt() == null || this.getPrompt().isEmpty()) {
             this.setPrompt(this.isSourcingTools() ? systemPromptRetrieval : systemPrompt);
         }
-
+        super.init();
         // Initialize parsing function (supports dynamic injection with request context)
         if (this.getFuncParseLlmResponse() == null) {
             this.setFuncParseLlmResponse(this::parseLlmResponse);
