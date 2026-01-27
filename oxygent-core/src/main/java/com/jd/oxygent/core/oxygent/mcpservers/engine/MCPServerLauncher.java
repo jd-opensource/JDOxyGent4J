@@ -57,8 +57,8 @@ public class MCPServerLauncher {
                     .serverInfo(serverName, "1.0.0")
                     .capabilities(McpSchema.ServerCapabilities.builder()
                             .tools(true)
-                            .prompts(false)
-                            .resources(false, false)
+                            .prompts(true)
+                            .resources(false, true)
                             .logging()
                             .build())
                     .build();
