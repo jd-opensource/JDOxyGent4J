@@ -63,7 +63,7 @@ public class RemoteEs extends BaseDB implements BaseEs {
     /**
      * Unified parameter validation methods.
      */
-    private void validateIndexName(String indexName, String methodName) {
+    public void validateIndexName(String indexName, String methodName) {
         if (org.apache.commons.lang3.StringUtils.isEmpty(indexName)) {
             log.warn("{} invalid parameter: indexName must not be empty", methodName);
             throw new IllegalArgumentException("Index name must not be empty");
@@ -120,7 +120,7 @@ public class RemoteEs extends BaseDB implements BaseEs {
     /**
      * Execute a search request.
      */
-    private List<Map<String, Object>> executeSearchRequest(SearchRequest searchRequest, String methodName) {
+    public List<Map<String, Object>> executeSearchRequest(SearchRequest searchRequest, String methodName) {
         try {
             log.debug("{} request parameters", methodName);
             SearchResponse searchResponse = esConfiguration.getClient().search(searchRequest, RequestOptions.DEFAULT);
