@@ -1,29 +1,29 @@
-package io.github.innobridge.mcpserver.tools;
-
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-
-import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.util.UriComponentsBuilder;
+package com.jd.oxygent.core.oxygent.mcpservers.example;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
+import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
  * WeatherTool provides weather information as a tool for the MCP server.
  */
-@Component
 @Slf4j
-public class WeatherTool implements Function<Map<String, Object>, CallToolResult> {
+public class WeatherTool implements BiFunction< McpSyncServerExchange, Map<String, Object>, CallToolResult> {
     
     private final Tool toolDefinition;
     private final WebClient weatherClient;
@@ -34,28 +34,43 @@ public class WeatherTool implements Function<Map<String, Object>, CallToolResult
             .baseUrl("https://api.weatherapi.com/v1")
             .build();
         this.apiKey = apiKey;
-        
-        this.toolDefinition = new Tool(
-            "get_current_weather",
-            "Get the current weather in a given location",
-            """
-            {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The name of the city e.g. San Francisco, CA"
-                    },
-                    "format": {
-                        "type": "string",
-                        "enum": ["celsius", "fahrenheit"],
-                        "description": "The format to return the weather in"
-                    }
-                },
-                "required": ["location"]
-            }
-            """
-        );
+        this.toolDefinition =  McpSchema.Tool.builder()
+                .name("get_current_weather")
+                .title("Get the current weather in a given location")
+                .description("""
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "location": {
+                                            "type": "string",
+                                            "description": "The name of the city e.g. San Francisco, CA"
+                                        },
+                                        "format": {
+                                            "type": "string",
+                                            "enum": ["celsius", "fahrenheit"],
+                                            "description": "The format to return the weather in"
+                                        }
+                                    },
+                                    "required": ["location"]
+                                }
+                """).inputSchema(new JacksonMcpJsonMapper(new ObjectMapper()),"""
+                                                                                        {
+                                                                                            "type": "object",
+                                                                                            "properties": {
+                                                                                                "location": {
+                                                                                                    "type": "string",
+                                                                                                    "description": "The name of the city e.g. San Francisco, CA"
+                                                                                                },
+                                                                                                "format": {
+                                                                                                    "type": "string",
+                                                                                                    "enum": ["celsius", "fahrenheit"],
+                                                                                                    "description": "The format to return the weather in"
+                                                                                                }
+                                                                                            },
+                                                                                            "required": ["location"]
+                                                                                        }
+                                                            """)
+                .build();
     }
     
     /**
@@ -74,7 +89,7 @@ public class WeatherTool implements Function<Map<String, Object>, CallToolResult
      * @return The weather information
      */
     @Override
-    public CallToolResult apply(Map<String, Object> arguments) {
+    public CallToolResult apply(McpSyncServerExchange mcpSyncServerExchange,Map<String, Object> arguments) {
         try {
             // Extract arguments
             String location = (String) arguments.get("location");

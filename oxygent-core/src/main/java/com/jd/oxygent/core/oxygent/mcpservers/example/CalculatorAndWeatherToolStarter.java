@@ -1,4 +1,4 @@
-package com.jd.oxygent.core.oxygent.mcpservers.tools;
+package com.jd.oxygent.core.oxygent.mcpservers.example;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
@@ -9,7 +9,7 @@ import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springframework.web.reactive.function.client.WebClient;
 
-public class MCPTest {
+public class CalculatorAndWeatherToolStarter {
 
     public static void main(String[] args) {
 
@@ -20,7 +20,7 @@ public class MCPTest {
         StdioServerTransportProvider stdioServerTransport = new StdioServerTransportProvider(new JacksonMcpJsonMapper(new ObjectMapper()));
 
         CalculatorTool calculatorTool = new CalculatorTool();
-        WeatherTool weatherTool = new WeatherTool(WebClient.builder(), "${WEATHER_API_KEY:demo_key}");
+        WeatherTool weatherTool = new WeatherTool(WebClient.builder(), "013a6d7921984db68bf82618262701");
 
         // Create a server with custom configuration
         McpSyncServer syncServer = McpServer.sync(stdioServerTransport)
@@ -33,37 +33,26 @@ public class MCPTest {
                         .build())
                 .build();
 
-        // Register the calculator tool
-        var calculatorToolRegistration = new McpServerFeatures.SyncToolSpecification(
-                calculatorTool.getToolDefinition(),
-                calculatorTool
-        );
+        // Register the calculator tool using builder pattern
+        var calculatorToolRegistration = McpServerFeatures.SyncToolSpecification.builder()
+                .tool(calculatorTool.getToolDefinition())
+                .callHandler((exchange, callToolRequest) -> {
+                    return calculatorTool.apply(exchange, callToolRequest.arguments());
+                })
+                .build();
 
-        // Register the weather tool
-        var weatherToolRegistration = new McpServerFeatures.SyncToolSpecification(
-                weatherTool.getToolDefinition(),
-                weatherTool
-        );
+        // Register the weather tool using builder pattern
+        var weatherToolRegistration = McpServerFeatures.SyncToolSpecification.builder()
+                .tool(weatherTool.getToolDefinition())
+                .callHandler((exchange, callToolRequest) -> {
+                    return weatherTool.apply(exchange, callToolRequest.arguments());
+                })
+                .build();
 
         syncServer.addTool(calculatorToolRegistration);
         syncServer.addTool(weatherToolRegistration);
 
         System.err.println("MCP Server initialized with capabilities: tools=" + syncServer.getServerCapabilities().tools() + ", prompts=" + syncServer.getServerCapabilities().prompts() + ", resources=" + syncServer.getServerCapabilities().resources());
         System.err.println("Server is ready to accept requests. Tools registered: " + syncServer.listTools().size());
-
-        // Start the server - StdioServerTransportProvider automatically starts listening on System.in/System.out
-        // We need to keep the main thread alive to process incoming requests
-        // Note: Logging notifications should be sent from within tool handlers after client connection
-        try {
-            // The server will process requests from stdin
-            // Keep the main thread alive to handle incoming messages
-            Thread.currentThread().join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            System.err.println("Server interrupted");
-        } finally {
-            // Clean up resources
-            syncServer.close();
-        }
     }
 }
