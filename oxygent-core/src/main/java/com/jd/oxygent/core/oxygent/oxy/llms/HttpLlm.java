@@ -234,7 +234,6 @@ public class HttpLlm extends RemoteLlm {
                                                Map<String, Object> payload, OxyRequest oxyRequest, boolean useOpenai) throws Exception {
         payload.put("stream", true);
         String jsonBody = JsonUtils.writeValueAsString(payload);
-        logger.debug("HttpLlm executeStreamingRequest request:{}", jsonBody);
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds((long) this.getTimeout()))
@@ -245,10 +244,10 @@ public class HttpLlm extends RemoteLlm {
         }
         requestHeaders.forEach(requestBuilder::header);
         HttpRequest request = requestBuilder.build();
-
+        long timer = System.currentTimeMillis();
         HttpResponse<java.io.InputStream> response = getHttpClient().send(request,
                 HttpResponse.BodyHandlers.ofInputStream());
-
+        logger.debug("HttpLlm executeNonStreamingRequest cost:{}ms request:{}", System.currentTimeMillis() - timer, jsonBody);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             String errorBody = "";
             try (java.io.InputStream errorStream = response.body();

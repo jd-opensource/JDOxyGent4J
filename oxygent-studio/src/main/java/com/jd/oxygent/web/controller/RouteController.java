@@ -8,6 +8,7 @@ import com.jd.oxygent.core.EvaluationManager;
 import com.jd.oxygent.core.Mas;
 import com.jd.oxygent.core.oxygent.liveprompt.DynamicAgentManager;
 import com.jd.oxygent.core.oxygent.liveprompt.PromptManager;
+import com.jd.oxygent.core.oxygent.liveprompt.PromptOptimizer;
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.MasFactoryRegistry;
 import com.jd.oxygent.core.oxygent.samples.server.utils.FileValidationUtil;
@@ -1114,6 +1115,64 @@ public class RouteController {
         }
     }
 
+    // Debug API Endpoints
+
+    /**
+     * Debug endpoint: Check rating statistics storage for specific trace_id.
+     */
+    @GetMapping("/debug/rating_stats/{trace_id}")
+    public ResponseEntity<Map<String, Object>> debugRatingStats(@PathVariable("trace_id") String traceId) {
+        try {
+            Optional<RatingStats> stats = evaluationManager.getRatingStats(traceId);
+            Map<String, Object> data = Map.of(
+                    "trace_id", traceId,
+                    "stats", stats.isPresent() ? objectMapper.convertValue(stats, Map.class) : null,
+                    "found", stats.isPresent()
+            );
+            return ResponseEntity.ok(WebResponse.success(data).toMap());
+        } catch (Exception e) {
+            log.error("Debug rating stats error", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(WebResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Debug query failed: " + e.getMessage()).toMap());
+        }
+    }
+
+    /**
+     * Debug endpoint: Query complete information for specified trace_id.
+     */
+    @GetMapping("/debug/trace/{trace_id}")
+    public ResponseEntity<Map<String, Object>> debugTraceInfo(@PathVariable("trace_id") String traceId) {
+        try {
+            // Query trace information
+            Map<String, Object> query = Map.of(
+                    "query", Map.of("term", Map.of("trace_id", traceId)),
+                    "size", 1
+            );
+
+            Map<String, Object> traceResponse = mas.getEsClient().search(
+                    Config.getAppName() + "_trace",
+                    query
+            );
+
+            Map<String, Object> traceInfo = null;
+            List<Map<String, Object>> hits = (List<Map<String, Object>>) ((Map<String, Object>) traceResponse.get("hits")).get("hits");
+            if (!hits.isEmpty()) {
+                traceInfo = (Map<String, Object>) hits.get(0).get("_source");
+            }
+
+            Map<String, Object> data = Map.of(
+                    "trace_id", traceId,
+                    "trace_info", traceInfo,
+                    "found", traceInfo != null
+            );
+            return ResponseEntity.ok(WebResponse.success(data).toMap());
+        } catch (Exception e) {
+            log.error("Debug trace info error", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(WebResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Query failed: " + e.getMessage()).toMap());
+        }
+    }
+
     // Prompt Management API Endpoints
 
     /**
@@ -1139,6 +1198,81 @@ public class RouteController {
             log.error("List prompts failed", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(WebResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Failed to list prompts: " + e.getMessage()).toMap());
+        }
+    }
+
+    /**
+     * Optimize a prompt using AI-powered analysis.
+     * This endpoint analyzes the current prompt and provides an improved version
+     * based on the specified optimization strategy and framework constraints.
+     */
+    @PostMapping("/api/prompts/optimize")
+    public ResponseEntity<Map<String, Object>> optimizePrompt(@RequestBody Map<String, Object> requestBody) {
+        try {
+            String promptKey = (String) requestBody.get("prompt_key");
+            String agentType = (String) requestBody.getOrDefault("agent_type", "general");
+            String optimizationStrategy = (String) requestBody.getOrDefault("optimization_strategy", "comprehensive");
+            String customRequirements = (String) requestBody.getOrDefault("custom_requirements", "");
+            Boolean autoApply = (Boolean) requestBody.getOrDefault("auto_apply", false);
+            String llmModel = (String) requestBody.get("llm_model");
+
+            // Get current prompt
+            Map<String, Object> currentPromptData = promptManager.getPrompt(promptKey, true);
+            if (currentPromptData == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(WebResponse.error(HttpStatus.NOT_FOUND.value(), "Prompt not found").toMap());
+            }
+
+            String currentPromptContent = (String) currentPromptData.get("prompt_content");
+
+            // Optimize prompt using PromptOptimizer
+            Map<String, Object> optimizationResult = PromptOptimizer.getInstance(mas, llmModel).optimize(currentPromptContent, agentType, optimizationStrategy, customRequirements, null);
+
+            if (optimizationResult.get("error") != null) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(WebResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Optimization failed: " + optimizationResult.get("error")).toMap());
+            } else if (autoApply && optimizationResult.containsKey("optimized_prompt")) {
+                Map<String, Object> updateData = new HashMap<>(currentPromptData);
+                updateData.put("prompt_content", optimizationResult.get("optimized_prompt"));
+                boolean saveSuccess = promptManager.savePrompt(
+                        promptKey,
+                        (String) updateData.get("prompt_content"),
+                        (String) updateData.get("description"),
+                        (String) updateData.get("category"),
+                        (String) updateData.get("agent_type"),
+                        1,
+                        (Boolean) updateData.get("is_active"),
+                        (List<String>) updateData.get("tags"),
+                        (String) updateData.get("created_by")
+                );
+                if (saveSuccess) {
+                    DynamicAgentManager.hotReloadPrompt(promptKey);
+                    optimizationResult.put("auto_applied", true);
+                    optimizationResult.put("new_version", Integer.parseInt(currentPromptData.getOrDefault("version", 1).toString()) + 1);
+                    Map<String, Object> responseData = Map.of(
+                            "success", true,
+                            "message", "Successfully optimized prompt",
+                            "data", optimizationResult
+                    );
+                } else {
+                    optimizationResult.put("auto_applied", false);
+                    optimizationResult.put("save_error", "Failed to save optimized prompt");
+                    Map<String, Object> responseData = Map.of(
+                            "success", true,
+                            "message", "Successfully optimized prompt",
+                            "data", optimizationResult
+                    );
+                }
+            } else {
+                optimizationResult.put("auto_applied", false);
+            }
+            return ResponseEntity.ok(Map.of("success", true,
+                    "message", "Successfully optimized prompt",
+                    "data", optimizationResult));
+        } catch (Exception e) {
+            log.error("Optimize prompt failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(WebResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Optimization failed: " + e.getMessage()).toMap());
         }
     }
 

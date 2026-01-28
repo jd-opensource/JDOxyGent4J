@@ -23,6 +23,7 @@ import com.jd.oxygent.core.EvaluationManager;
 import com.jd.oxygent.core.Mas;
 import com.jd.oxygent.core.oxygent.liveprompt.DynamicAgentManager;
 import com.jd.oxygent.core.oxygent.liveprompt.PromptManager;
+import com.jd.oxygent.core.oxygent.liveprompt.PromptOptimizer;
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.MasFactoryRegistry;
 import com.jd.oxygent.core.oxygent.samples.server.utils.FileValidationUtil;
@@ -189,6 +190,10 @@ public class RouteServlet extends HttpServlet {
                     // Handle prompt API routes
                     if (path.startsWith("/api/prompts/")) {
                         promptApiRoutes(path, request, response);
+                    }
+                    // Handle debug routes
+                    else if (path.startsWith("/debug/")) {
+                        debugRoutes(path, request, response);
                     }
                     // Handle other rating-related routes
                     else if (path.startsWith("/rating/")) {
@@ -1146,26 +1151,10 @@ public class RouteServlet extends HttpServlet {
                 } else {
                     response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Method not allowed");
                 }
-            } else if (segments.length >= 5 && segments[3].equals("hot-reload") && segments[4].equals("all")) {
-                // /api/prompts/hot-reload/all
+            } else if (path.equals("/api/prompts/optimize")) {
+                // /api/prompts/optimize
                 if (method.equals("POST")) {
-                    hotReloadAllAgentPrompts(response);
-                } else {
-                    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Method not allowed");
-                }
-            } else if (segments.length >= 5 && segments[3].equals("hot-reload") && segments[4].equals("agent")) {
-                // /api/prompts/hot-reload/agent/{agent_name}
-                if (method.equals("POST")) {
-                    String agentName = segments[5];
-                    hotReloadAgentPrompt(agentName, response);
-                } else {
-                    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Method not allowed");
-                }
-            } else if (segments.length >= 5 && segments[3].equals("hot-reload")) {
-                // /api/prompts/hot-reload/{prompt_key}
-                if (method.equals("POST")) {
-                    String promptKey = segments[4];
-                    hotReloadPrompt(promptKey, response);
+                    optimizePrompt(request, response);
                 } else {
                     response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Method not allowed");
                 }
@@ -1214,6 +1203,192 @@ public class RouteServlet extends HttpServlet {
             log.error("Handle prompt API failed: " + path, e);
             sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     WebResponse.error(500, "Internal server error: " + e.getMessage()).toMap());
+        }
+    }
+
+    /**
+     * Handle debug routes
+     */
+    private void debugRoutes(String path, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        // Parse path segments
+        String[] segments = path.split("/");
+        String method = request.getMethod();
+
+        try {
+            if (segments.length == 4 && segments[2].equals("rating_stats")) {
+                // /debug/rating_stats/{trace_id}
+                if (method.equals("GET")) {
+                    String traceId = segments[3];
+                    debugRatingStats(traceId, response);
+                } else {
+                    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Method not allowed");
+                }
+            } else if (segments.length == 4 && segments[2].equals("trace")) {
+                // /debug/trace/{trace_id}
+                if (method.equals("GET")) {
+                    String traceId = segments[3];
+                    debugTraceInfo(traceId, response);
+                } else {
+                    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Method not allowed");
+                }
+            } else {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Path not found: " + path);
+            }
+        } catch (Exception e) {
+            log.error("Handle debug route failed: " + path, e);
+            sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    WebResponse.error(500, "Internal server error: " + e.getMessage()).toMap());
+        }
+    }
+
+    /**
+     * Debug endpoint: Check rating statistics storage for specific trace_id.
+     */
+    private void debugRatingStats(String traceId, HttpServletResponse response) throws IOException {
+        try {
+            Optional<RatingStats> stats = evaluationManager.getRatingStats(traceId);
+            Map<String, Object> data = Map.of(
+                    "trace_id", traceId,
+                    "stats", stats.isPresent() ? objectMapper.convertValue(stats, Map.class) : null,
+                    "found", stats.isPresent()
+            );
+            sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(data).toMap());
+        } catch (Exception e) {
+            log.error("Debug rating stats error", e);
+            sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    WebResponse.error(500, "Debug query failed: " + e.getMessage()).toMap());
+        }
+    }
+
+    /**
+     * Debug endpoint: Query complete information for specified trace_id.
+     */
+    private void debugTraceInfo(String traceId, HttpServletResponse response) throws IOException {
+        try {
+            // Query trace information
+            Map<String, Object> query = Map.of(
+                    "query", Map.of("term", Map.of("trace_id", traceId)),
+                    "size", 1
+            );
+
+            Map<String, Object> traceResponse = mas.getEsClient().search(
+                    Config.getAppName() + "_trace",
+                    query
+            );
+
+            Map<String, Object> traceInfo = null;
+            List<Map<String, Object>> hits = (List<Map<String, Object>>) ((Map<String, Object>) traceResponse.get("hits")).get("hits");
+            if (!hits.isEmpty()) {
+                traceInfo = (Map<String, Object>) hits.get(0).get("_source");
+            }
+
+            Map<String, Object> data = Map.of(
+                    "trace_id", traceId,
+                    "trace_info", traceInfo,
+                    "found", traceInfo != null
+            );
+            sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(data).toMap());
+        } catch (Exception e) {
+            log.error("Debug trace info error", e);
+            sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    WebResponse.error(500, "Query failed: " + e.getMessage()).toMap());
+        }
+    }
+
+    /**
+     * Optimize a prompt using AI-powered analysis.
+     *
+     *     This endpoint analyzes the current prompt and provides an improved version
+     *     based on the specified optimization strategy and framework constraints.
+     *
+     *     Args:
+     *         request: Optimization request containing prompt_key, strategy, and requirements
+     *
+     *     Returns:
+     *         dict: PromptApiResponse with optimization results including:
+     *             - analysis: Analysis of the original prompt
+     *             - improvements: List of improvements made
+     *             - optimized_prompt: The improved prompt text
+     *             - rationale: Explanation of improvements
+     *             - validation: Validation results
+     *
+     *     Example:
+     *         POST /api/prompts/optimize
+     *         {
+     *             "prompt_key": "SYSTEM_PROMPT",
+     *             "agent_type": "react",
+     *             "optimization_strategy": "comprehensive",
+     *             "custom_requirements": "Make it more concise",
+     *             "auto_apply": false
+     *         }
+     */
+    private void optimizePrompt(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            // Parse request body
+            Map<String, Object> requestBody = readRequestBody(request);
+            String promptKey = (String) requestBody.get("prompt_key");
+            String agentType = (String) requestBody.getOrDefault("agent_type", "general");
+            String optimizationStrategy = (String) requestBody.getOrDefault("optimization_strategy", "comprehensive");
+            String customRequirements = (String) requestBody.getOrDefault("custom_requirements", "");
+            Boolean autoApply = (Boolean) requestBody.getOrDefault("auto_apply", false);
+            String llmModel = (String) requestBody.get("llm_model");
+
+            // Get current prompt
+            Map<String, Object> currentPromptData = promptManager.getPrompt(promptKey, true);
+            if (currentPromptData == null) {
+                sendJsonResponse(response, HttpServletResponse.SC_NOT_FOUND,
+                        WebResponse.error(HttpServletResponse.SC_NOT_FOUND, "Prompt not found").toMap());
+                return;
+            }
+
+            String currentPromptContent = (String) currentPromptData.get("prompt_content");
+
+            // Optimize prompt using PromptOptimizer
+            Map<String, Object> optimizationResult = PromptOptimizer.getInstance(mas, llmModel).optimize(currentPromptContent, agentType, optimizationStrategy, customRequirements, null);
+            if (optimizationResult.get("error") != null) {
+                sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        WebResponse.error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Optimization failed: " + optimizationResult.get("error"), optimizationResult).toMap());
+                return;
+            } else if (autoApply && optimizationResult.containsKey("optimized_prompt")) { // If auto_apply is True, save the optimized prompt
+                Map<String, Object> updateData = new HashMap<>(currentPromptData);
+                updateData.put("prompt_content", optimizationResult.get("optimized_prompt"));
+                boolean saveSuccess = promptManager.savePrompt(
+                        promptKey,
+                        (String) updateData.get("prompt_content"),
+                        (String) updateData.get("description"),
+                        (String) updateData.get("category"),
+                        (String) updateData.get("agent_type"),
+                        1,
+                        (Boolean) updateData.get("is_active"),
+                        (List<String>) updateData.get("tags"),
+                        (String) updateData.get("created_by")
+                );
+                if (saveSuccess) {
+                    DynamicAgentManager.hotReloadPrompt(promptKey);
+                    optimizationResult.put("auto_applied", true);
+                    optimizationResult.put("new_version", Integer.parseInt(currentPromptData.getOrDefault("version", 1).toString()) + 1);
+                    Map<String, Object> responseData = Map.of(
+                            "success", true,
+                            "message", "Successfully optimized prompt",
+                            "data", optimizationResult
+                    );
+                } else {
+                    optimizationResult.put("auto_applied", false);
+                    optimizationResult.put("save_error", "Failed to save optimized prompt");
+                    Map<String, Object> responseData = Map.of(
+                            "success", true,
+                            "message", "Successfully optimized prompt",
+                            "data", optimizationResult
+                    );
+                }
+            } else {
+                optimizationResult.put("auto_applied", false);
+            }
+            sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(optimizationResult, "Prompt optimized successfully" + ((Boolean) optimizationResult.get("auto_applied") ? " and applied" : "")).toMap());
+        } catch (Exception e) {
+            log.error("Optimize prompt failed", e);
+            sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    WebResponse.error(500, "Optimization failed: " + e.getMessage()).toMap());
         }
     }
 
@@ -1342,77 +1517,6 @@ public class RouteServlet extends HttpServlet {
             log.error("Search prompts failed", e);
             sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     WebResponse.error(500, "Failed to search prompts: " + e.getMessage()).toMap());
-        }
-    }
-
-    /**
-     * Hot reload specified prompt to all related agents
-     */
-    private void hotReloadPrompt(String promptKey, HttpServletResponse response) throws IOException {
-        try {
-            boolean success = DynamicAgentManager.hotReloadPrompt(promptKey);
-
-            Map<String, Object> responseData = Map.of(
-                    "success", success,
-                    "message", "Successfully hot reloaded prompt",
-                    "data", Map.of(
-                            "prompt_key", promptKey,
-                            "hot_reload_success", success
-                    )
-            );
-
-            sendJsonResponse(response, HttpServletResponse.SC_OK, responseData);
-        } catch (Exception e) {
-            log.error("Hot reload prompt failed", e);
-            sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    WebResponse.error(500, "Failed to hot reload prompt: " + e.getMessage()).toMap());
-        }
-    }
-
-    /**
-     * Hot reload prompt for specified agent
-     */
-    private void hotReloadAgentPrompt(String agentName, HttpServletResponse response) throws IOException {
-        try {
-            boolean success = DynamicAgentManager.hotReloadAgent(agentName);
-
-            Map<String, Object> responseData = Map.of(
-                    "success", success,
-                    "message", "Successfully hot reloaded agent prompt",
-                    "data", Map.of(
-                            "agent_name", agentName,
-                            "hot_reload_success", success
-                    )
-            );
-
-            sendJsonResponse(response, HttpServletResponse.SC_OK, responseData);
-        } catch (Exception e) {
-            log.error("Hot reload agent prompt failed", e);
-            sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    WebResponse.error(500, "Failed to hot reload agent prompt: " + e.getMessage()).toMap());
-        }
-    }
-
-    /**
-     * Hot reload all agent prompts
-     */
-    private void hotReloadAllAgentPrompts(HttpServletResponse response) throws IOException {
-        try {
-            boolean results = DynamicAgentManager.hotReloadAllPrompts();
-
-            Map<String, Object> responseData = Map.of(
-                    "success", results,
-                    "message", "Successfully completed batch hot reload",
-                    "data", Map.of(
-                            "reload_success", results,
-                            "reload_time", LocalDateTime.now().format(DATE_TIME_FORMATTER)
-                    )
-            );
-            sendJsonResponse(response, HttpServletResponse.SC_OK, responseData);
-        } catch (Exception e) {
-            log.error("Hot reload all prompts failed", e);
-            sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    WebResponse.error(500, "Failed to hot reload all prompts: " + e.getMessage()).toMap());
         }
     }
 

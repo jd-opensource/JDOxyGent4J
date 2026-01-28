@@ -460,7 +460,6 @@ public class EvaluationManager {
         Map<String, Object> tracesResponse = esClient.search(Config.getAppName() + "_trace", searchBody);
 
         // Fetch traces with minimal fields for grouping
-        // This is a placeholder and needs to be replaced with actual ES search implementation
         List<Map<String, Object>> traceHits = (List<Map<String, Object>>) ((Map<String, Object>) tracesResponse.get("hits")).get("hits");
         log.debug("Retrieved " + traceHits.size() + " traces from database");
         // Group traces by group_id
