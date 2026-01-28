@@ -357,7 +357,7 @@
     border-color: #155EEF;
 }
 textarea.form-control {
-    min-height: 200px;
+    min-height: 300px;
     font-family: monospace;
 }
 

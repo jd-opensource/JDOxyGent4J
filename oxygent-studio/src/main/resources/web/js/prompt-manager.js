@@ -23,6 +23,7 @@ function initDOMCache() {
     dom.historyModal = document.getElementById('history-modal');
     dom.previewModal = document.getElementById('preview-modal');
     dom.rollbackModal = document.getElementById('rollback-modal');
+    dom.optimizeModal = document.getElementById('optimize-modal');
     dom.editForm = document.getElementById('edit-form');
     dom.editKey = document.getElementById('edit_prompt_key');
     dom.editContent = document.getElementById('edit_prompt_content');
@@ -35,6 +36,21 @@ function initDOMCache() {
     dom.previewRollbackBtn = document.getElementById('preview-rollback-btn');
     dom.rollbackMessage = document.getElementById('rollback-message');
     dom.confirmRollbackBtn = document.getElementById('confirm-rollback-btn');
+    // Optimize modal elements
+    dom.optimizePromptKey = document.getElementById('optimize_prompt_key');
+    dom.optimizeAgentType = document.getElementById('optimize_agent_type');
+    dom.optimizeStrategy = document.getElementById('optimize_strategy');
+    dom.optimizeRequirements = document.getElementById('optimize_requirements');
+    dom.optimizeResults = document.getElementById('optimize-results');
+    dom.optimizeAnalysis = document.getElementById('optimize-analysis');
+    dom.optimizeImprovements = document.getElementById('optimize-improvements');
+    dom.optimizeRationale = document.getElementById('optimize-rationale');
+    dom.optimizeValidation = document.getElementById('optimize-validation');
+    dom.optimizeOriginal = document.getElementById('optimize-original');
+    dom.optimizeOptimized = document.getElementById('optimize-optimized');
+    dom.previewOptimizeBtn = document.getElementById('preview-optimize-btn');
+    dom.applyOptimizeBtn = document.getElementById('apply-optimize-btn');
+    dom.agentTypeSource = document.getElementById('agent_type_source');
 }
 
 // Optimized debounce with immediate option
@@ -235,9 +251,13 @@ function createPromptCard(prompt) {
         <div class="prompt-content">
             ${escapeHtml(truncatedContent)}
         </div>
-        <div class="prompt-actions">
+        <div class="prompt-actions" style="grid-template-columns: 1fr 1fr; gap: 8px;">
             <button class="btn btn-sm btn-primary" onclick="editPrompt('${escapeHtml(prompt.prompt_key)}')">
                 ✏️ Edit
+                <span class="btn-badge"></span>
+            </button>
+            <button class="btn btn-sm btn-info" onclick="showOptimizeModal('${escapeHtml(prompt.prompt_key)}')">
+                ✨ Optimize
                 <span class="btn-badge"></span>
             </button>
             <button class="btn btn-sm btn-primary" onclick="refreshPrompt('${escapeHtml(prompt.prompt_key)}')">
@@ -703,6 +723,303 @@ function hideHistoryModal() {
     if (dom.historyModal) {
         dom.historyModal.style.display = 'none';
         document.body.style.overflow = 'auto';
+    }
+}
+
+// =============================================================================
+// Prompt Optimization Functions
+// =============================================================================
+
+let currentOptimizationData = null;
+
+async function showOptimizeModal(promptKey) {
+    try {
+        showNotification('Loading prompt for optimization...', 'info');
+
+        const response = await fetch(`/api/prompts/${promptKey}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            const promptData = result.data;
+
+            // Set prompt key
+            dom.optimizePromptKey.value = promptData.prompt_key;
+
+            // Auto-detect agent type
+            const normalizedMetadataType = normalizeAgentType(promptData.agent_type);
+            const detectedAgentType = detectAgentType(promptData.prompt_content, promptData.agent_type);
+            dom.optimizeAgentType.value = detectedAgentType;
+
+            // Determine detection source
+            const fromMetadata = normalizedMetadataType && normalizedMetadataType !== 'general';
+            dom.agentTypeSource.textContent = `Detected from ${fromMetadata ? 'metadata (' + promptData.agent_type + ')' : 'content analysis'}`;
+
+            // Reset form
+            dom.optimizeStrategy.value = 'comprehensive';
+            dom.optimizeRequirements.value = '';
+
+            // Hide results section
+            dom.optimizeResults.style.display = 'none';
+            dom.applyOptimizeBtn.style.display = 'none';
+
+            // Store current data
+            currentOptimizationData = {
+                promptKey: promptData.prompt_key,
+                originalContent: promptData.prompt_content,
+                optimizedContent: null
+            };
+
+            // Show modal
+            if (dom.optimizeModal) {
+                dom.optimizeModal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            }
+
+            console.log(`✨ Opened optimization for: ${promptKey}`);
+        } else {
+            throw new Error(result.message || 'Failed to load prompt');
+        }
+    } catch (error) {
+        console.error('❌ Error loading prompt for optimization:', error);
+        showNotification('Failed to load prompt: ' + error.message, 'error');
+    }
+}
+
+function hideOptimizeModal() {
+    if (dom.optimizeModal) {
+        dom.optimizeModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    currentOptimizationData = null;
+}
+
+function detectAgentType(promptContent, metadataAgentType) {
+    // Normalize agent type from metadata
+    const normalizedType = normalizeAgentType(metadataAgentType);
+
+    // If metadata indicates ReAct agent, use it
+    if (normalizedType === 'react') {
+        return 'react';
+    }
+
+    // Analyze content for ReAct patterns
+    const content = promptContent.toLowerCase();
+    if (content.includes('tool_name') && content.includes('arguments') &&
+        (content.includes('```json') || content.includes('json object'))) {
+        return 'react';
+    }
+
+    // Default to general for all other cases
+    return 'general';
+}
+
+function normalizeAgentType(agentType) {
+    if (!agentType) return 'general';
+
+    const type = agentType.toLowerCase();
+
+    // Only check for ReAct patterns
+    if (type.includes('react')) return 'react';
+
+    return 'general';
+}
+
+async function previewOptimization() {
+    if (!currentOptimizationData) {
+        showNotification('No prompt loaded for optimization', 'error');
+        return;
+    }
+
+    try {
+        showNotification('Optimizing prompt... This may take a moment.', 'info');
+
+        // Disable button during optimization
+        dom.previewOptimizeBtn.disabled = true;
+        dom.previewOptimizeBtn.innerHTML = '⏳ Optimizing... <span class="btn-badge"></span>';
+
+        const payload = {
+            prompt_key: currentOptimizationData.promptKey,
+            agent_type: dom.optimizeAgentType.value,
+            optimization_strategy: dom.optimizeStrategy.value,
+            custom_requirements: dom.optimizeRequirements.value.trim(),
+            auto_apply: false
+        };
+
+        const response = await fetch('/api/prompts/optimize', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            const data = result.data;
+
+            // Store optimized content
+            currentOptimizationData.optimizedContent = data.optimized_prompt;
+
+            // Display results
+            displayOptimizationResults(data);
+
+            showNotification('Optimization completed successfully!', 'success');
+            console.log('✨ Optimization completed');
+        } else {
+            throw new Error(result.message || 'Optimization failed');
+        }
+    } catch (error) {
+        console.error('❌ Error during optimization:', error);
+        showNotification('Optimization failed: ' + error.message, 'error');
+    } finally {
+        // Re-enable button
+        dom.previewOptimizeBtn.disabled = false;
+        dom.previewOptimizeBtn.innerHTML = '👁️ Preview Optimization <span class="btn-badge"></span>';
+    }
+}
+
+function displayOptimizationResults(data) {
+    // Show results section
+    dom.optimizeResults.style.display = 'block';
+    dom.applyOptimizeBtn.style.display = 'inline-block';
+
+    // Display analysis
+    dom.optimizeAnalysis.textContent = data.analysis || 'No analysis available';
+
+    // Display improvements
+    const improvements = data.improvements || [];
+    dom.optimizeImprovements.innerHTML = improvements.length > 0
+        ? improvements.map(imp => `<li>${escapeHtml(imp)}</li>`).join('')
+        : '<li>No specific improvements listed</li>';
+
+    // Display rationale
+    dom.optimizeRationale.textContent = data.rationale || 'No rationale provided';
+
+    // Display validation
+    const validation = data.validated || data.validation || {};
+    const meetsConstraints = validation.meets_constraints;
+    const validationIcon = meetsConstraints ? '✅' : '⚠️';
+
+    let validationHtml = `<div style="background: ${meetsConstraints ? '#e8f5e9' : '#fff3e0'}; padding: 10px; border-radius: 5px;">`;
+    validationHtml += `<strong>${validationIcon} ${meetsConstraints ? 'Validation Passed' : 'Validation Issues'}</strong>`;
+
+    if (validation.missing_elements && validation.missing_elements.length > 0) {
+        validationHtml += '<ul style="margin: 10px 0 0 20px;">';
+        validation.missing_elements.forEach(elem => {
+            validationHtml += `<li>${escapeHtml(elem)}</li>`;
+        });
+        validationHtml += '</ul>';
+    }
+
+    if (validation.warnings && validation.warnings.length > 0) {
+        validationHtml += '<p style="margin-top: 10px;"><strong>Warnings:</strong></p><ul style="margin: 5px 0 0 20px;">';
+        validation.warnings.forEach(warn => {
+            validationHtml += `<li>${escapeHtml(warn)}</li>`;
+        });
+        validationHtml += '</ul>';
+    }
+
+    validationHtml += '</div>';
+    dom.optimizeValidation.innerHTML = validationHtml;
+
+    // Display comparison
+    dom.optimizeOriginal.value = currentOptimizationData.originalContent || '';
+    dom.optimizeOptimized.value = data.optimized_prompt || '';
+
+    // Scroll to results
+    dom.optimizeResults.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function applyOptimization() {
+    // Add detailed validation
+    if (!currentOptimizationData) {
+        console.error('currentOptimizationData is null');
+        showNotification('Optimization data lost. Please try optimizing again.', 'error');
+        return;
+    }
+
+    if (!currentOptimizationData.optimizedContent) {
+        console.error('No optimized content:', currentOptimizationData);
+        showNotification('No optimized prompt to apply', 'error');
+        return;
+    }
+
+    if (!currentOptimizationData.promptKey) {
+        console.error('No promptKey in optimization data:', currentOptimizationData);
+        showNotification('Prompt key is missing. Please try optimizing again.', 'error');
+        return;
+    }
+
+    try {
+        showNotification('Applying optimized prompt...', 'info');
+
+        // Get current prompt data
+        const response = await fetch(`/api/prompts/${currentOptimizationData.promptKey}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch current prompt: ${response.status}`);
+        }
+
+        const currentResult = await response.json();
+        if (!currentResult.success) {
+            throw new Error('Failed to fetch current prompt data');
+        }
+
+        const currentPrompt = currentResult.data;
+
+        // Update with optimized content
+        const updatePayload = {
+            prompt_content: currentOptimizationData.optimizedContent,
+            description: currentPrompt.description,
+            category: currentPrompt.category,
+            agent_type: currentPrompt.agent_type,
+            tags: currentPrompt.tags
+        };
+
+        const updateResponse = await fetch(`/api/prompts/${currentOptimizationData.promptKey}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(updatePayload)
+        });
+
+        if (!updateResponse.ok) {
+            throw new Error(`HTTP ${updateResponse.status}: ${updateResponse.statusText}`);
+        }
+
+        const updateResult = await updateResponse.json();
+
+        if (updateResult.success) {
+            // Save promptKey before hiding modal (which clears currentOptimizationData)
+            const appliedPromptKey = currentOptimizationData.promptKey;
+
+            showNotification('Optimized prompt applied successfully!', 'success');
+            hideOptimizeModal();
+            await loadPrompts(); // Refresh the list
+            console.log(`✅ Applied optimization for: ${appliedPromptKey}`);
+        } else {
+            throw new Error(updateResult.message || 'Failed to apply optimization');
+        }
+    } catch (error) {
+        console.error('❌ Error applying optimization:', error);
+        showNotification('Failed to apply optimization: ' + error.message, 'error');
     }
 }
 

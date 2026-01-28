@@ -147,5 +147,118 @@
         </div>
     </div>
 
+    <!-- Prompt Optimization Modal -->
+    <div id="optimize-modal" class="modal">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; margin-top: 5vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h2>✨ Optimize Prompt</h2>
+                <button class="close" onclick="hideOptimizeModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                <!-- Prompt Info -->
+                <div class="form-group">
+                    <label>Prompt Key</label>
+                    <input type="text" id="optimize_prompt_key" class="form-control" readonly>
+                </div>
+
+                <!-- Agent Type -->
+                <div class="form-group">
+                    <label for="optimize_agent_type">Agent Type</label>
+                    <select id="optimize_agent_type" class="form-control">
+                        <option value="general">General</option>
+                        <option value="react">ReAct Agent</option>
+                    </select>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        <span id="agent_type_source">-</span>
+                    </small>
+                </div>
+
+                <!-- Optimization Strategy -->
+                <div class="form-group">
+                    <label for="optimize_strategy">Optimization Strategy</label>
+                    <select id="optimize_strategy" class="form-control">
+                        <option value="comprehensive">Comprehensive (Recommended)</option>
+                        <option value="clarity">Improve Clarity</option>
+                        <option value="structure">Improve Structure</option>
+                        <option value="completeness">Improve Completeness</option>
+                        <option value="effectiveness">Improve Effectiveness</option>
+                    </select>
+                </div>
+
+                <!-- Custom Requirements -->
+                <div class="form-group">
+                    <label for="optimize_requirements">Custom Requirements (Optional)</label>
+                    <textarea id="optimize_requirements" class="form-control" rows="3"
+                        placeholder="E.g., Make it more concise, add examples for edge cases, focus on error handling..."></textarea>
+                </div>
+
+                <!-- Optimization Results (Hidden by default) -->
+                <div id="optimize-results" style="display: none; margin-top: 20px;">
+                    <div style="border-top: 2px solid #e0e0e0; padding-top: 20px;">
+                        <h3 style="margin-bottom: 15px;">📊 Analysis & Optimization Results</h3>
+
+                        <!-- Top Row: Analysis and Improvements -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <!-- Analysis -->
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>🔍 Analysis</label>
+                                <div id="optimize-analysis" style="background: #f5f5f5; padding: 15px; border-radius: 5px; line-height: 1.6;"></div>
+                            </div>
+
+                            <!-- Improvements -->
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>✨ Improvements</label>
+                                <ul id="optimize-improvements" style="background: #e8f5e9; padding: 15px 15px 15px 40px; border-radius: 5px; margin: 0;"></ul>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Row: Rationale and Validation -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <!-- Rationale -->
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>💡 Rationale</label>
+                                <div id="optimize-rationale" style="background: #fff3e0; padding: 15px; border-radius: 5px; line-height: 1.6;"></div>
+                            </div>
+
+                            <!-- Validation -->
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>✅ Validation</label>
+                                <div id="optimize-validation" style="padding: 10px; border-radius: 5px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Comparison View -->
+                        <div style="margin-top: 20px;">
+                            <h4 style="margin-bottom: 10px;">📝 Comparison</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <!-- Original -->
+                                <div>
+                                    <label>Original Prompt</label>
+                                    <textarea id="optimize-original" class="form-control" rows="10" readonly
+                                        style="background: #f9f9f9; font-size: 12px;"></textarea>
+                                </div>
+                                <!-- Optimized -->
+                                <div>
+                                    <label>Optimized Prompt</label>
+                                    <textarea id="optimize-optimized" class="form-control" rows="10"
+                                        style="background: #e8f5e9; font-size: 12px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="hideOptimizeModal()">Cancel</button>
+                <button type="button" class="btn btn-info" id="preview-optimize-btn" onclick="previewOptimization()">
+                    👁️ Preview Optimization <span class="btn-badge"></span>
+                </button>
+                <button type="button" class="btn btn-success" id="apply-optimize-btn" onclick="applyOptimization()" style="display: none;">
+                    ✅ Apply Optimization <span class="btn-badge"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
