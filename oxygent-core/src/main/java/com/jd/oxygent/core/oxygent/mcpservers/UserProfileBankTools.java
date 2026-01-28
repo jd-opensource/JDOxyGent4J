@@ -87,7 +87,7 @@ public class UserProfileBankTools {
      *
      * @param args Command line arguments
      */
-    @EnableMcpServer(mode = "web",transport = "sse")
+    @EnableMcpServer(mode = "web",transport = "sse",port = "8000")
     public static void main(String[] args) {
         McpServer.start();
     }

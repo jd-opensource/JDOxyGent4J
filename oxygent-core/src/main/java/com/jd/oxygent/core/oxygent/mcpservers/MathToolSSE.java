@@ -512,7 +512,7 @@ public class MathToolSSE {
      *
      * @param args Command line arguments
      */
-    @EnableMcpServer(mode = "web")  // 使用web模式，支持SSE
+    @EnableMcpServer(mode = "web",port = "8000")  // 使用web模式，支持SSE
     public static void main(String[] args) {
         McpServer.start();
     }

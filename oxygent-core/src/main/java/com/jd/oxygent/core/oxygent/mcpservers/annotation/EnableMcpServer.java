@@ -32,7 +32,7 @@ public @interface EnableMcpServer {
     /**
      * Transport protocol
      * - "sse": Server-Sent Events
-     * - "websocket": WebSocket protocol
+     * - "streamable": streamable HTTP
      */
     String transport() default "sse";
 

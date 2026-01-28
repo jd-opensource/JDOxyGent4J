@@ -187,7 +187,7 @@ public class MathToolsStreamable {
      *
      * @param args Command line arguments
      */
-    @EnableMcpServer(mode = "stdio")
+    @EnableMcpServer(mode = "web",transport = "streamable")
     public static void main(String[] args) {
         McpServer.start();
     }
