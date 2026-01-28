@@ -39,6 +39,8 @@
         <!-- MessagePack -->
         <msgpack.version>0.9.6</msgpack.version>
         <!-- MCP SDK -->
+        <tts.version>1.3.3</tts.version>
+        <!-- MCP SDK -->
         <mcp.version>0.15.0</mcp.version>
         <!-- UUID Creator -->
         <uuid-creator.version>5.2.0</uuid-creator.version>
@@ -138,6 +140,12 @@
                 <groupId>org.msgpack</groupId>
                 <artifactId>msgpack-core</artifactId>
                 <version>${msgpack.version}</version>
+            </dependency>
+            <!-- edge tts SDK -->
+            <dependency>
+                <groupId>io.github.whitemagic2014</groupId>
+                <artifactId>tts-edge-java</artifactId>
+                <version>${tts.version}</version>
             </dependency>
             <!-- MCP SDK -->
             <dependency>
