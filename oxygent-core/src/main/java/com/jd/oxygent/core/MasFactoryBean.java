@@ -219,6 +219,10 @@ public class MasFactoryBean implements FactoryBean<Mas> {
      */
     @Override
     public Mas getObject() {
+        return getObject(true);
+    }
+
+    public Mas getObject(boolean useCache) {
         if (name == null || oxySpace == null) {
             throw new IllegalStateException("MAS factory not properly configured, missing name or agent space");
         }
@@ -227,9 +231,11 @@ public class MasFactoryBean implements FactoryBean<Mas> {
         String cacheKey = name + "#" + signature;
 
         synchronized (masCache) {
-            CacheEntry entry = masCache.get(cacheKey);
-            if (entry != null) {
-                return entry.mas;
+            if (useCache) {
+                CacheEntry entry = masCache.get(cacheKey);
+                if (entry != null) {
+                    return entry.mas;
+                }
             }
 
             // Generate new Mas instance and put into cache with FIFO strategy (LinkedHashMap handles overflow removal)
@@ -241,7 +247,6 @@ public class MasFactoryBean implements FactoryBean<Mas> {
             masCache.put(cacheKey, new CacheEntry(mas, signature));
             return mas;
         }
-
     }
 
     /**
