@@ -1,6 +1,9 @@
 package com.jd.oxygent.core.oxygent.samples.server.tomcat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jd.oxygent.core.oxygent.samples.server.LauncherLifecycle;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import jakarta.servlet.Servlet;
 import jakarta.servlet.ServletException;
 import lombok.Builder;
@@ -13,6 +16,7 @@ import org.apache.catalina.startup.Tomcat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 
 import static com.jd.oxygent.core.oxygent.samples.server.ServerConstants.DEFAULT_HOST_NAME;
 import static com.jd.oxygent.core.oxygent.samples.server.ServerConstants.DEFAULT_TOMCAT_BASE_TMP_DIR;
@@ -46,7 +50,16 @@ public class McpTomcat implements LauncherLifecycle {
             tomcat.start();
 
             log.info("Embedded Tomcat started successfully!");
-            log.info("Application access URL: http://localhost:{}{}/index.html", port, contextPath);
+            switch (args[0]) {
+                case "sse":
+                    log.info("Send requests to: POST http://{}:{}/mcp/message", addresses,port);
+                    log.info("Listen for events: SSE http://{}:{}/mcp/sse", addresses,port);
+                    break;
+                case "streamable":
+                    log.info("Endpoint: POST  http://{}:{}/mcp/sse", addresses,port);
+                    break;
+            }
+
 
             // Keep server running
             tomcat.getServer().await();
@@ -102,6 +115,7 @@ public class McpTomcat implements LauncherLifecycle {
             servletWrapper.setName("McpServlet");
 //            servletWrapper.setServletClass("com.jd.oxygent.core.oxygent.samples.server.servlet.RouteServlet");
             servletWrapper.setServlet(servlet);
+            servletWrapper.setAsyncSupported(true);
             servletWrapper.setLoadOnStartup(1);
             context.addChild(servletWrapper);
             context.addServletMappingDecoded("/*", "McpServlet");

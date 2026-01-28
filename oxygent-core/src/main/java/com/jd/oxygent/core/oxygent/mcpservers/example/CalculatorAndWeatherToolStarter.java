@@ -13,9 +13,9 @@ public class CalculatorAndWeatherToolStarter {
 
     public static void main(String[] args) {
 
-//        WebFluxSseServerTransport webFluxSseServerTransport = new WebFluxSseServerTransport(new ObjectMapper(), "/mcp/message");
+//      WebFluxSseServerTransport webFluxSseServerTransport = new WebFluxSseServerTransport(new ObjectMapper(), "/mcp/message");
 
-//        RouterFunction<?> routerFunction = webFluxSseServerTransport.getRouterFunction();
+//      RouterFunction<?> routerFunction = webFluxSseServerTransport.getRouterFunction();
 
         StdioServerTransportProvider stdioServerTransport = new StdioServerTransportProvider(new JacksonMcpJsonMapper(new ObjectMapper()));
 
