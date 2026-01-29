@@ -1040,7 +1040,7 @@ public class Mas {
         payload.put("shared_data", sharedData);
 
         // Check for restart_node_id and reference_trace_id in payload
-        if (payload.containsKey("restart_node_id") && payload.get("restart_node_id") != null) {
+        if (payload.get("restart_node_id") != null && StringUtils.isNotBlank(payload.get("restart_node_id").toString())) {
             Map<String, Object> searchQuery = new HashMap<>();
             searchQuery.put("query", Map.of("term", Map.of("_id", payload.get("restart_node_id"))));
             Map<String, Object> esResponse = esClient.search(Config.getAppName() + "_node", searchQuery);
@@ -1065,7 +1065,8 @@ public class Mas {
         }
 
         // Set group_id: inherit if from_trace_id is provided, else new
-        if (StringUtils.isNotBlank((String) payload.get("from_trace_id")) && StringUtils.isBlank((String) payload.get("group_id"))) {
+        if (payload.get("from_trace_id") != null && StringUtils.isNotBlank(payload.get("from_trace_id").toString())
+        && StringUtils.isBlank((String) payload.get("group_id"))) {
             Map<String, Object> searchQuery = new HashMap<>();
             searchQuery.put("query", Map.of("term", Map.of("_id", payload.get("from_trace_id"))));
             searchQuery.put("size", 1);
