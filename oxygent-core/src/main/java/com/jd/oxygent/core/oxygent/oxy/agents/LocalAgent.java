@@ -37,6 +37,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,6 +111,7 @@ import java.util.stream.Collectors;
 @Data
 @SuperBuilder
 @ToString(callSuper = true, exclude = "prompt")
+@Slf4j
 public class LocalAgent extends BaseAgent {
 
     private static final Logger logger = LoggerFactory.getLogger(LocalAgent.class);
@@ -674,13 +676,21 @@ public class LocalAgent extends BaseAgent {
         // Use resolved prompt (with live prompt support) instead of static prompt
         String prompt_to_use = StringUtils.isNotBlank(resolvedPrompt) ? this.resolvedPrompt :
                 (this.prompt != null ? this.prompt : "");
-
-        return INSTRUCTION_PATTERN.matcher(prompt_to_use.strip())
-                .replaceAll(match -> {
-                    String key = match.group(1);
-                    Object value = arguments.get(key);
-                    return value != null ? String.valueOf(value) : match.group(0);
-                });
+        StringBuilder sb = new StringBuilder();
+        try {
+            Matcher matcher = INSTRUCTION_PATTERN.matcher(prompt_to_use.strip());
+            while (matcher.find()) {
+                String key = matcher.group(1);
+                // Get value from arguments, if not exists use original matched string
+                String replacement = arguments.getOrDefault(key, matcher.group(0)).toString();
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+            }
+            matcher.appendTail(sb);
+            return sb.toString();
+        } catch (Exception e) {
+            log.error("Error while Building instruction prompt by substituting template variables, arguments: {}", JsonUtils.toJSONString(arguments), e);
+            throw e;
+        }
     }
 
     @Override
