@@ -1,7 +1,5 @@
 package com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server;
 
-import com.jd.oxygent.core.oxygent.mcpservers.engine.McpServer;
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -13,10 +11,6 @@ import java.util.Set;
  * - 非破坏模式与禁删/禁更新等安全开关的环境变量读取
  */
 public class KubernetesMcpServer {
-
-    // 全局 MCP 实例：各工具模块通过引用此实例并注册工具
-    // 运行传输模式由启动入口 ServerMain 控制
-    public static final McpServer MCP = new McpServer();
 
     // 安全与变更开关（环境变量控制）
     // - K8S_MCP_READ_ONLY=true: 仅允许只读/非破坏工具

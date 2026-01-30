@@ -10,11 +10,14 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+/**
+ * Kubernetes MCP Server - core tools: events
+ *
+ * 提供 Kubernetes 事件的只读能力：
+ * - events_list：列出所有命名空间或指定命名空间的事件
+ */
 public class EventsTool {
 
-    /**
-     * 事件摘要生成，与 Python 版保持一致
-     */
     private static Map<String, Object> eventSummary(CoreV1Event event) {
         Map<String, Object> summary = new HashMap<>();
         // 元数据

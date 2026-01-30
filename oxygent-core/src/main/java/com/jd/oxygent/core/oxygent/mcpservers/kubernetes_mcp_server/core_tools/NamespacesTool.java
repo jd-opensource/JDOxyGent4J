@@ -45,7 +45,7 @@ public class NamespacesTool {
      * 列出所有命名空间
      */
     @MCPTool(name = "namespaces_list",
-            description = "List all Kubernetes namespaces")
+            description = "List all the Kubernetes namespaces in the current cluster")
     public static List<Map<String, Object>> namespacesList(
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {

@@ -1,6 +1,8 @@
 package com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server;
 
 import com.jd.oxygent.core.oxygent.mcpservers.annotation.EnableMcpServer;
+import com.jd.oxygent.core.oxygent.mcpservers.annotation.McpServerStatics;
+import com.jd.oxygent.core.oxygent.mcpservers.engine.McpServer;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -9,13 +11,14 @@ import java.util.Set;
  * Kubernetes MCP Server - Entry Point
  * <p>
  * 该入口对齐 OxyGent 现有 MCP 服务器风格，提供：
- * - 传输模式：stdio / sse / streamable-http
+ * - 传输模式：stdio / sse / streamable
  * - 端口配置（SSE/Streamable HTTP）
  * - 工具集按需加载（config/core/helm），为非破坏模式等安全开关预留过滤点
  */
-@EnableMcpServer(mode = "stdio")
-public class ServerMain {
 
+public class Server {
+
+    @EnableMcpServer(mode = "stdio")
     public static void main(String[] args) {
         // 解析命令行参数
         CommandLineArgs parsedArgs = parseArgs(args);
@@ -24,16 +27,21 @@ public class ServerMain {
         boolean disableDestructive = parsedArgs.disableDestructive || KubernetesMcpServer.isDisableDestructive();
 
         // 根据传输模式配置
-        if (parsedArgs.transport.equals("sse") || parsedArgs.transport.equals("streamable-http")) {
-            // 在网络模式下，重新绑定 MCP 实例（设置端口）
-            System.out.println("Setting up network transport on port: " + parsedArgs.port);
-            // 注意：这里需要根据实际 McpServer 实现调整
-            // 例如：重新创建 MCP 实例并设置端口
+        if (parsedArgs.transport.equals("sse") || parsedArgs.transport.equals("streamable")) {
+            McpServerStatics.transport = parsedArgs.transport;
+            McpServerStatics.mode = "web";
+        }
+
+        if (parsedArgs.transport.equals("stdio")) {
+            McpServerStatics.mode = parsedArgs.transport;
         }
 
         // 加载工具集
         loadToolsets(selectedToolsets, readonly, disableDestructive);
-
+        //传递端口
+        if(parsedArgs.port>0){
+            McpServerStatics.port = parsedArgs.port+"";
+        }
         // 打印启动信息
         System.out.println("[kubernetes_mcp_server] transport=" + parsedArgs.transport);
         System.out.println("[kubernetes_mcp_server] port=" + parsedArgs.port);
@@ -41,7 +49,7 @@ public class ServerMain {
         System.out.println("[kubernetes_mcp_server] readonly=" + readonly + " disable_destructive=" + disableDestructive);
 
         // 运行服务器
-        com.jd.oxygent.core.oxygent.mcpservers.engine.McpServer.start();
+        McpServer.start();
     }
 
     /**
@@ -115,25 +123,18 @@ public class ServerMain {
     private static void loadToolsets(Set<String> selected, boolean readonly, boolean disableDestructive) {
         // config 组
         if (selected.contains("config")) {
-            try {
-                Class.forName("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.ConfigTools");
-            } catch (ClassNotFoundException e) {
-                System.err.println("Failed to load config tools: " + e.getMessage());
-            }
+                McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.ConfigTools");
         }
 
         // core 组
         if (selected.contains("core")) {
             // 只读/通用能力优先
-            try {
-                Class.forName("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.PodsTool");
-                Class.forName("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.ResourcesTool");
-                Class.forName("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.EventsTool");
-                Class.forName("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.NamespacesTool");
-                Class.forName("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.NodesTool");
-            } catch (ClassNotFoundException e) {
-                System.err.println("Failed to load core tools: " + e.getMessage());
-            }
+            McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.ReadOnlyCoreTools");
+            McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.PodsTool");
+            McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.ResourcesTool");
+            McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.EventsTool");
+            McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.NamespacesTool");
+            McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.NodesTool");
 
             // 未来：如需写操作（create/update/delete），在 readonly/disableDestructive 条件下决定是否导入
             if (!readonly && !disableDestructive) {
@@ -143,11 +144,7 @@ public class ServerMain {
 
         // helm 组
         if (selected.contains("helm")) {
-            try {
-                Class.forName("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.HelmTools");
-            } catch (ClassNotFoundException e) {
-                System.err.println("Failed to load helm tools: " + e.getMessage());
-            }
+            McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.HelmTools");
         }
     }
 

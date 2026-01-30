@@ -13,11 +13,14 @@ import java.util.Map;
 
 /**
  * Kubernetes MCP Server - core tools: nodes
- * <p>
- * 提供与 Kubernetes 节点相关的操作能力：
- * - nodes_list：列出所有节点
- * - nodes_get：获取指定节点的完整对象
- * - nodes_top：从 metrics.k8s.io 读取节点资源使用情况（需部署 Metrics Server）
+ *
+ * 提供节点相关只读与监测能力：
+ * - nodes_top：通过 metrics.k8s.io/v1beta1 获取节点 CPU/内存用量（需部署 Metrics Server）
+ * - nodes_stats_summary：通过 apiserver→kubelet Summary API 获取节点详细资源统计（含 CPU/内存/文件系统/网络等）
+ * - nodes_log：通过 apiserver→kubelet logs 代理获取节点日志（如 kubelet、kube-proxy 或指定日志文件路径）
+ *
+ * 注意：
+ * - 所有能力均为只读；如需进一步扩展请在只读与禁破坏开关下审慎添加。
  */
 public class NodesTool {
 
@@ -52,15 +55,14 @@ public class NodesTool {
      * 列出所有节点
      */
     @MCPTool(name = "nodes_list",
-            description = "List all Kubernetes nodes")
+            description = "List the resource consumption (CPU/memory) for Nodes via metrics API (v1 fallback to v1beta1)")
     public static List<Map<String, Object>> nodesList(
             @ToolParam(description = "Label selector to filter nodes")
             String labelSelector,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        PodsTool.K8sClientHolder clientHolder = PodsTool.loadKubeConfig(context);
         try {
-            CoreV1Api coreV1Api = clientHolder.getCoreV1Api();
+            CoreV1Api coreV1Api = PodsTool.loadKubeConfig(context).getCoreV1Api();
             V1NodeList nodeList = coreV1Api.listNode().execute();
             
             List<Map<String, Object>> summaries = new java.util.ArrayList<>();
@@ -83,10 +85,9 @@ public class NodesTool {
             String name,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        PodsTool.K8sClientHolder clientHolder = PodsTool.loadKubeConfig(context);
 
         try {
-            CoreV1Api coreV1Api = clientHolder.getCoreV1Api();
+            CoreV1Api coreV1Api = PodsTool.loadKubeConfig(context).getCoreV1Api();
             V1Node node = coreV1Api.readNode(name).execute();
             // 使用 Jackson 将 Node 对象转换为 Map
             ObjectMapper mapper = new ObjectMapper();
@@ -98,28 +99,25 @@ public class NodesTool {
 
     /**
      * 从 metrics.k8s.io 读取节点资源使用情况
+     * 优先尝试 metrics.k8s.io v1（若可用），否则回退到 v1beta1。
+     *     返回示例（简化）：
+     *     [
+     *       {"name":"worker-1","usage":{"cpu":"50m","memory":"1024Mi"}, "timestamp":"...", "window":"..."},
+     *       ...
+     *     ]
      */
     @MCPTool(name = "nodes_top",
             description = "List the resource consumption (CPU/memory) for Nodes via metrics API (v1 fallback to v1beta1)")
     public static List<Map<String, Object>> nodesTop(
             @ToolParam(description = "Specific node name to filter")
             String name,
-            @ToolParam(description = "Label selector to filter nodes")
+            @ToolParam(description = "Label selector to filter nodes （例如 'node-role.kubernetes.io/worker='）")
             String labelSelector,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
 
-        /**
-         *     优先尝试 metrics.k8s.io v1（若可用），否则回退到 v1beta1。
-         *     返回示例（简化）：
-         *     [
-         *       {"name":"worker-1","usage":{"cpu":"50m","memory":"1024Mi"}, "timestamp":"...", "window":"..."},
-         *       ...
-         *     ]
-         */
-        PodsTool.K8sClientHolder clientHolder = PodsTool.loadKubeConfig(context);
         try {
-            CustomObjectsApi customApi = clientHolder.getCustomObjectsApi();
+            CustomObjectsApi customApi =  PodsTool.loadKubeConfig(context).getCustomObjectsApi();
 
             String group = "metrics.k8s.io";
             String[] versions = {"v1", "v1beta1"}; // 优先 v1，失败回退 v1beta1
@@ -170,6 +168,9 @@ public class NodesTool {
 
     /**
      * 通过 kubelet Summary API 获取节点详细资源统计
+     *       GET /api/v1/nodes/{name}/proxy/stats/summary
+     *
+     *     返回字典结构，包含 node/pod/container 层面的 CPU/Memory/FS/Network 等度量。
      */
     @MCPTool(name = "nodes_stats_summary",
             description = "Get detailed resource stats from a Kubernetes node via kubelet Summary API")
@@ -178,10 +179,9 @@ public class NodesTool {
             String name,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        PodsTool.K8sClientHolder clientHolder = PodsTool.loadKubeConfig(context);
 
         try {
-            CoreV1Api coreV1Api = clientHolder.getCoreV1Api();
+            CoreV1Api coreV1Api = PodsTool.loadKubeConfig(context).getCoreV1Api();
             String path = "stats/summary";
 
             // 调用 kubelet Summary API
@@ -204,6 +204,11 @@ public class NodesTool {
 
     /**
      * 通过 apiserver 代理到 kubelet 获取节点日志
+     *    使用 CoreV1Api 的 node 代理：
+     *      GET /api/v1/nodes/{name}/proxy/{path}
+     *
+     *    注意：不同集群的 kubelet 代理可用性与日志路径可能存在差异；本实现提供通用路径映射，并在包含查询参数失败时回退到不带查询参数。
+     *
      */
     @MCPTool(name = "nodes_log",
             description = "Get logs from a Kubernetes node via apiserver proxy to kubelet")
@@ -216,10 +221,9 @@ public class NodesTool {
             int tailLines,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        PodsTool.K8sClientHolder clientHolder =PodsTool.loadKubeConfig(context);
 
         try {
-            CoreV1Api coreV1Api = clientHolder.getCoreV1Api();
+            CoreV1Api coreV1Api = PodsTool.loadKubeConfig(context).getCoreV1Api();
             String path = resolveLogPath(query);
 
             // 优先尝试带 tailLines 参数（若提供）
@@ -241,6 +245,11 @@ public class NodesTool {
 
     /**
      * 解析日志路径
+     *     将用户友好的 query 转换为 kubelet 代理路径：
+     *     - 'kubelet' => 'logs/kubelet.log'
+     *     - 'kube-proxy' => 'logs/kube-proxy.log'
+     *     - 以 '/' 开头的绝对文件路径 => 'logs{absolute_path}'（例如 '/var/log/kubelet.log' => 'logs/var/log/kubelet.log'）
+     *     - 其他 => 'logs/{query}'（相对路径或文件名）
      */
     private static String resolveLogPath(String query) {
         String q = (query != null) ? query.strip() : "";

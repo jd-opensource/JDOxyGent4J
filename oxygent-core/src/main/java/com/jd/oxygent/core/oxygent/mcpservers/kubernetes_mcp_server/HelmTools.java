@@ -3,7 +3,11 @@ package com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server;
 import com.jd.oxygent.core.oxygent.mcpservers.annotation.MCPTool;
 import com.jd.oxygent.core.oxygent.mcpservers.annotation.ToolParam;
 import com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.PodsTool;
+import io.kubernetes.client.openapi.apis.CustomObjectsApi;
+import io.kubernetes.client.util.Yaml;
+import org.apache.commons.text.StringSubstitutor;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -13,6 +17,13 @@ import java.util.Map;
  * 提供无需 Helm 二进制的模板化能力：
  * - helm_template_apply：使用 Jinja2 渲染 Helm 风格模板（或通用 YAML 模板），将生成的多文档 YAML 逐条 Create/Patch 到集群
  * - helm_template_uninstall：使用同一模板与 values 渲染出目标对象，逐条 Delete
+ * - 说明：此方案以“渲染→K8s 统一资源 API”的流程替代直接调用 Helm CLI，规避二进制依赖与环境不一致问题
+ *
+ * 注意：
+ * - 属于写/删除操作，受只读与禁破坏开关保护
+ * - 多集群支持：可选 context 参数；默认使用当前 kubeconfig 上下文或 in-cluster 配置
+ * - 模板渲染输入：`template`（字符串，支持 Jinja2 语法）；`values`（字典）
+ * - 多文档 YAML：使用 `---` 分隔；每个文档需包含 apiVersion/kind/metadata.name 顶级字段
  */
 public class HelmTools {
 
@@ -30,14 +41,6 @@ public class HelmTools {
     }
 
     /**
-     * 确保 Kubernetes 客户端可用
-     */
-    private static void ensureK8sAvailable() {
-        // 复用 PodsTool 中的检查
-        PodsTool.ensureK8sAvailable();
-    }
-
-    /**
      * 确保模板引擎可用
      */
     private static void ensureTemplateEngine() {
@@ -47,38 +50,45 @@ public class HelmTools {
     }
 
     /**
-     * 加载 Kubernetes 配置
-     */
-    private static PodsTool.K8sClientHolder loadKubeConfig(String context) {
-        return PodsTool.loadKubeConfig(context);
-    }
-
-    /**
      * 使用模板引擎渲染模板，解析为多 YAML 文档对象列表
      */
     private static List<Map<String, Object>> renderToDocuments(String template, Map<String, Object> values) {
         ensureTemplateEngine();
         try {
             // 使用 Apache Commons Text 渲染模板
-            org.apache.commons.text.StringSubstitutor substitutor = new org.apache.commons.text.StringSubstitutor(values);
+            StringSubstitutor substitutor = new StringSubstitutor(values);
             String renderedTemplate = substitutor.replace(template);
-            
-            // 解析多文档 YAML
-            List<Map<String, Object>> documents = new java.util.ArrayList<>();
-            org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml();
-            
-            // 分割多文档 YAML
-            String[] parts = renderedTemplate.split("---");
-            for (String part : parts) {
-                String trimmed = part.trim();
-                if (!trimmed.isEmpty()) {
-                    Map<String, Object> doc = yaml.load(trimmed);
-                    if (doc != null) {
-                        documents.add(doc);
+
+            // 使用 Yaml 的 loadAll 方法直接解析多文档
+            Yaml yaml = new Yaml();
+            List<Map<String, Object>> documents = new ArrayList<>();
+
+            Iterable<Object> yamlDocs = yaml.loadAll(renderedTemplate);
+            for (Object yamlDoc : yamlDocs) {
+                if (yamlDoc == null) {
+                    continue;
+                }
+
+                if (yamlDoc instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> doc = (Map<String, Object>) yamlDoc;
+
+                    // 基本字段校验
+                    if (doc.get("apiVersion") == null || doc.get("kind") == null) {
+                        throw new RuntimeException("渲染文档缺少 apiVersion/kind");
                     }
+
+                    Map<String, Object> metadata = (Map<String, Object>) doc.get("metadata");
+                    if (metadata == null || metadata.get("name") == null) {
+                        throw new RuntimeException("渲染文档缺少 metadata.name");
+                    }
+
+                    documents.add(doc);
+                } else {
+                    throw new RuntimeException("YAML 文档不是有效的对象结构");
                 }
             }
-            
+
             return documents;
         } catch (Exception e) {
             throw new RuntimeException("模板渲染失败: " + e.getMessage(), e);
@@ -88,184 +98,67 @@ public class HelmTools {
     /**
      * 对单个对象：若存在则 merge-patch，不存在则 create
      */
-    private static Map<String, Object> createOrPatch(PodsTool.K8sClientHolder clientHolder, Map<String, Object> obj, String defaultNamespace) {
-        ensureK8sAvailable();
+    private static Map<String, Object> createOrPatch(String context, Map<String, Object> obj, String defaultNamespace) throws Exception {
+        PodsTool.ensureK8sAvailable();
+
+        String apiVersion = (String) obj.get("apiVersion");
+        String kind = (String) obj.get("kind");
+        Map<String, Object> metadata = (Map<String, Object>) obj.get("metadata");
+
+        if (apiVersion == null || kind == null || metadata == null) {
+            throw new RuntimeException("无效的资源定义：缺少 apiVersion、kind 或 metadata");
+        }
+
+        String name = (String) metadata.get("name");
+        String namespace = (String) metadata.get("namespace");
+        if (namespace == null) {
+            namespace = defaultNamespace;
+        }
+
+        // 使用 KubernetesDynamicClient
+        KubernetesDynamicClient dyn = KubernetesDynamicClient.getDynamicClient(context);
+        KubernetesDynamicClient.DynamicResource resource = dyn.resource(apiVersion, kind);
+
         try {
-            // 提取资源信息
-            String apiVersion = (String) obj.get("apiVersion");
-            String kind = (String) obj.get("kind");
-            Map<String, Object> metadata = (Map<String, Object>) obj.get("metadata");
-            
-            if (apiVersion == null || kind == null || metadata == null) {
-                throw new RuntimeException("无效的资源定义：缺少 apiVersion、kind 或 metadata");
-            }
-            
-            String name = (String) metadata.get("name");
-            String namespace = (String) metadata.get("namespace");
-            if (namespace == null && defaultNamespace != null) {
-                namespace = defaultNamespace;
-                metadata.put("namespace", namespace);
-            }
-            
-            // 解析 API 版本和资源类型
-            String[] groupVersion = parseGroupVersion(apiVersion);
-            String group = groupVersion[0];
-            String version = groupVersion[1];
-            String plural = getPlural(kind);
-            
-            // 获取自定义对象 API 客户端
-            io.kubernetes.client.openapi.apis.CustomObjectsApi customObjectsApi = getCustomObjectsApi(clientHolder);
-            
-            // 尝试更新资源，如果不存在则创建
-            try {
-                if (namespace != null) {
-                    // 尝试更新命名空间作用域的资源
-                    Object updateResult = customObjectsApi.replaceNamespacedCustomObject(group, version, namespace, plural, name, obj).execute();
-                    if (updateResult instanceof Map) {
-                        return (Map<String, Object>) updateResult;
-                    } else {
-                        throw new RuntimeException("Update result is not a map");
-                    }
-                } else {
-                    // 尝试更新集群作用域的资源
-                    Object updateResult = customObjectsApi.replaceClusterCustomObject(group, version, plural, name, obj).execute();
-                    if (updateResult instanceof Map) {
-                        return (Map<String, Object>) updateResult;
-                    } else {
-                        throw new RuntimeException("Update result is not a map");
-                    }
-                }
-            } catch (Exception e) {
-                // 更新失败，尝试创建
-                try {
-                    if (namespace != null) {
-                        // 创建命名空间作用域的资源
-                        Object createResult = customObjectsApi.createNamespacedCustomObject(group, version, namespace, plural, obj).execute();
-                        if (createResult instanceof Map) {
-                            return (Map<String, Object>) createResult;
-                        } else {
-                            throw new RuntimeException("Create result is not a map");
-                        }
-                    } else {
-                        // 创建集群作用域的资源
-                        Object createResult = customObjectsApi.createClusterCustomObject(group, version, plural, obj).execute();
-                        if (createResult instanceof Map) {
-                            return (Map<String, Object>) createResult;
-                        } else {
-                            throw new RuntimeException("Create result is not a map");
-                        }
-                    }
-                } catch (Exception createException) {
-                    throw new RuntimeException("创建资源失败: " + createException.getMessage(), createException);
-                }
+            // 尝试获取资源（检查是否存在）
+            Map<String, Object> existing = resource.get(name, namespace);
+            if (existing != null) {
+                // 存在则使用 merge-patch
+                return resource.patch(name, obj, namespace, "merge");
             }
         } catch (Exception e) {
-            throw new RuntimeException("创建或更新资源失败: " + e.getMessage(), e);
+            // 资源不存在，忽略异常继续创建
         }
+
+        // 不存在则创建
+        return resource.create(obj, namespace);
     }
 
     /**
      * 删除单个对象：按 apiVersion/kind/name/namespace
      */
-    private static Map<String, Object> delete(PodsTool.K8sClientHolder clientHolder, Map<String, Object> obj, String defaultNamespace) {
-        ensureK8sAvailable();
-        try {
-            // 提取资源信息
-            String apiVersion = (String) obj.get("apiVersion");
-            String kind = (String) obj.get("kind");
-            Map<String, Object> metadata = (Map<String, Object>) obj.get("metadata");
-            
-            if (apiVersion == null || kind == null || metadata == null) {
-                throw new RuntimeException("无效的资源定义：缺少 apiVersion、kind 或 metadata");
-            }
-            
-            String name = (String) metadata.get("name");
-            String namespace = (String) metadata.get("namespace");
-            if (namespace == null && defaultNamespace != null) {
-                namespace = defaultNamespace;
-            }
-            
-            // 解析 API 版本和资源类型
-            String[] groupVersion = parseGroupVersion(apiVersion);
-            String group = groupVersion[0];
-            String version = groupVersion[1];
-            String plural = getPlural(kind);
-            
-            // 获取自定义对象 API 客户端
-            io.kubernetes.client.openapi.apis.CustomObjectsApi customObjectsApi = getCustomObjectsApi(clientHolder);
-            
-            // 删除资源
-            if (namespace != null) {
-                // 删除命名空间作用域的资源
-                Object deleteResult = customObjectsApi.deleteNamespacedCustomObject(group, version, namespace, plural, name).execute();
-                if (deleteResult instanceof Map) {
-                    return (Map<String, Object>) deleteResult;
-                } else {
-                    throw new RuntimeException("Delete result is not a map");
-                }
-            } else {
-                // 删除集群作用域的资源
-                Object deleteResult = customObjectsApi.deleteClusterCustomObject(group, version, plural, name).execute();
-                if (deleteResult instanceof Map) {
-                    return (Map<String, Object>) deleteResult;
-                } else {
-                    throw new RuntimeException("Delete result is not a map");
-                }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("删除资源失败: " + e.getMessage(), e);
-        }
-    }
+    private static Map<String, Object> delete(String context, Map<String, Object> obj, String defaultNamespace) throws Exception {
+        PodsTool.ensureK8sAvailable();
 
-    /**
-     * 解析 API 版本和资源类型
-     */
-    private static String[] parseGroupVersion(String apiVersion) {
-        String[] parts = apiVersion.split("/");
-        if (parts.length == 2) {
-            return parts; // [group, version]
-        } else {
-            return new String[]{"", apiVersion}; // [empty group, version]
-        }
-    }
+        String apiVersion = (String) obj.get("apiVersion");
+        String kind = (String) obj.get("kind");
+        Map<String, Object> metadata = (Map<String, Object>) obj.get("metadata");
 
-    /**
-     * 获取自定义对象 API 客户端实例
-     */
-    private static io.kubernetes.client.openapi.apis.CustomObjectsApi getCustomObjectsApi(PodsTool.K8sClientHolder clientHolder) {
-        return new io.kubernetes.client.openapi.apis.CustomObjectsApi(clientHolder.getApiClient());
-    }
+        if (apiVersion == null || kind == null || metadata == null) {
+            throw new RuntimeException("无效的资源定义：缺少 apiVersion、kind 或 metadata");
+        }
 
-    /**
-     * 获取资源类型的复数形式
-     */
-    private static String getPlural(String kind) {
-        return kind.toLowerCase() + "s";
-    }
+        String name = (String) metadata.get("name");
+        String namespace = (String) metadata.get("namespace");
+        if (namespace == null) {
+            namespace = defaultNamespace;
+        }
 
-    /**
-     * 对 Secret 对象进行敏感字段掩码处理
-     */
-    private static Map<String, Object> maskSecret(Map<String, Object> obj) {
-        if (obj == null || !obj.containsKey("kind")) {
-            return obj;
-        }
-        if (!"Secret".equals(obj.get("kind"))) {
-            return obj;
-        }
-        if (obj.containsKey("data") && obj.get("data") instanceof Map) {
-            Map<?, ?> data = (Map<?, ?>) obj.get("data");
-            for (Object key : data.keySet()) {
-                obj.put(key.toString(), "***");
-            }
-        }
-        if (obj.containsKey("stringData") && obj.get("stringData") instanceof Map) {
-            Map<?, ?> stringData = (Map<?, ?>) obj.get("stringData");
-            for (Object key : stringData.keySet()) {
-                obj.put(key.toString(), "***");
-            }
-        }
-        return obj;
+        // 使用 KubernetesDynamicClient
+        KubernetesDynamicClient dyn = KubernetesDynamicClient.getDynamicClient(context);
+        KubernetesDynamicClient.DynamicResource resource = dyn.resource(apiVersion, kind);
+
+        return resource.delete(name, namespace);
     }
 
     /**
@@ -288,17 +181,20 @@ public class HelmTools {
         }
 
         List<Map<String, Object>> docs = renderToDocuments(template, values);
-        PodsTool.K8sClientHolder clientHolder = loadKubeConfig(context);
+        List<Map<String, Object>> results = new ArrayList<>();
 
-        List<Map<String, Object>> results = new java.util.ArrayList<>();
         for (Map<String, Object> doc : docs) {
             try {
-                results.add(createOrPatch(clientHolder, doc, namespace));
+                Map<String, Object> result = createOrPatch(context, doc, namespace);
+                results.add(KubernetesDynamicClient.maskSecret(result));
             } catch (Exception e) {
-                throw new RuntimeException(String.format("应用资源失败（%s %s）: %s",
-                        doc.get("kind"),
-                        (((Map<?, ?>) doc.getOrDefault("metadata", Map.of())).get("name") != null ? ((Map<?, ?>) doc.getOrDefault("metadata", Map.of())).get("name").toString() : ""),
-                        e.getMessage()), e);
+                String kind = (String) doc.get("kind");
+                String name = "unknown";
+                Map<String, Object> metadata = (Map<String, Object>) doc.get("metadata");
+                if (metadata != null && metadata.get("name") != null) {
+                    name = (String) metadata.get("name");
+                }
+                throw new RuntimeException(String.format("应用资源失败（%s %s）: %s", kind, name, e.getMessage()), e);
             }
         }
         return results;
@@ -324,17 +220,20 @@ public class HelmTools {
         }
 
         List<Map<String, Object>> docs = renderToDocuments(template, values);
-        PodsTool.K8sClientHolder clientHolder = loadKubeConfig(context);
+        List<Map<String, Object>> results = new ArrayList<>();
 
-        List<Map<String, Object>> results = new java.util.ArrayList<>();
         for (Map<String, Object> doc : docs) {
             try {
-                results.add(delete(clientHolder, doc, namespace));
+                Map<String, Object> result = delete(context, doc, namespace);
+                results.add(KubernetesDynamicClient.maskSecret(result));
             } catch (Exception e) {
-                throw new RuntimeException(String.format("卸载资源失败（%s %s）: %s",
-                        doc.get("kind"),
-                        (((Map<?, ?>) doc.getOrDefault("metadata", Map.of())).get("name") != null ? ((Map<?, ?>) doc.getOrDefault("metadata", Map.of())).get("name").toString() : ""),
-                        e.getMessage()), e);
+                String kind = (String) doc.get("kind");
+                String name = "unknown";
+                Map<String, Object> metadata = (Map<String, Object>) doc.get("metadata");
+                if (metadata != null && metadata.get("name") != null) {
+                    name = (String) metadata.get("name");
+                }
+                throw new RuntimeException(String.format("卸载资源失败（%s %s）: %s", kind, name, e.getMessage()), e);
             }
         }
         return results;

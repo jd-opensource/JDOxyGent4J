@@ -1,6 +1,7 @@
 package com.jd.oxygent.core.oxygent.mcpservers.engine;
 
 import com.jd.oxygent.core.oxygent.mcpservers.annotation.EnableMcpServer;
+import com.jd.oxygent.core.oxygent.mcpservers.annotation.McpServerStatics;
 import com.jd.oxygent.core.oxygent.mcpservers.engine.metadata.ToolMetadata;
 import lombok.extern.slf4j.Slf4j;
 import java.lang.reflect.Method;
@@ -71,6 +72,14 @@ public class McpServer {
                     // Case 2: No scan package paths specified -> only scan the startup class itself
                     log.info("[McpServer] Only scanning startup class: {}", className);
                     tools.addAll(MCPToolScanner.scanClass(mainClass));
+
+                    //Case 3: Scan specified class
+                    if(McpServerStatics.scanClasss.size()>0){
+                        for (String scanClass : McpServerStatics.scanClasss) {
+                            tools.addAll(MCPToolScanner.scanClass(Class.forName(scanClass)));
+                            log.info("[McpServer] add scanning mcp class: {}", scanClass);
+                        }
+                    }
                 }
             } catch (Exception e) {
                 log.error("[McpServer] Failed to scan tools: {}", e.getMessage());
@@ -105,10 +114,10 @@ public class McpServer {
                 EnableMcpServer classAnnotation = clazz.getAnnotation(EnableMcpServer.class);
                 if (classAnnotation != null) {
                     mainClass = clazz;
-                    mode = classAnnotation.mode();
-                    localhost = classAnnotation.localhost();
-                    port = classAnnotation.port();
-                    transport = classAnnotation.transport();
+                    mode = McpServerStatics.mode==null?classAnnotation.mode():McpServerStatics.mode;
+                    localhost = McpServerStatics.localhost==null?classAnnotation.localhost():McpServerStatics.localhost;
+                    port = McpServerStatics.port==null?classAnnotation.port():McpServerStatics.port;
+                    transport = McpServerStatics.transport==null?classAnnotation.transport():McpServerStatics.transport;
                     log.info("[McpServer] ✓ Found @EnableMcpServer annotation on class: {}", className);
                     return;
                 }
@@ -125,10 +134,11 @@ public class McpServer {
                 EnableMcpServer methodAnnotation = method.getAnnotation(EnableMcpServer.class);
                 if (methodAnnotation != null) {
                     mainClass = clazz;
-                    mode = methodAnnotation.mode();
-                    localhost = methodAnnotation.localhost();
-                    port = methodAnnotation.port();
-                    transport = methodAnnotation.transport();
+                    mode = McpServerStatics.mode==null?methodAnnotation.mode():McpServerStatics.mode;
+                    localhost = McpServerStatics.localhost==null?methodAnnotation.localhost():McpServerStatics.localhost;
+                    port = McpServerStatics.port==null?methodAnnotation.port():McpServerStatics.port;
+                    transport = McpServerStatics.transport==null?methodAnnotation.transport():McpServerStatics.transport;
+
                     log.info("[McpServer] ✓ Found @EnableMcpServer annotation on method: {}.{}", className, methodName + "()");
                     return;
                 }

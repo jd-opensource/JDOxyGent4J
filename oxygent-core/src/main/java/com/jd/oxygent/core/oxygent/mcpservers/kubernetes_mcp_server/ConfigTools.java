@@ -182,6 +182,11 @@ public class ConfigTools {
 
     /**
      * 列出所有可用上下文名称和关联的服务器 URL
+     *     输出示例：
+     *     [
+     *       {"name":"minikube","cluster":"minikube","server":"https://127.0.0.1:6443","current":true},
+     *       {"name":"prod","cluster":"prod-cluster","server":"https://prod.example:6443","current":false}
+     *     ]
      */
     @MCPTool(name = "configuration_contexts_list",
             description = "List all available context names and associated server urls from the kubeconfig file")
@@ -231,6 +236,7 @@ public class ConfigTools {
 
     /**
      * 获取当前 Kubernetes 配置内容
+     * 返回 YAML 字符串；当未安装 PyYAML 或解析失败时，返回 JSON 字符串。
      */
     @MCPTool(name = "configuration_view",
             description = "Get the current Kubernetes configuration content as a kubeconfig YAML")

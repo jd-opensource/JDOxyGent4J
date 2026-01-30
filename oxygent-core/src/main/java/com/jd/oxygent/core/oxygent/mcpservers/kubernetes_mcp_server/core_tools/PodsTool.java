@@ -6,13 +6,16 @@ import com.jd.oxygent.core.oxygent.mcpservers.annotation.ToolParam;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
+import io.kubernetes.client.openapi.models.V1ExecAction;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.util.Config;
+import io.kubernetes.client.util.Streams;
+import io.kubernetes.client.util.WebSocketStreamHandler;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.io.ByteArrayOutputStream;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Kubernetes MCP Server - core tools: pods
@@ -99,19 +102,15 @@ public class PodsTool {
             String labelSelector,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        ensureK8sAvailable();
-        K8sClientHolder clientHolder = loadKubeConfig(context);
         try {
-            CoreV1Api coreV1Api = clientHolder.getCoreV1Api();
+            CoreV1Api coreV1Api = loadKubeConfig(context).getCoreV1Api();
             V1PodList podList = coreV1Api.listPodForAllNamespaces()
                     .labelSelector(labelSelector)
                     .execute();
             
             List<Map<String, Object>> summaries = new ArrayList<>();
-            if (podList.getItems() != null) {
-                for (V1Pod pod : podList.getItems()) {
-                    summaries.add(podSummary(pod));
-                }
+            for (V1Pod pod : podList.getItems()) {
+                summaries.add(podSummary(pod));
             }
             return summaries;
         } catch (Exception e) {
@@ -131,22 +130,17 @@ public class PodsTool {
             String labelSelector,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        ensureK8sAvailable();
-        K8sClientHolder clientHolder = loadKubeConfig(context);
-
         try {
-            CoreV1Api coreV1Api = clientHolder.getCoreV1Api();
+            CoreV1Api coreV1Api = loadKubeConfig(context).getCoreV1Api();
             V1PodList podList = coreV1Api.listNamespacedPod(namespace)
                     .labelSelector(labelSelector)
                     .execute();
             
             List<Map<String, Object>> summaries = new ArrayList<>();
-            if (podList.getItems() != null) {
-                for (V1Pod pod : podList.getItems()) {
-                    summaries.add(podSummary(pod));
-                }
+            for (V1Pod pod : podList.getItems()) {
+                summaries.add(podSummary(pod));
             }
-            
+
             return summaries;
         } catch (Exception e) {
             throw new RuntimeException("Failed to list pods in namespace", e);
@@ -165,13 +159,10 @@ public class PodsTool {
             String namespace,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        ensureK8sAvailable();
-        K8sClientHolder clientHolder = loadKubeConfig(context);
-
         try {
-            CoreV1Api coreV1Api = clientHolder.getCoreV1Api();
+            CoreV1Api coreV1Api = loadKubeConfig(context).getCoreV1Api();
             V1Pod pod = coreV1Api.readNamespacedPod(name, namespace).execute();
-            
+
             // 使用 Jackson 将 Pod 对象转换为 Map
             ObjectMapper mapper = new ObjectMapper();
             return mapper.convertValue(pod, Map.class);
@@ -198,28 +189,10 @@ public class PodsTool {
             int tail,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        ensureK8sAvailable();
-        K8sClientHolder clientHolder = loadKubeConfig(context);
-
         try {
-            io.kubernetes.client.openapi.apis.CoreV1Api coreV1Api = clientHolder.getCoreV1Api();
-            
-            // 构建日志请求参数
-            java.util.Map<String, Object> params = new java.util.HashMap<>();
-            params.put("name", name);
-            params.put("namespace", namespace);
-            params.put("previous", previous);
-            
-            if (container != null && !container.isEmpty()) {
-                params.put("container", container);
-            }
-            
-            if (tail > 0) {
-                params.put("tailLines", tail);
-            }
-            
+            CoreV1Api coreV1Api = loadKubeConfig(context).getCoreV1Api();
             // 调用 API 获取日志
-            io.kubernetes.client.openapi.apis.CoreV1Api.APIreadNamespacedPodLogRequest request = coreV1Api.readNamespacedPodLog(name, namespace);
+            CoreV1Api.APIreadNamespacedPodLogRequest request = coreV1Api.readNamespacedPodLog(name, namespace);
             if (container != null && !container.isEmpty()) {
                 request.container(container);
             }
@@ -251,20 +224,18 @@ public class PodsTool {
             String container,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        ensureK8sAvailable();
-        K8sClientHolder clientHolder = loadKubeConfig(context);
-
         try {
-            io.kubernetes.client.openapi.apis.CoreV1Api coreV1Api = clientHolder.getCoreV1Api();
+            CoreV1Api coreV1Api = loadKubeConfig(context).getCoreV1Api();
             
             // 创建 exec 请求
-            io.kubernetes.client.openapi.models.V1ExecAction execAction = new io.kubernetes.client.openapi.models.V1ExecAction();
-            execAction.setCommand(command);
-            
-            // 注意：在 Kubernetes Java Client 25.0.0 版本中，exec 实现较为复杂
-            // 由于需要处理 WebSocket 连接和流式输出，这里仅返回示例结果
-            // 实际实现需要使用 WebSocket 或其他方式处理流式输出
-            return "Command executed: " + String.join(" ", command);
+            V1ExecAction execAction = new V1ExecAction();
+                         execAction.setCommand(command);
+
+            // 定义要执行的命令
+            String commands = String.join("",command);
+
+            return coreV1Api.connectGetNamespacedPodExec(name, namespace).command(commands).container(container).execute();
+
         } catch (Exception e) {
             throw new RuntimeException("Failed to execute command in pod", e);
         }
@@ -284,11 +255,9 @@ public class PodsTool {
             String labelSelector,
             @ToolParam(description = "Kubeconfig context name; defaults to current context")
             String context) {
-        ensureK8sAvailable();
-        K8sClientHolder clientHolder = loadKubeConfig(context);
 
         try {
-            CustomObjectsApi customApi = clientHolder.getCustomObjectsApi();
+            CustomObjectsApi customApi = loadKubeConfig(context).getCustomObjectsApi();
             
             String group = "metrics.k8s.io";
             String[] versions = {"v1", "v1beta1"}; // 优先 v1，失败回退 v1beta1
@@ -303,10 +272,10 @@ public class PodsTool {
                     Object metricsData;
                     if (namespace != null && !namespace.isEmpty()) {
                         // 获取指定命名空间的 Pod 指标
-                        metricsData = customApi.listNamespacedCustomObject(group, version, namespace, plural).execute();
+                        metricsData = customApi.listNamespacedCustomObject(group, version, namespace, plural).labelSelector(labelSelector).execute();
                     } else {
                         // 获取所有命名空间的 Pod 指标
-                        metricsData = customApi.listClusterCustomObject(group, version, plural).execute();
+                        metricsData = customApi.listClusterCustomObject(group, version, plural).labelSelector(labelSelector).execute();
                     }
                     
                     // 处理返回的数据
@@ -326,8 +295,17 @@ public class PodsTool {
                                             continue;
                                         }
                                     }
-                                    
-                                    result.add(podMetric);
+
+                                    List usages = new ArrayList<>();
+                                    for (Map container : (List<Map>) podMetric.get("containers")) {
+                                        usages.add(Map.of("name",container.get("name"),"usage",container.get("usage")));
+                                    }
+
+                                    result.add(Map.of("name",metadata.get("name"),
+                                                      "namespace",metadata.get("namespace"),
+                                                        "timestamp",podMetric.get("timestamp"),
+                                                        "window",podMetric.get("window"),
+                                                        "containers",usages));
                                 }
                             }
                         }
