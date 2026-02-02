@@ -13,31 +13,31 @@ import java.util.HashMap;
 /**
  * Kubernetes MCP Server - core tools: events
  *
- * 提供 Kubernetes 事件的只读能力：
- * - events_list：列出所有命名空间或指定命名空间的事件
+ * Provides read-only capabilities for Kubernetes events:
+ * - events_list: List events in all namespaces or a specific namespace
  */
 public class EventsTool {
 
     private static Map<String, Object> eventSummary(CoreV1Event event) {
         Map<String, Object> summary = new HashMap<>();
-        // 元数据
+        // Metadata
         if (event.getMetadata() != null) {
             summary.put("name", event.getMetadata().getName());
             summary.put("namespace", event.getMetadata().getNamespace());
         }
-        // 事件类型和原因
+        // Event type and reason
         summary.put("type", event.getType());
         summary.put("reason", event.getReason());
         summary.put("message", event.getMessage());
         summary.put("count", event.getCount());
-        // 时间戳
+        // Timestamp
         if (event.getFirstTimestamp() != null) {
             summary.put("firstTimestamp", event.getFirstTimestamp().toString());
         }
         if (event.getLastTimestamp() != null) {
             summary.put("lastTimestamp", event.getLastTimestamp().toString());
         }
-        // 相关对象
+        // Involved object
         if (event.getInvolvedObject() != null) {
             Map<String, Object> involvedObject = new HashMap<>();
             involvedObject.put("kind", event.getInvolvedObject().getKind());
@@ -49,7 +49,7 @@ public class EventsTool {
     }
 
     /**
-     * 列出事件 - 修正版，与 Python 版功能一致
+     * List events - corrected version, consistent with Python version
      */
     @MCPTool(name = "events_list",
             description = "List Kubernetes events in all namespaces or a specific namespace")
@@ -58,19 +58,18 @@ public class EventsTool {
             String namespace,
             @ToolParam(description = "Kubeconfig context name; defaults to current context", required = false)
             String context) {
-        PodsTool.K8sClientHolder clientHolder = PodsTool.loadKubeConfig(context);
-        CoreV1Api coreApi = clientHolder.getCoreV1Api();
+        CoreV1Api coreApi = PodsTool.loadKubeConfig(context).getCoreV1Api();
         try {
             List<Map<String, Object>> summaries = new ArrayList<>();
 
             if (namespace != null && !namespace.trim().isEmpty()) {
-                // 获取指定命名空间的事件
+                // Get events from specified namespace
                 CoreV1EventList eventList = coreApi.listNamespacedEvent(namespace).execute();
                 for (CoreV1Event event : eventList.getItems()) {
                     summaries.add(eventSummary(event));
                 }
             } else {
-                // 获取所有命名空间的事件
+                // Get events from all namespaces
                 CoreV1EventList eventList = coreApi.listEventForAllNamespaces().execute();
                 for (CoreV1Event event : eventList.getItems()) {
                     summaries.add(eventSummary(event));

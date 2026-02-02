@@ -20,22 +20,22 @@ import java.util.concurrent.TimeUnit;
 /**
  * Kubernetes MCP Server - core tools: pods
  * <p>
- * 提供与 Pod 相关的常用只读能力：
- * - pods_list：列出所有命名空间的 Pods
- * - pods_list_in_namespace：列出指定命名空间的 Pods
- * - pods_get：获取指定 Pod 的完整对象
- * - pods_log：获取 Pod 日志（支持容器选择、previous、tail）
- * - pods_exec：在 Pod 容器内执行命令并返回输出
- * - pods_top：从 metrics.k8s.io 读取 Pod 资源使用情况（需部署 Metrics Server）
+ * Provides common read-only capabilities related to Pods:
+ * - pods_list: List Pods in all namespaces
+ * - pods_list_in_namespace: List Pods in a specified namespace
+ * - pods_get: Get the complete object of a specified Pod
+ * - pods_log: Get Pod logs (supports container selection, previous, tail)
+ * - pods_exec: Execute command in Pod container and return output
+ * - pods_top: Read Pod resource usage from metrics.k8s.io (requires Metrics Server deployment)
  */
 public class PodsTool {
 
-    // 尝试导入 Kubernetes Java 客户端
+    // Attempt to import Kubernetes Java client
     private static boolean k8sAvailable = false;
 
     static {
         try {
-            // 检查 Kubernetes Java 客户端是否可用
+            // Check if Kubernetes Java client is available
             Class.forName("io.kubernetes.client.openapi.ApiClient");
             k8sAvailable = true;
         } catch (ClassNotFoundException e) {
@@ -44,16 +44,16 @@ public class PodsTool {
     }
 
     /**
-     * 确保 Kubernetes 客户端可用
+     * Ensure Kubernetes client is available
      */
     public static void ensureK8sAvailable() {
         if (!k8sAvailable) {
-            throw new RuntimeException("Kubernetes Java 客户端未安装");
+            throw new RuntimeException("Kubernetes Java client not installed");
         }
     }
 
     /**
-     * 加载 Kubernetes 配置
+     * Load Kubernetes configuration
      */
     public static K8sClientHolder loadKubeConfig(String context) {
         ensureK8sAvailable();
@@ -65,7 +65,7 @@ public class PodsTool {
     }
 
     /**
-     * 生成 Pod 摘要信息
+     * Generate Pod summary information
      */
     private static Map<String, Object> podSummary(V1Pod pod) {
         Map<String, Object> summary = new java.util.HashMap<>();
@@ -93,7 +93,7 @@ public class PodsTool {
     }
 
     /**
-     * 列出所有命名空间的 Pods
+     * List Pods in all namespaces
      */
     @MCPTool(name = "pods_list",
             description = "List all the Kubernetes pods in the current cluster from all namespaces")
@@ -119,7 +119,7 @@ public class PodsTool {
     }
 
     /**
-     * 列出指定命名空间的 Pods
+     * List Pods in a specified namespace
      */
     @MCPTool(name = "pods_list_in_namespace",
             description = "List all the Kubernetes pods in the specified namespace")
@@ -148,7 +148,7 @@ public class PodsTool {
     }
 
     /**
-     * 获取指定 Pod 的完整对象
+     * Get the complete object of a specified Pod
      */
     @MCPTool(name = "pods_get",
             description = "Get a Kubernetes Pod by name in the provided namespace")
@@ -163,7 +163,7 @@ public class PodsTool {
             CoreV1Api coreV1Api = loadKubeConfig(context).getCoreV1Api();
             V1Pod pod = coreV1Api.readNamespacedPod(name, namespace).execute();
 
-            // 使用 Jackson 将 Pod 对象转换为 Map
+            // Use Jackson to convert Pod object to Map
             ObjectMapper mapper = new ObjectMapper();
             return mapper.convertValue(pod, Map.class);
         } catch (Exception e) {
@@ -172,7 +172,7 @@ public class PodsTool {
     }
 
     /**
-     * 获取 Pod 日志
+     * Get Pod logs
      */
     @MCPTool(name = "pods_log",
             description = "Get logs of a Kubernetes Pod")
@@ -191,7 +191,7 @@ public class PodsTool {
             String context) {
         try {
             CoreV1Api coreV1Api = loadKubeConfig(context).getCoreV1Api();
-            // 调用 API 获取日志
+            // Call API to get logs
             CoreV1Api.APIreadNamespacedPodLogRequest request = coreV1Api.readNamespacedPodLog(name, namespace);
             if (container != null && !container.isEmpty()) {
                 request.container(container);
@@ -209,7 +209,7 @@ public class PodsTool {
     }
 
     /**
-     * 在 Pod 容器内执行命令并返回输出
+     * Execute command in Pod container and return output
      */
     @MCPTool(name = "pods_exec",
             description = "Execute a command in a Kubernetes Pod container and return the output (combined stdout/stderr)")
@@ -227,11 +227,11 @@ public class PodsTool {
         try {
             CoreV1Api coreV1Api = loadKubeConfig(context).getCoreV1Api();
             
-            // 创建 exec 请求
+            // Create exec request
             V1ExecAction execAction = new V1ExecAction();
                          execAction.setCommand(command);
 
-            // 定义要执行的命令
+            // Define command to execute
             String commands = String.join("",command);
 
             return coreV1Api.connectGetNamespacedPodExec(name, namespace).command(commands).container(container).execute();
@@ -242,7 +242,7 @@ public class PodsTool {
     }
 
     /**
-     * 从 metrics.k8s.io 读取 Pod 资源使用情况
+     * Read Pod resource usage from metrics.k8s.io
      */
     @MCPTool(name = "pods_top",
             description = "List the resource consumption (CPU/memory) for Pods via metrics API (v1 fallback to v1beta1)")
@@ -260,25 +260,25 @@ public class PodsTool {
             CustomObjectsApi customApi = loadKubeConfig(context).getCustomObjectsApi();
             
             String group = "metrics.k8s.io";
-            String[] versions = {"v1", "v1beta1"}; // 优先 v1，失败回退 v1beta1
+            String[] versions = {"v1", "v1beta1"}; // Prefer v1, fall back to v1beta1 on failure
             String plural = "pods";
             
             List<Map<String, Object>> result = new ArrayList<>();
             Exception lastError = null;
             
-            // 尝试不同版本的 API
+            // Try different versions of the API
             for (String version : versions) {
                 try {
                     Object metricsData;
                     if (namespace != null && !namespace.isEmpty()) {
-                        // 获取指定命名空间的 Pod 指标
+                        // Get Pod metrics for specified namespace
                         metricsData = customApi.listNamespacedCustomObject(group, version, namespace, plural).labelSelector(labelSelector).execute();
                     } else {
-                        // 获取所有命名空间的 Pod 指标
+                        // Get Pod metrics for all namespaces
                         metricsData = customApi.listClusterCustomObject(group, version, plural).labelSelector(labelSelector).execute();
                     }
                     
-                    // 处理返回的数据
+                    // Process returned data
                     if (metricsData instanceof Map) {
                         Map<String, Object> dataMap = (Map<String, Object>) metricsData;
                         List<?> items = (List<?>) dataMap.get("items");
@@ -288,7 +288,7 @@ public class PodsTool {
                                     Map<String, Object> podMetric = (Map<String, Object>) item;
                                     Map<String, Object> metadata = (Map<String, Object>) podMetric.get("metadata");
                                     
-                                    // 过滤 Pod 名称
+                                    // Filter Pod names
                                     if (name != null && !name.isEmpty()) {
                                         String podName = (String) metadata.get("name");
                                         if (!name.equals(podName)) {
@@ -311,19 +311,19 @@ public class PodsTool {
                         }
                     }
                     
-                    // 如果成功获取数据，跳出循环
+                    // If successfully get data, break the loop
                     if (!result.isEmpty()) {
                         break;
                     }
                 } catch (Exception e) {
                     lastError = e;
-                    // 继续尝试下一个版本
+                    // Continue trying the next version
                 }
             }
             
-            // 如果所有版本都失败，抛出异常
+            // If all versions fail, throw an exception
             if (result.isEmpty() && lastError != null) {
-                throw new RuntimeException("无法获取 Pod 监控指标（metrics.k8s.io v1/v1beta1 均不可用，可能未部署 Metrics Server）：" + lastError.getMessage(), lastError);
+                throw new RuntimeException("Unable to get Pod metrics (both metrics.k8s.io v1/v1beta1 unavailable, Metrics Server may not be deployed): " + lastError.getMessage(), lastError);
             }
             
             return result;
@@ -333,7 +333,7 @@ public class PodsTool {
     }
 
     /**
-     * Kubernetes 客户端持有者
+     * Kubernetes Client Holder
      */
     public static class K8sClientHolder {
         private final ApiClient apiClient;
@@ -349,12 +349,12 @@ public class PodsTool {
         public static K8sClientHolder create(String context) throws Exception {
             ApiClient apiClient;
             try {
-                // 尝试从 kubeconfig 加载
-                // 注意：在 Kubernetes Java Client 25.0.0 版本中，直接使用默认客户端
-                // 它会自动加载默认的 kubeconfig 配置
+                // Try to load from kubeconfig
+                // Note: In Kubernetes Java Client 25.0.0 version, use the default client directly
+                // It will automatically load the default kubeconfig configuration
                 apiClient = Config.defaultClient();
             } catch (Exception e) {
-                // 回退到集群内配置
+                // Fall back to in-cluster configuration
                 apiClient = Config.defaultClient();
             }
             return new K8sClientHolder(apiClient);

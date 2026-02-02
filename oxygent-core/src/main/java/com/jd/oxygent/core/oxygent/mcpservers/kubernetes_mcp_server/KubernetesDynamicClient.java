@@ -11,27 +11,27 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Kubernetes 动态客户端 - 模拟 Python 的 DynamicClient
- * 提供动态的 Kubernetes 资源操作，无需为每种资源类型创建特定客户端
+ * Kubernetes Dynamic Client - Simulates Python's DynamicClient
+ * Provides dynamic Kubernetes resource operations without creating specific clients for each resource type
  */
 public class KubernetesDynamicClient {
 
     private final CustomObjectsApi customObjectsApi;
     private final ObjectMapper objectMapper;
 
-    // 缓存 API 组和资源信息
+    // Cache API groups and resource information
     private final Map<String, String> apiGroupCache = new ConcurrentHashMap<>();
     private final Map<String, String> resourcePluralCache = new ConcurrentHashMap<>();
 
     /**
-     * 获取 KubernetesDynamicClient
+     * Get KubernetesDynamicClient
      */
     public static KubernetesDynamicClient getDynamicClient(String context) {
         return new KubernetesDynamicClient(context);
     }
 
     /**
-     * 构造函数 - 使用现有 ApiClient
+     * Constructor - Use existing ApiClient
      */
     public KubernetesDynamicClient(String context) {
         this.customObjectsApi = PodsTool.loadKubeConfig(context).getCustomObjectsApi();
@@ -39,10 +39,10 @@ public class KubernetesDynamicClient {
         initResourcePluralCache();
     }
     /**
-     * 初始化资源复数形式缓存
+     * Initialize resource plural form cache
      */
     private void initResourcePluralCache() {
-        // 常见资源的复数形式映射
+        // Plural form mapping for common resources
         resourcePluralCache.put("Pod", "pods");
         resourcePluralCache.put("Service", "services");
         resourcePluralCache.put("Deployment", "deployments");
@@ -69,7 +69,7 @@ public class KubernetesDynamicClient {
     }
 
     /**
-     * 解析 API 版本，返回组和版本
+     * Parse API version, return group and version
      */
     public Map<String, String> parseApiVersion(String apiVersion) {
         String[] parts = apiVersion.split("/", 2);
@@ -85,19 +85,19 @@ public class KubernetesDynamicClient {
     }
 
     /**
-     * 获取资源复数形式
+     * Get resource plural form
      */
     public String getResourcePlural(String kind) {
-        // 先从缓存查找
+        // First look up from cache
         String plural = resourcePluralCache.get(kind);
         if (plural != null) {
             return plural;
         }
 
-        // 缓存中没有，应用规则生成
+        // Not in cache, apply rules to generate
         String lowerKind = kind.toLowerCase();
 
-        // 特殊复数规则
+        // Special plural rules
         if (kind.endsWith("y")) {
             plural = lowerKind.substring(0, lowerKind.length() - 1) + "ies";
         } else if (kind.endsWith("s") || kind.endsWith("x") || kind.endsWith("z") ||
@@ -107,13 +107,13 @@ public class KubernetesDynamicClient {
             plural = lowerKind + "s";
         }
 
-        // 存入缓存
+        // Store in cache
         resourcePluralCache.put(kind, plural);
         return plural;
     }
 
     /**
-     * 获取动态资源对象（模拟 Python 的 dyn.resources.get）
+     * Get dynamic resource object (simulate Python's dyn.resources.get)
      */
     public DynamicResource resource(String apiVersion, String kind) {
         Map<String, String> apiInfo = parseApiVersion(apiVersion);
@@ -126,7 +126,7 @@ public class KubernetesDynamicClient {
     }
 
     /**
-     * 动态资源操作类
+     * Dynamic resource operation class
      */
     public static class DynamicResource {
         private final String group;
@@ -142,14 +142,14 @@ public class KubernetesDynamicClient {
         }
 
         /**
-         * 列出资源（支持命名空间和标签选择器）
+         * List resources (supports namespace and label selector)
          */
         @SuppressWarnings("unchecked")
         public List<Map<String, Object>> list(String namespace, String labelSelector,
                                               String fieldSelector, Integer limit,
                                               String resourceVersion, Boolean watch) throws Exception {
             if (namespace != null && !namespace.trim().isEmpty()) {
-                // 命名空间级别资源
+                // Namespace-level resources
                 Object result = api.listNamespacedCustomObject(group, version, namespace, plural)
                                     .labelSelector(labelSelector)
                                     .limit(limit)
@@ -159,7 +159,7 @@ public class KubernetesDynamicClient {
                                     .execute();
                 return extractItems(result);
             } else {
-                // 集群级别资源
+                // Cluster-level resources
                 Object result = api.listClusterCustomObject(group, version, plural)
                                     .labelSelector(labelSelector)
                                     .limit(limit)
@@ -172,14 +172,14 @@ public class KubernetesDynamicClient {
         }
 
         /**
-         * 列出所有命名空间的资源
+         * List resources from all namespaces
          */
         public List<Map<String, Object>> listAllNamespaces(String labelSelector) throws Exception {
             return list(null, labelSelector, null, null, null, null);
         }
 
         /**
-         * 获取单个资源
+         * Get single resource
          */
         @SuppressWarnings("unchecked")
         public Map<String, Object> get(String name, String namespace) throws Exception {
@@ -191,7 +191,7 @@ public class KubernetesDynamicClient {
         }
 
         /**
-         * 创建资源
+         * Create resource
          */
         @SuppressWarnings("unchecked")
         public Map<String, Object> create(Map<String, Object> body, String namespace) throws Exception {
@@ -203,7 +203,7 @@ public class KubernetesDynamicClient {
         }
 
         /**
-         * 替换资源（完整更新）
+         * Replace resource (full update)
          */
         @SuppressWarnings("unchecked")
         public Map<String, Object> replace(String name, Map<String, Object> body, String namespace) throws Exception {
@@ -215,7 +215,7 @@ public class KubernetesDynamicClient {
         }
 
         /**
-         * Patch 资源（部分更新）
+         * Patch resource (partial update)
          */
         @SuppressWarnings("unchecked")
         public Map<String, Object> patch(String name, Map<String, Object> body, String namespace,String patchType) throws Exception {
@@ -230,26 +230,26 @@ public class KubernetesDynamicClient {
         }
 
         /**
-         * 根据 patchType 获取正确的 Content-Type
+         * Get correct Content-Type based on patchType
          */
         private String getContentTypeForPatch(String patchType) {
             if (patchType == null || patchType.isEmpty()) {
-                return "application/merge-patch+json"; // 默认值
+                return "application/merge-patch+json"; // Default value
             }
 
-            // 支持简写形式
+            // Support abbreviated forms
             return switch (patchType.toLowerCase()) {
                 case "merge" -> "application/merge-patch+json";
                 case "json" -> "application/json-patch+json";
                 case "strategic" -> "application/strategic-merge-patch+json";
                 default ->
-                    // 如果用户已经传入完整的 Content-Type，直接使用
+                    // If user has passed in the complete Content-Type, use directly
                         patchType;
             };
         }
 
         /**
-         * 删除资源
+         * Delete resource
          */
         @SuppressWarnings("unchecked")
         public Map<String, Object> delete(String name, String namespace) throws Exception {
@@ -261,7 +261,7 @@ public class KubernetesDynamicClient {
         }
 
         /**
-         * 从 API 响应中提取 items
+         * Extract items from API response
          */
         @SuppressWarnings("unchecked")
         private List<Map<String, Object>> extractItems(Object result) {
@@ -277,7 +277,7 @@ public class KubernetesDynamicClient {
     }
 
     /**
-     * 掩码 Secret 敏感信息
+     * Mask Secret sensitive information
      */
     public static Map<String, Object> maskSecret(Map<String, Object> obj) {
         if (obj == null || !"Secret".equals(obj.get("kind"))) {
@@ -286,7 +286,7 @@ public class KubernetesDynamicClient {
 
         Map<String, Object> masked = new HashMap<>(obj);
 
-        // 掩码 data 字段
+        // Mask data field
         if (masked.get("data") instanceof Map) {
             Map<String, Object> data = (Map<String, Object>) masked.get("data");
             Map<String, Object> maskedData = new HashMap<>();
@@ -296,7 +296,7 @@ public class KubernetesDynamicClient {
             masked.put("data", maskedData);
         }
 
-        // 掩码 stringData 字段
+        // Mask stringData field
         if (masked.get("stringData") instanceof Map) {
             Map<String, Object> stringData = (Map<String, Object>) masked.get("stringData");
             Map<String, Object> maskedStringData = new HashMap<>();
@@ -310,14 +310,14 @@ public class KubernetesDynamicClient {
     }
 
     /**
-     * 转换为 JSON 字符串
+     * Convert to JSON string
      */
     public String toJson(Object obj) throws Exception {
         return objectMapper.writeValueAsString(obj);
     }
 
     /**
-     * 从 JSON 字符串解析
+     * Parse from JSON string
      */
     public Map<String, Object> fromJson(String json) throws Exception {
         return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});

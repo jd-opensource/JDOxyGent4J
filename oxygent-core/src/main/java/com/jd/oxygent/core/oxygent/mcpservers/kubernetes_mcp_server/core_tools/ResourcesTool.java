@@ -16,11 +16,11 @@ import java.util.Map;
 /**
  * Kubernetes MCP Server - core tools: resources
  * <p>
- * 提供与 Kubernetes 资源相关的操作能力：
- * - resources_list：列出指定类型的资源
- * - resources_get：获取指定资源的完整对象
- * - resources_create_or_update：创建或更新资源
- * - resources_delete：删除指定资源
+ * Provides capabilities related to Kubernetes resources:
+ * - resources_list: List resources of specified type
+ * - resources_get: Get the complete object of a specified resource
+ * - resources_create_or_update: Create or update resource
+ * - resources_delete: Delete specified resource
  */
 public class ResourcesTool {
 
@@ -29,20 +29,20 @@ public class ResourcesTool {
     private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
 
     /**
-     * 解析 YAML/JSON 字符串为 Map
+     * Parse YAML/JSON string to Map
      */
     private static Map<String, Object> parseResource(String resource) throws Exception {
         try {
-            // 尝试解析为 JSON
+            // Try to parse as JSON
             return JSON_MAPPER.readValue(resource, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
-            // 尝试解析为 YAML
+            // Try to parse as YAML
             return YAML_MAPPER.readValue(resource, new TypeReference<Map<String, Object>>() {});
         }
     }
 
     /**
-     * 列出指定类型的资源
+     * List resources of specified type
      */
     @MCPTool(name = "resources_list",
             description = "List Kubernetes resources by apiVersion/kind (optional: namespace, labelSelector)")
@@ -61,7 +61,7 @@ public class ResourcesTool {
             KubernetesDynamicClient dyn = KubernetesDynamicClient.getDynamicClient(context);
             KubernetesDynamicClient.DynamicResource resource = dyn.resource(apiVersion, kind);
 
-            // 列出资源
+            // List resources
             List<Map<String, Object>> items;
             if (namespace != null && !namespace.trim().isEmpty()) {
                 items = resource.list(namespace, labelSelector, null, null, null, null);
@@ -69,7 +69,7 @@ public class ResourcesTool {
                 items = resource.listAllNamespaces(labelSelector);
             }
 
-            // 应用 Secret 掩码
+            // Apply Secret masking
             List<Map<String, Object>> maskedItems = new ArrayList<>();
             for (Map<String, Object> item : items) {
                 maskedItems.add(KubernetesDynamicClient.maskSecret(item));
@@ -78,12 +78,12 @@ public class ResourcesTool {
             return maskedItems;
 
         } catch (Exception e) {
-            throw new RuntimeException("列出资源失败：" + e.getMessage(), e);
+            throw new RuntimeException("Failed to list resources: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 获取指定资源的完整对象
+     * Get the complete object of a specified resource
      */
     @MCPTool(name = "resources_get",
             description = "Get a Kubernetes resource by apiVersion/kind/name (optional: namespace)")
@@ -103,19 +103,19 @@ public class ResourcesTool {
             KubernetesDynamicClient dyn = KubernetesDynamicClient.getDynamicClient(context);
             KubernetesDynamicClient.DynamicResource resource = dyn.resource(apiVersion, kind);
 
-            // 获取资源
+            // Get resource
             Map<String, Object> result = resource.get(name, namespace);
 
-            // 应用 Secret 掩码
+            // Apply Secret masking
             return KubernetesDynamicClient.maskSecret(result);
 
         } catch (Exception e) {
-            throw new RuntimeException("获取资源失败：" + e.getMessage(), e);
+            throw new RuntimeException("Failed to get resource: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 创建或更新资源
+     * Create or update resource
      */
     @MCPTool(name = "resources_create_or_update",
             description = "Create or update a Kubernetes resource from YAML/JSON (server-side patch on exists)")
@@ -126,30 +126,30 @@ public class ResourcesTool {
             String namespace,
             @ToolParam(description = "Kubeconfig context", required = false)
             String context) {
-        // 安全保护：只读或禁破坏时拒绝写操作
+        // Security protection: Reject write operations when in read-only or disable-destructive mode
         if (KubernetesMcpServer.isReadOnly() || KubernetesMcpServer.isDisableDestructive()) {
-            throw new RuntimeException("写操作被禁止：当前处于只读或禁破坏模式");
+            throw new RuntimeException("Write operations are prohibited: currently in read-only or disable-destructive mode");
         }
 
         try {
-            // 解析资源
+            // Parse resource
             Map<String, Object> obj = parseResource(resource);
 
-            // 验证必要字段
+            // Validate required fields
             String apiVersion = (String) obj.get("apiVersion");
             String kind = (String) obj.get("kind");
             Map<String, Object> metadata = (Map<String, Object>) obj.get("metadata");
 
             if (apiVersion == null || kind == null || metadata == null) {
-                throw new RuntimeException("资源缺少必要字段：apiVersion/kind/metadata");
+                throw new RuntimeException("Resource missing required fields: apiVersion/kind/metadata");
             }
 
             String name = (String) metadata.get("name");
             if (name == null || name.trim().isEmpty()) {
-                throw new RuntimeException("资源缺少必要字段：metadata.name");
+                throw new RuntimeException("Resource missing required field: metadata.name");
             }
 
-            // 确定命名空间
+            // Determine namespace
             String resourceNamespace = (String) metadata.get("namespace");
             if (resourceNamespace == null || resourceNamespace.trim().isEmpty()) {
                 resourceNamespace = namespace;
@@ -158,7 +158,7 @@ public class ResourcesTool {
             KubernetesDynamicClient dyn = KubernetesDynamicClient.getDynamicClient(context);
             KubernetesDynamicClient.DynamicResource resourceClient = dyn.resource(apiVersion, kind);
 
-            // 先尝试获取以判断存在性
+            // First try to get to check existence
             boolean exists = false;
             try {
                 resourceClient.get(name, resourceNamespace);
@@ -169,23 +169,23 @@ public class ResourcesTool {
 
             Map<String, Object> result;
             if (exists) {
-                // 使用 patch 更新（服务器端合并）
+                // Use patch to update (server-side merge)
                 result = resourceClient.patch(name, obj, resourceNamespace, "merge");
             } else {
-                // 创建新资源
+                // Create new resource
                 result = resourceClient.create(obj, resourceNamespace);
             }
 
-            // 应用 Secret 掩码
+            // Apply Secret masking
             return KubernetesDynamicClient.maskSecret(result);
 
         } catch (Exception e) {
-            throw new RuntimeException("创建/更新资源失败：" + e.getMessage(), e);
+            throw new RuntimeException("Failed to create/update resource: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 删除指定资源
+     * Delete specified resource
      */
     @MCPTool(name = "resources_delete",
             description = "Delete a Kubernetes resource by apiVersion/kind/name (optional: namespace)")
@@ -200,23 +200,23 @@ public class ResourcesTool {
             String namespace,
             @ToolParam(description = "Kubeconfig context name; defaults to current context" , required = false)
             String context) {
-        // 安全保护：只读或禁破坏时拒绝删除
+        // Security protection: Reject deletion when in read-only or disable-destructive mode
         if (KubernetesMcpServer.isReadOnly() || KubernetesMcpServer.isDisableDestructive()) {
-            throw new RuntimeException("删除操作被禁止：当前处于只读或禁破坏模式");
+            throw new RuntimeException("Delete operations are prohibited: currently in read-only or disable-destructive mode");
         }
 
         try {
             KubernetesDynamicClient dyn = KubernetesDynamicClient.getDynamicClient(context);
             KubernetesDynamicClient.DynamicResource resource = dyn.resource(apiVersion, kind);
 
-            // 删除资源
+            // Delete resource
             Map<String, Object> result = resource.delete(name, namespace);
 
-            // 应用 Secret 掩码
+            // Apply Secret masking
             return KubernetesDynamicClient.maskSecret(result);
 
         } catch (Exception e) {
-            throw new RuntimeException("删除资源失败：" + e.getMessage(), e);
+            throw new RuntimeException("Failed to delete resource: " + e.getMessage(), e);
         }
     }
 }

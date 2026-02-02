@@ -6,8 +6,8 @@ import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import io.kubernetes.client.util.Config;
 
 /**
- * Kubernetes 客户端持有者
- * 提供统一的 Kubernetes 客户端初始化和访问方法
+ * Kubernetes Client Holder
+ * Provides unified Kubernetes client initialization and access methods
  */
 public class K8sClientHolder {
     private final ApiClient apiClient;
@@ -23,12 +23,12 @@ public class K8sClientHolder {
     public static K8sClientHolder create(String context) throws Exception {
         ApiClient apiClient;
         try {
-            // 尝试从 kubeconfig 加载
-            // 注意：在 Kubernetes Java Client 25.0.0 版本中，直接使用默认客户端
-            // 它会自动加载默认的 kubeconfig 配置
+            // Try to load from kubeconfig
+            // Note: In Kubernetes Java Client 25.0.0 version, use the default client directly
+            // It will automatically load the default kubeconfig configuration
             apiClient = Config.defaultClient();
         } catch (Exception e) {
-            // 回退到集群内配置
+            // Fall back to in-cluster configuration
             apiClient = Config.fromCluster();
         }
         return new K8sClientHolder(apiClient);

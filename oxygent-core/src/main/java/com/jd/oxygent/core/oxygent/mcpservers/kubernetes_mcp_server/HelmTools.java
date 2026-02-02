@@ -14,25 +14,25 @@ import java.util.Map;
 /**
  * Kubernetes MCP Server - helm tools (template-first approach)
  * <p>
- * 提供无需 Helm 二进制的模板化能力：
- * - helm_template_apply：使用 Jinja2 渲染 Helm 风格模板（或通用 YAML 模板），将生成的多文档 YAML 逐条 Create/Patch 到集群
- * - helm_template_uninstall：使用同一模板与 values 渲染出目标对象，逐条 Delete
- * - 说明：此方案以“渲染→K8s 统一资源 API”的流程替代直接调用 Helm CLI，规避二进制依赖与环境不一致问题
+ * Provides templating capabilities without Helm binary:
+ * - helm_template_apply: Render Helm-style templates (or general YAML templates) using Jinja2, Create/Patch the generated multi-document YAML to the cluster one by one
+ * - helm_template_uninstall: Use the same template and values to render target objects, Delete one by one
+ * - Explanation: This solution replaces direct calls to Helm CLI with the "render→K8s unified resource API" process, avoiding binary dependencies and environmental inconsistency issues
  *
- * 注意：
- * - 属于写/删除操作，受只读与禁破坏开关保护
- * - 多集群支持：可选 context 参数；默认使用当前 kubeconfig 上下文或 in-cluster 配置
- * - 模板渲染输入：`template`（字符串，支持 Jinja2 语法）；`values`（字典）
- * - 多文档 YAML：使用 `---` 分隔；每个文档需包含 apiVersion/kind/metadata.name 顶级字段
+ * Notes:
+ * - Belongs to write/delete operations, protected by read-only and disable-destructive switches
+ * - Multi-cluster support: Optional context parameter; defaults to current kubeconfig context or in-cluster configuration
+ * - Template rendering input: `template` (string supporting Jinja2 syntax); `values` (dictionary)
+ * - Multi-document YAML: Use `---` separator; each document must contain top-level fields apiVersion/kind/metadata.name
  */
 public class HelmTools {
 
-    // 尝试导入必要的依赖
+    // Attempt to import necessary dependencies
     private static boolean templateEngineAvailable = false;
 
     static {
         try {
-            // 检查模板引擎是否可用
+            // Check if template engine is available
             Class.forName("org.apache.commons.text.StringSubstitutor");
             templateEngineAvailable = true;
         } catch (ClassNotFoundException e) {
@@ -41,25 +41,25 @@ public class HelmTools {
     }
 
     /**
-     * 确保模板引擎可用
+     * Ensure template engine is available
      */
     private static void ensureTemplateEngine() {
         if (!templateEngineAvailable) {
-            throw new RuntimeException("模板引擎未安装");
+            throw new RuntimeException("Template engine not installed");
         }
     }
 
     /**
-     * 使用模板引擎渲染模板，解析为多 YAML 文档对象列表
+     * Use template engine to render template, parse into multiple YAML document object list
      */
     private static List<Map<String, Object>> renderToDocuments(String template, Map<String, Object> values) {
         ensureTemplateEngine();
         try {
-            // 使用 Apache Commons Text 渲染模板
+            // Use Apache Commons Text to render template
             StringSubstitutor substitutor = new StringSubstitutor(values);
             String renderedTemplate = substitutor.replace(template);
 
-            // 使用 Yaml 的 loadAll 方法直接解析多文档
+            // Use Yaml's loadAll method to directly parse multi-documents
             Yaml yaml = new Yaml();
             List<Map<String, Object>> documents = new ArrayList<>();
 
@@ -73,30 +73,30 @@ public class HelmTools {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> doc = (Map<String, Object>) yamlDoc;
 
-                    // 基本字段校验
+                    // Basic field validation
                     if (doc.get("apiVersion") == null || doc.get("kind") == null) {
-                        throw new RuntimeException("渲染文档缺少 apiVersion/kind");
+                        throw new RuntimeException("Rendered document missing apiVersion/kind");
                     }
 
                     Map<String, Object> metadata = (Map<String, Object>) doc.get("metadata");
                     if (metadata == null || metadata.get("name") == null) {
-                        throw new RuntimeException("渲染文档缺少 metadata.name");
+                        throw new RuntimeException("Rendered document missing metadata.name");
                     }
 
                     documents.add(doc);
                 } else {
-                    throw new RuntimeException("YAML 文档不是有效的对象结构");
+                    throw new RuntimeException("YAML document is not a valid object structure");
                 }
             }
 
             return documents;
         } catch (Exception e) {
-            throw new RuntimeException("模板渲染失败: " + e.getMessage(), e);
+            throw new RuntimeException("Template rendering failed: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 对单个对象：若存在则 merge-patch，不存在则 create
+     * For single object: merge-patch if exists, create if not exists
      */
     private static Map<String, Object> createOrPatch(String context, Map<String, Object> obj, String defaultNamespace) throws Exception {
         PodsTool.ensureK8sAvailable();
@@ -106,7 +106,7 @@ public class HelmTools {
         Map<String, Object> metadata = (Map<String, Object>) obj.get("metadata");
 
         if (apiVersion == null || kind == null || metadata == null) {
-            throw new RuntimeException("无效的资源定义：缺少 apiVersion、kind 或 metadata");
+            throw new RuntimeException("Invalid resource definition: missing apiVersion, kind, or metadata");
         }
 
         String name = (String) metadata.get("name");
@@ -115,27 +115,27 @@ public class HelmTools {
             namespace = defaultNamespace;
         }
 
-        // 使用 KubernetesDynamicClient
+        // Use KubernetesDynamicClient
         KubernetesDynamicClient dyn = KubernetesDynamicClient.getDynamicClient(context);
         KubernetesDynamicClient.DynamicResource resource = dyn.resource(apiVersion, kind);
 
         try {
-            // 尝试获取资源（检查是否存在）
+            // Try to get resource (check if exists)
             Map<String, Object> existing = resource.get(name, namespace);
             if (existing != null) {
-                // 存在则使用 merge-patch
+                // Use merge-patch if exists
                 return resource.patch(name, obj, namespace, "merge");
             }
         } catch (Exception e) {
-            // 资源不存在，忽略异常继续创建
+            // Resource doesn't exist, ignore exception and continue to create
         }
 
-        // 不存在则创建
+        // Create if doesn't exist
         return resource.create(obj, namespace);
     }
 
     /**
-     * 删除单个对象：按 apiVersion/kind/name/namespace
+     * Delete single object: by apiVersion/kind/name/namespace
      */
     private static Map<String, Object> delete(String context, Map<String, Object> obj, String defaultNamespace) throws Exception {
         PodsTool.ensureK8sAvailable();
@@ -145,7 +145,7 @@ public class HelmTools {
         Map<String, Object> metadata = (Map<String, Object>) obj.get("metadata");
 
         if (apiVersion == null || kind == null || metadata == null) {
-            throw new RuntimeException("无效的资源定义：缺少 apiVersion、kind 或 metadata");
+            throw new RuntimeException("Invalid resource definition: missing apiVersion, kind, or metadata");
         }
 
         String name = (String) metadata.get("name");
@@ -154,7 +154,7 @@ public class HelmTools {
             namespace = defaultNamespace;
         }
 
-        // 使用 KubernetesDynamicClient
+        // Use KubernetesDynamicClient
         KubernetesDynamicClient dyn = KubernetesDynamicClient.getDynamicClient(context);
         KubernetesDynamicClient.DynamicResource resource = dyn.resource(apiVersion, kind);
 
@@ -162,22 +162,22 @@ public class HelmTools {
     }
 
     /**
-     * 渲染模板并应用资源到集群（创建或更新）
+     * Render template and apply resources to cluster (create or update)
      */
     @MCPTool(name = "helm_template_apply",
             description = "Render template with values and apply resources to the cluster (create or patch)")
     public static List<Map<String, Object>> helmTemplateApply(
-            @ToolParam(description = "Jinja2 模板字符串（支持多文档 YAML，通过 '---' 分隔）")
+            @ToolParam(description = "Jinja2 template string (supports multi-document YAML, separated by '---')")
             String template,
-            @ToolParam(description = "模板渲染的变量字典")
+            @ToolParam(description = "Variable dictionary for template rendering")
             Map<String, Object> values,
-            @ToolParam(description = "默认命名空间（当文档未指定 metadata.namespace 时使用）")
+            @ToolParam(description = "Default namespace (used when document does not specify metadata.namespace)")
             String namespace,
-            @ToolParam(description = "kubeconfig 上下文；默认当前上下文")
+            @ToolParam(description = "kubeconfig context; defaults to current context")
             String context) {
-        // 安全保护：只读或禁破坏时拒绝写操作
+        // Security protection: Reject write operations when in read-only or disable-destructive mode
         if (KubernetesMcpServer.isReadOnly() || KubernetesMcpServer.isDisableDestructive()) {
-            throw new RuntimeException("写操作被禁止：当前处于只读或禁破坏模式");
+            throw new RuntimeException("Write operations are prohibited: currently in read-only or disable-destructive mode");
         }
 
         List<Map<String, Object>> docs = renderToDocuments(template, values);
@@ -194,29 +194,29 @@ public class HelmTools {
                 if (metadata != null && metadata.get("name") != null) {
                     name = (String) metadata.get("name");
                 }
-                throw new RuntimeException(String.format("应用资源失败（%s %s）: %s", kind, name, e.getMessage()), e);
+                throw new RuntimeException(String.format("Failed to apply resource (%s %s): %s", kind, name, e.getMessage()), e);
             }
         }
         return results;
     }
 
     /**
-     * 渲染模板并从集群中卸载资源
+     * Render template and uninstall resources from cluster
      */
     @MCPTool(name = "helm_template_uninstall",
             description = "Render template with values and uninstall rendered resources from the cluster")
     public static List<Map<String, Object>> helmTemplateUninstall(
-            @ToolParam(description = "Jinja2 模板字符串（支持多文档 YAML，通过 '---' 分隔）")
+            @ToolParam(description = "Jinja2 template string (supports multi-document YAML, separated by '---')")
             String template,
-            @ToolParam(description = "模板渲染的变量字典")
+            @ToolParam(description = "Variable dictionary for template rendering")
             Map<String, Object> values,
-            @ToolParam(description = "默认命名空间（当文档未指定 metadata.namespace 时使用）")
+            @ToolParam(description = "Default namespace (used when document does not specify metadata.namespace)")
             String namespace,
-            @ToolParam(description = "kubeconfig 上下文；默认当前上下文")
+            @ToolParam(description = "kubeconfig context; defaults to current context")
             String context) {
-        // 安全保护：只读或禁破坏时拒绝删除操作
+        // Security protection: Reject delete operations when in read-only or disable-destructive mode
         if (KubernetesMcpServer.isReadOnly() || KubernetesMcpServer.isDisableDestructive()) {
-            throw new RuntimeException("删除操作被禁止：当前处于只读或禁破坏模式");
+            throw new RuntimeException("Delete operations are prohibited: currently in read-only or disable-destructive mode");
         }
 
         List<Map<String, Object>> docs = renderToDocuments(template, values);
@@ -233,7 +233,7 @@ public class HelmTools {
                 if (metadata != null && metadata.get("name") != null) {
                     name = (String) metadata.get("name");
                 }
-                throw new RuntimeException(String.format("卸载资源失败（%s %s）: %s", kind, name, e.getMessage()), e);
+                throw new RuntimeException(String.format("Failed to uninstall resource (%s %s): %s", kind, name, e.getMessage()), e);
             }
         }
         return results;

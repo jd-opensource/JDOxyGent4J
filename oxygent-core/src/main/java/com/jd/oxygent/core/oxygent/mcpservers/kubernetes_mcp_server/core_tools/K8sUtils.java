@@ -3,13 +3,13 @@ package com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools;
 import java.util.Map;
 
 /**
- * Kubernetes 工具类
- * 提供 Kubernetes 相关的通用工具方法
+ * Kubernetes Utility Class
+ * Provides common utility methods related to Kubernetes
  */
 public class K8sUtils {
 
     /**
-     * 解析 API 版本和资源类型
+     * Parse API version and resource type
      */
     public static String[] parseGroupVersion(String apiVersion) {
         String[] parts = apiVersion.split("/");
@@ -21,14 +21,14 @@ public class K8sUtils {
     }
 
     /**
-     * 获取资源类型的复数形式
+     * Get plural form of resource type
      */
     public static String getPlural(String kind) {
         return kind.toLowerCase() + "s";
     }
 
     /**
-     * 对 Secret 对象进行敏感字段掩码处理
+     * Perform sensitive field masking on Secret objects
      */
     public static Map<String, Object> maskSecret(Map<String, Object> obj) {
         try {
@@ -51,21 +51,21 @@ public class K8sUtils {
                 }
             }
         } catch (Exception e) {
-            // 掩码过程中出现异常时，不阻断主流程
+            // When an exception occurs during masking, do not interrupt the main process
             return obj;
         }
         return obj;
     }
 
     /**
-     * 确保 Kubernetes 客户端可用
+     * Ensure Kubernetes client is available
      */
     public static void ensureK8sAvailable() {
         try {
-            // 检查 Kubernetes Java 客户端是否可用
+            // Check if Kubernetes Java client is available
             Class.forName("io.kubernetes.client.openapi.ApiClient");
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Kubernetes Java 客户端未安装");
+            throw new RuntimeException("Kubernetes Java client not installed");
         }
     }
 }

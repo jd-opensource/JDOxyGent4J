@@ -6,20 +6,20 @@ import java.util.Set;
 /**
  * Kubernetes MCP Server package initializer.
  * <p>
- * 提供:
- * - 全局 McpServer 实例 (用于在各工具模块上统一注册)
- * - 非破坏模式与禁删/禁更新等安全开关的环境变量读取
+ * Provides:
+ * - Global McpServer instance (used for unified registration on various tool modules)
+ * - Environment variable reading for non-destructive mode and security switches like disable-delete/disable-update
  */
 public class KubernetesMcpServer {
 
-    // 安全与变更开关（环境变量控制）
-    // - K8S_MCP_READ_ONLY=true: 仅允许只读/非破坏工具
-    // - K8S_MCP_DISABLE_DESTRUCTIVE=true: 禁止 destructive 类操作（delete / update 等）
+    // Security and change switches (controlled by environment variables)
+    // - K8S_MCP_READ_ONLY=true: Only allows read-only/non-destructive tools
+    // - K8S_MCP_DISABLE_DESTRUCTIVE=true: Prohibits destructive operations (delete / update, etc.)
     private static final boolean READ_ONLY;
     private static final boolean DISABLE_DESTRUCTIVE;
 
     static {
-        // 初始化安全开关
+        // Initialize security switches
         Set<String> trueValues = new HashSet<>();
         trueValues.add("1");
         trueValues.add("true");
@@ -34,16 +34,16 @@ public class KubernetesMcpServer {
     }
 
     /**
-     * 返回是否启用只读模式（READ-ONLY）。
-     * 该模式通常会移除 delete/update 等破坏性工具，仅保留只读与创建/更新安全工具的最小集合。
+     * Returns whether read-only mode is enabled.
+     * This mode typically removes destructive tools such as delete/update, retaining only a minimal set of read-only and safe create/update tools.
      */
     public static boolean isReadOnly() {
         return READ_ONLY;
     }
 
     /**
-     * 返回是否禁用破坏性操作（DELETE/UPDATE 等）。
-     * 在 READ-ONLY 未开启时，也可通过该开关细粒度限制工具集合。
+     * Returns whether destructive operations (DELETE/UPDATE, etc.) are disabled.
+     * When READ-ONLY is not enabled, this switch can also be used to fine-grain control the tool set.
      */
     public static boolean isDisableDestructive() {
         return DISABLE_DESTRUCTIVE;

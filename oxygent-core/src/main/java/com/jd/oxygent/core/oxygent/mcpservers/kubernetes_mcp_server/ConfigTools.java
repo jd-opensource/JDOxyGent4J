@@ -14,21 +14,16 @@ import java.util.Map;
 /**
  * Kubernetes MCP Server - config toolset
  * <p>
- * 提供只读的 kubeconfig 检视能力：
- * - configuration_contexts_list：列出所有上下文与对应 server，并标记当前上下文
- * - configuration_view：返回 kubeconfig 内容（默认最小化为当前上下文相关片段）
+ * Provides read-only kubeconfig inspection capabilities:
+ * - configuration_contexts_list: List all contexts and corresponding servers, marking the current context
+ * - configuration_view: Return kubeconfig content (defaults to minimized fragments related to the current context)
  */
 public class ConfigTools {
 
-    static {
-        // 注册工具到 MCP 实例
-        // 注意：这里需要根据实际 McpServer 实现调整
-    }
-
     /**
-     * 返回第一个存在的 kubeconfig 路径：
-     * - 优先环境变量 KUBECONFIG（可包含多个路径，使用系统路径分隔符分隔）
-     * - 否则默认 ~/.kube/config
+     * Return the first existing kubeconfig path:
+     * - Prioritize environment variable KUBECONFIG (can contain multiple paths, separated by system path separator)
+     * - Otherwise default to ~/.kube/config
      */
     private static String firstExistingKubeconfig() {
         String envPaths = System.getenv("KUBECONFIG");
@@ -55,7 +50,7 @@ public class ConfigTools {
     }
 
     /**
-     * 展开用户主目录路径
+     * Expand user home directory path
      */
     private static String expandUser(String path) {
         if (path == null) {
@@ -69,8 +64,8 @@ public class ConfigTools {
     }
 
     /**
-     * 读取并解析 kubeconfig，优先使用 YAML 解析；失败则尝试 JSON。
-     * 返回 (配置字典, 实际使用的文件路径)；找不到则 (null, null)。
+     * Read and parse kubeconfig, prefer YAML parsing; attempt JSON if failed.
+     * Return (configuration dictionary, actual file path used); return (null, null) if not found.
      */
     private static Map<String, Object> loadKubeconfigContent() {
         String path = firstExistingKubeconfig();
@@ -81,11 +76,11 @@ public class ConfigTools {
         try {
             String rawContent = Files.readString(new File(path).toPath());
             
-            // 优先 YAML 解析
+            // Prefer YAML parsing
             try {
                 return YamlUtils.parseYaml(rawContent);
             } catch (Exception e) {
-                // 退化 JSON 解析
+                // Fall back to JSON parsing
                 try {
                     return JsonUtils.parseJson(rawContent);
                 } catch (Exception ex) {
@@ -98,8 +93,8 @@ public class ConfigTools {
     }
 
     /**
-     * 仅保留与 current-context 相关的 contexts/clusters/users 片段。
-     * 未配置 current-context 时返回原始配置。
+     * Only retain contexts/clusters/users fragments related to current-context.
+     * Return original configuration if current-context is not configured.
      */
     private static Map<String, Object> minifyKubeconfig(Map<String, Object> cfg) {
         if (cfg == null) {
@@ -169,7 +164,7 @@ public class ConfigTools {
     }
 
     /**
-     * 从 Map 中获取 List，如果不存在则返回空列表
+     * Get List from Map, return empty list if it does not exist
      */
     @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> getListFromMap(Map<String, Object> map, String key) {
@@ -181,8 +176,8 @@ public class ConfigTools {
     }
 
     /**
-     * 列出所有可用上下文名称和关联的服务器 URL
-     *     输出示例：
+     * List all available context names and associated server URLs
+     *     Output example:
      *     [
      *       {"name":"minikube","cluster":"minikube","server":"https://127.0.0.1:6443","current":true},
      *       {"name":"prod","cluster":"prod-cluster","server":"https://prod.example:6443","current":false}
@@ -235,8 +230,8 @@ public class ConfigTools {
     }
 
     /**
-     * 获取当前 Kubernetes 配置内容
-     * 返回 YAML 字符串；当未安装 PyYAML 或解析失败时，返回 JSON 字符串。
+     * Get current Kubernetes configuration content
+     * Return YAML string; return JSON string when PyYAML is not installed or parsing fails.
      */
     @MCPTool(name = "configuration_view",
             description = "Get the current Kubernetes configuration content as a kubeconfig YAML")
@@ -250,11 +245,11 @@ public class ConfigTools {
 
         Map<String, Object> out = minified ? minifyKubeconfig(cfg) : cfg;
 
-        // 尝试 YAML 序列化
+        // Attempt YAML serialization
         try {
             return YamlUtils.toYaml(out);
         } catch (Exception e) {
-            // 退化为 JSON
+            // Fall back to JSON
             try {
                 return JsonUtils.toJson(out);
             } catch (Exception ex) {
@@ -264,20 +259,20 @@ public class ConfigTools {
     }
 
     /**
-     * YAML 工具类
+     * YAML utility class
      */
     private static class YamlUtils {
         private static final org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml();
 
         /**
-         * 解析 YAML 字符串为 Map
+         * Parse YAML string to Map
          */
         public static Map<String, Object> parseYaml(String yamlString) throws Exception {
             return yaml.load(yamlString);
         }
 
         /**
-         * 将 Map 序列化为 YAML 字符串
+         * Serialize Map to YAML string
          */
         public static String toYaml(Map<String, Object> map) throws Exception {
             return yaml.dump(map);
@@ -285,20 +280,20 @@ public class ConfigTools {
     }
 
     /**
-     * JSON 工具类
+     * JSON utility class
      */
     private static class JsonUtils {
         private static final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
         /**
-         * 解析 JSON 字符串为 Map
+         * Parse JSON string to Map
          */
         public static Map<String, Object> parseJson(String jsonString) throws Exception {
             return mapper.readValue(jsonString, Map.class);
         }
 
         /**
-         * 将 Map 序列化为 JSON 字符串
+         * Serialize Map to JSON string
          */
         public static String toJson(Map<String, Object> map) throws Exception {
             return mapper.writeValueAsString(map);

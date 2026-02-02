@@ -10,23 +10,23 @@ import java.util.Set;
 /**
  * Kubernetes MCP Server - Entry Point
  * <p>
- * 该入口对齐 OxyGent 现有 MCP 服务器风格，提供：
- * - 传输模式：stdio / sse / streamable
- * - 端口配置（SSE/Streamable HTTP）
- * - 工具集按需加载（config/core/helm），为非破坏模式等安全开关预留过滤点
+ * This entry aligns with OxyGent's existing MCP server style, providing:
+ * - Transport modes: stdio / sse / streamable
+ * - Port configuration (SSE/Streamable HTTP)
+ * - On-demand toolset loading (config/core/helm), with filtering points reserved for security switches like non-destructive mode
  */
 
 public class Server {
 
     @EnableMcpServer(mode = "stdio")
     public static void main(String[] args) {
-        // 解析命令行参数
+        // Parse command-line arguments
         CommandLineArgs parsedArgs = parseArgs(args);
         Set<String> selectedToolsets = normalizeToolsets(parsedArgs.toolsets);
         boolean readonly = parsedArgs.readOnly || KubernetesMcpServer.isReadOnly();
         boolean disableDestructive = parsedArgs.disableDestructive || KubernetesMcpServer.isDisableDestructive();
 
-        // 根据传输模式配置
+        // Configure according to transport mode
         if (parsedArgs.transport.equals("sse") || parsedArgs.transport.equals("streamable")) {
             McpServerStatics.transport = parsedArgs.transport;
             McpServerStatics.mode = "web";
@@ -36,36 +36,36 @@ public class Server {
             McpServerStatics.mode = parsedArgs.transport;
         }
 
-        // 加载工具集
+        // Load toolsets
         loadToolsets(selectedToolsets, readonly, disableDestructive);
-        //传递端口
+        // Pass port
         if(parsedArgs.port>0){
             McpServerStatics.port = parsedArgs.port+"";
         }
-        // 打印启动信息
+        // Print startup information
         System.out.println("[kubernetes_mcp_server] transport=" + parsedArgs.transport);
         System.out.println("[kubernetes_mcp_server] port=" + parsedArgs.port);
         System.out.println("[kubernetes_mcp_server] toolsets=" + String.join(",", selectedToolsets));
         System.out.println("[kubernetes_mcp_server] readonly=" + readonly + " disable_destructive=" + disableDestructive);
 
-        // 运行服务器
+        // Run server
         McpServer.start();
     }
 
     /**
-     * 解析命令行参数
+     * Parse command-line arguments
      */
     private static CommandLineArgs parseArgs(String[] args) {
         CommandLineArgs result = new CommandLineArgs();
 
-        // 默认值
+        // Default values
         result.transport = System.getenv().getOrDefault("K8S_MCP_TRANSPORT", "stdio");
         result.port = Integer.parseInt(System.getenv().getOrDefault("K8S_MCP_PORT", "8000"));
         result.toolsets = System.getenv().getOrDefault("K8S_MCP_TOOLSETS", "config,core,helm");
         result.readOnly = false;
         result.disableDestructive = false;
 
-        // 解析命令行参数
+        // Parse command-line arguments
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             switch (arg) {
@@ -101,7 +101,7 @@ public class Server {
     }
 
     /**
-     * 标准化工具集列表
+     * Normalize toolset list
      */
     private static Set<String> normalizeToolsets(String toolsetsStr) {
         Set<String> result = new HashSet<>();
@@ -118,38 +118,37 @@ public class Server {
     }
 
     /**
-     * 加载工具集
+     * Load toolsets
      */
     private static void loadToolsets(Set<String> selected, boolean readonly, boolean disableDestructive) {
-        // config 组
+        // config group
         if (selected.contains("config")) {
                 McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.ConfigTools");
         }
 
-        // core 组
+        // core group
         if (selected.contains("core")) {
-            // 只读/通用能力优先
-            McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.ReadOnlyCoreTools");
+            // Read-only/universal capabilities first
             McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.PodsTool");
             McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.ResourcesTool");
             McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.EventsTool");
             McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.NamespacesTool");
             McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.core_tools.NodesTool");
 
-            // 未来：如需写操作（create/update/delete），在 readonly/disableDestructive 条件下决定是否导入
+            // Future: For write operations (create/update/delete), decide whether to import under readonly/disableDestructive conditions
             if (!readonly && !disableDestructive) {
-                // 例如：加载破坏性操作工具
+                // Example: Load destructive operation tools
             }
         }
 
-        // helm 组
+        // helm group
         if (selected.contains("helm")) {
             McpServerStatics.scanClasss.add("com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.HelmTools");
         }
     }
 
     /**
-     * 命令行参数封装
+     * Command-line argument wrapper
      */
     private static class CommandLineArgs {
         String transport;
