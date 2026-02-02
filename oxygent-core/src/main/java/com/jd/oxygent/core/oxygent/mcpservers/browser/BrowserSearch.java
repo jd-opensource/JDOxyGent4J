@@ -18,9 +18,6 @@ import java.util.Map;
  */
 public class BrowserSearch {
 
-    private BrowserSearch() {
-    }
-
     @MCPTool(name = "browser_search", description = "执行网络搜索并返回搜索结果及页面内容")
     public Object browserSearch(
             @ToolParam(description = "搜索查询") String query,

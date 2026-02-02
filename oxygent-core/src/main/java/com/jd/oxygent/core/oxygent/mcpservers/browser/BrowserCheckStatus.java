@@ -12,9 +12,6 @@ import java.util.Map;
  */
 public class BrowserCheckStatus {
 
-    private BrowserCheckStatus() {
-    }
-
     @MCPTool(name = "browser_check_status", description = "检查浏览器操作状态")
     public Object browser_check_status() {
         /**

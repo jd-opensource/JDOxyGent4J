@@ -118,6 +118,8 @@ public class McpServer {
                     localhost = McpServerStatics.localhost==null?classAnnotation.localhost():McpServerStatics.localhost;
                     port = McpServerStatics.port==null?classAnnotation.port():McpServerStatics.port;
                     transport = McpServerStatics.transport==null?classAnnotation.transport():McpServerStatics.transport;
+                    autoScan = !McpServerStatics.autoScan ?classAnnotation.autoScan():McpServerStatics.autoScan;;
+                    scanBasePackages = McpServerStatics.scanBasePackages.size()==0 ? classAnnotation.scanBasePackages() : McpServerStatics.scanBasePackages.toArray(new String[0]);
                     log.info("[McpServer] ✓ Found @EnableMcpServer annotation on class: {}", className);
                     return;
                 }
@@ -138,7 +140,8 @@ public class McpServer {
                     localhost = McpServerStatics.localhost==null?methodAnnotation.localhost():McpServerStatics.localhost;
                     port = McpServerStatics.port==null?methodAnnotation.port():McpServerStatics.port;
                     transport = McpServerStatics.transport==null?methodAnnotation.transport():McpServerStatics.transport;
-
+                    autoScan = !McpServerStatics.autoScan ?methodAnnotation.autoScan():McpServerStatics.autoScan;;
+                    scanBasePackages = McpServerStatics.scanBasePackages.size()==0 ? methodAnnotation.scanBasePackages() : McpServerStatics.scanBasePackages.toArray(new String[0]);
                     log.info("[McpServer] ✓ Found @EnableMcpServer annotation on method: {}.{}", className, methodName + "()");
                     return;
                 }

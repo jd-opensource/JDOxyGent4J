@@ -25,9 +25,6 @@ public class BrowserNavigation {
         LOGIN_DOMAIN_CONFIGS.put("ssa.jd.com", jdConfig);
     }
 
-    private BrowserNavigation() {
-    }
-
     @MCPTool(name = "browser_navigate", description = "导航到指定URL并获取页面内容")
     public Map<String, Object> browserNavigate(
             @ToolParam(description = "要导航到的网页URL") String url,
