@@ -5,30 +5,30 @@ import com.microsoft.playwright.*;
 import java.util.*;
 
 /**
- * 浏览器核心功能
+ * Browser core functionality
  * 
- * 提供浏览器实例管理、页面管理和状态管理等核心功能
+ * Provides core functionality for browser instance management, page management, and status management
  */
 public class BrowserCore {
 
-    // 全局变量，用于存储浏览器实例和页面
+    // Global variables for storing browser instance and pages
     private static Playwright _playwright;
     private static Browser _browser;
     private static BrowserContext _context;
-    private static Map<String, Page> _pages = new LinkedHashMap<>();  // 存储页面的字典，键为页面ID，值为页面对象
-    private static String _current_page_id;  // 当前活动页面的ID
-    private static boolean _data_ready = false;  // 标记数据是否已准备好
-    private static boolean _operation_in_progress = false;  // 标记操作是否正在进行中
-    private static Map<String, Boolean> _login_in_progress = new HashMap<>();  // 存储每个页面是否正在进行登录操作的字典
-    private static Map<String, String> _original_urls = new HashMap<>();  // 存储每个页面的原始URL，用于登录后重新导航
+    private static Map<String, Page> _pages = new LinkedHashMap<>();  // Dictionary to store pages, key is page ID, value is page object
+    private static String _current_page_id;  // ID of the current active page
+    private static boolean _data_ready = false;  // Flag indicating if data is ready
+    private static boolean _operation_in_progress = false;  // Flag indicating if an operation is in progress
+    private static Map<String, Boolean> _login_in_progress = new HashMap<>();  // Dictionary to store whether each page is currently in login operation
+    private static Map<String, String> _original_urls = new HashMap<>();  // Dictionary to store original URLs for each page, used for re-navigation after login
 
     /**
-     * 检查必要的依赖是否已安装
+     * Check if necessary dependencies are installed
      */
     public static List<String> check_dependencies() {
         List<String> missing_deps = new ArrayList<>();
 
-        // 检查playwright
+        // Check playwright
         try {
             Class.forName("com.microsoft.playwright.Playwright");
         } catch (ClassNotFoundException e) {
@@ -39,76 +39,76 @@ public class BrowserCore {
     }
 
     /**
-     * 确保浏览器已启动
+     * Ensure browser is started
      */
     public static synchronized void _ensure_browser() {
         if (_browser == null) {
             try {
-                System.out.println("浏览器实例不存在，创建新的浏览器实例...");
+                System.out.println("Browser instance does not exist, creating new browser instance...");
                 _playwright = Playwright.create();
                 _browser = _playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
                 _context = _browser.newContext();
-                System.out.println("成功创建新的浏览器实例和上下文");
+                System.out.println("Successfully created new browser instance and context");
 
-                // 设置全局请求拦截器，用于检测重定向到登录页面的情况
+                // Set global request interceptor to detect redirects to login pages
                 _context.route("**/*", route -> route.resume());
-                System.out.println("已设置全局请求拦截器");
+                System.out.println("Global request interceptor has been set");
             } catch (Exception e) {
-                System.out.println("启动浏览器时发生错误: " + e.getMessage());
-                throw new RuntimeException("启动浏览器时发生错误: " + e.getMessage(), e);
+                System.out.println("Error occurred while starting browser: " + e.getMessage());
+                throw new RuntimeException("Error occurred while starting browser: " + e.getMessage(), e);
             }
         } else {
-            System.out.println("复用现有浏览器实例");
+            System.out.println("Reusing existing browser instance");
         }
     }
 
     /**
-     * 确保至少有一个页面打开，并返回当前页面
+     * Ensure at least one page is open and return the current page
      */
     public static synchronized Page _ensure_page() {
         _ensure_browser();
 
         if (_pages.isEmpty() || _current_page_id == null || !_pages.containsKey(_current_page_id)) {
-            System.out.println("没有可用的页面或当前页面ID无效，创建新页面...");
-            // 确保_context已初始化
+            System.out.println("No available page or invalid current page ID, creating new page...");
+            // Ensure _context is initialized
             if (_context == null) {
-                System.out.println("浏览器上下文未初始化，重新初始化浏览器...");
+                System.out.println("Browser context not initialized, reinitializing browser...");
                 _ensure_browser();
             }
 
-            // 此时_context应该已经初始化，但为了类型检查，我们再次验证
+            // At this point _context should be initialized, but for type checking, we verify again
             if (_context != null) {
                 try {
                     Page page = _context.newPage();
                     String page_id = "page_" + (_pages.size() + 1);
                     _pages.put(page_id, page);
                     _current_page_id = page_id;
-                    System.out.println("成功创建新页面，ID: " + page_id);
+                    System.out.println("Successfully created new page, ID: " + page_id);
 
-                    // 设置页面导航事件监听器
+                    // Set up page navigation event listener
                     boolean success = _setup_navigation_handler(page);
                     if (success) {
-                        System.out.println("成功设置页面导航事件监听器");
+                        System.out.println("Successfully set up page navigation event listener");
                     } else {
-                        System.out.println("设置页面导航事件监听器失败，但页面仍可使用");
+                        System.out.println("Failed to set up page navigation event listener, but page is still usable");
                     }
                 } catch (Exception e) {
-                    System.out.println("创建新页面时发生错误: " + e.getMessage());
-                    throw new RuntimeException("创建新页面时发生错误: " + e.getMessage(), e);
+                    System.out.println("Error occurred while creating new page: " + e.getMessage());
+                    throw new RuntimeException("Error occurred while creating new page: " + e.getMessage(), e);
                 }
             } else {
-                System.out.println("无法初始化浏览器上下文");
-                throw new RuntimeException("无法初始化浏览器上下文");
+                System.out.println("Unable to initialize browser context");
+                throw new RuntimeException("Unable to initialize browser context");
             }
         } else {
-            System.out.println("复用现有页面，ID: " + _current_page_id);
+            System.out.println("Reusing existing page, ID: " + _current_page_id);
         }
 
         return _pages.get(_current_page_id);
     }
 
     /**
-     * 设置操作状态
+     * Set operation status
      */
     public static void _set_operation_status(boolean in_progress) {
         _operation_in_progress = in_progress;
@@ -118,7 +118,7 @@ public class BrowserCore {
     }
 
     /**
-     * 验证数据是否已准备好
+     * Verify if data is ready
      */
     public static boolean _verify_data_ready() {
         _data_ready = true;
@@ -126,23 +126,23 @@ public class BrowserCore {
     }
 
     /**
-     * 检查页面是否需要登录
+     * Check if page requires login
      */
     public static boolean _check_login_required(Page page) {
         try {
-            // 首先检查URL是否包含登录相关关键词
+            // First check if URL contains login-related keywords
             String current_url = page.url().toLowerCase();
             String[] url_keywords = {
-                "login", "signin", "sign-in", "auth", "passport", "账号", "登录"
+                "login", "signin", "sign-in", "auth", "passport", "account", "login"
             };
             for (String keyword : url_keywords) {
                 if (current_url.contains(keyword)) {
-                    System.out.println("URL中包含登录关键词: " + keyword);
+                    System.out.println("URL contains login keyword: " + keyword);
                     return true;
                 }
             }
 
-            // 检查常见的登录元素
+            // Check common login elements
             String[] login_selectors = {
                 "input[name='username']", "input[name='account']", "input[name='email']",
                 "input[name='user']", "input[type='password']", "input[name='password']",
@@ -153,12 +153,12 @@ public class BrowserCore {
 
             for (String selector : login_selectors) {
                 if (page.querySelector(selector) != null) {
-                    System.out.println("检测到登录元素: " + selector);
+                    System.out.println("Detected login element: " + selector);
                     return true;
                 }
             }
 
-            // 检查页面文本中是否包含登录相关词语
+            // Check if page text contains login-related words
             String content = page.content().toLowerCase();
             String[] login_keywords = {
                 "登录", "登陆", "login", "sign in", "signin", "sign-in", "用户名",
@@ -168,20 +168,20 @@ public class BrowserCore {
             };
             for (String keyword : login_keywords) {
                 if (content.contains(keyword)) {
-                    System.out.println("页面内容包含登录关键词: " + keyword);
+                    System.out.println("Page content contains login keyword: " + keyword);
                     return true;
                 }
             }
 
             return false;
         } catch (Exception e) {
-            System.out.println("检查登录页面时发生错误: " + e.getMessage());
+            System.out.println("Error occurred while checking login page: " + e.getMessage());
             return false;
         }
     }
 
     /**
-     * 关闭浏览器
+     * Close browser
      */
     public static synchronized void _close_browser() {
         if (_browser != null) {
@@ -196,8 +196,8 @@ public class BrowserCore {
             _current_page_id = null;
             _data_ready = false;
             _operation_in_progress = false;
-            _login_in_progress.clear();  // 清理登录状态字典
-            _original_urls.clear();  // 清理原始URL字典
+            _login_in_progress.clear();  // Clear login status dictionary
+            _original_urls.clear();  // Clear original URL dictionary
 
             if (_context != null) {
                 _context.close();
@@ -214,7 +214,7 @@ public class BrowserCore {
         }
     }
 
-    // ==================== 辅助函数，用于获取和设置全局变量 ====================
+    // ==================== Helper functions for getting and setting global variables ====================
 
     public static Map<String, Page> get_pages() {
         return new LinkedHashMap<>(_pages);
@@ -234,10 +234,10 @@ public class BrowserCore {
 
     public static boolean remove_page_from_pages(String page_id) {
         if (_pages.containsKey(page_id)) {
-            // 注意：这里不关闭页面，调用者需要自己处理页面关闭
+            // Note: This does not close the page, the caller needs to handle page closing themselves
             _pages.remove(page_id);
 
-            // 如果关闭的是当前页面，则切换到另一个页面
+            // If the closed page is the current page, switch to another page
             if (page_id.equals(_current_page_id)) {
                 if (!_pages.isEmpty()) {
                     _current_page_id = _pages.keySet().iterator().next();
@@ -251,7 +251,7 @@ public class BrowserCore {
     }
 
     /**
-     * 添加新页面并设置为当前页面
+     * Add new page and set as current page
      */
     public static String add_page(Page page, String url) {
         String page_id = "page_" + (_pages.size() + 1);
@@ -261,14 +261,14 @@ public class BrowserCore {
     }
 
     /**
-     * 移除指定页面
+     * Remove specified page
      */
     public static boolean remove_page(String page_id) {
         if (_pages.containsKey(page_id)) {
-            // 注意：这里不关闭页面，调用者需要自己处理页面关闭
+            // Note: This does not close the page, the caller needs to handle page closing themselves
             _pages.remove(page_id);
 
-            // 如果关闭的是当前页面，则切换到另一个页面
+            // If the closed page is the current page, switch to another page
             if (page_id.equals(_current_page_id)) {
                 if (!_pages.isEmpty()) {
                     _current_page_id = _pages.keySet().iterator().next();
@@ -282,10 +282,10 @@ public class BrowserCore {
     }
 
     /**
-     * 设置页面导航事件监听器，用于检测页面跳转到登录页面的情况
+     * Set up page navigation event listener to detect page redirects to login pages
      */
     private static boolean _setup_navigation_handler(Page page) {
-        // 初始化该页面的登录状态
+        // Initialize login status for this page
         String page_id = null;
         for (Map.Entry<String, Page> entry : _pages.entrySet()) {
             if (entry.getValue() == page) {
@@ -298,15 +298,15 @@ public class BrowserCore {
         }
 
         try {
-            // 添加检查并处理登录的函数
+            // Add function to check and handle login
             Runnable check_and_handle_login = () -> {
-                // 这里是登录处理逻辑，暂时留空
-                // 在BrowserLogin类中实现具体的登录处理逻辑
+                // This is login handling logic, temporarily left empty
+                // Specific login handling logic will be implemented in BrowserLogin class
             };
 
-            // 添加页面导航事件监听器
+            // Add page navigation event listener
             page.onFrameNavigated(frame -> {
-                // 只处理主框架的导航
+                // Only handle main frame navigation
                 if (frame.equals(page.mainFrame())) {
                     try {
                         Thread.sleep(1000);
@@ -317,20 +317,20 @@ public class BrowserCore {
                 }
             });
 
-            // 添加页面加载完成事件监听器
+            // Add page load complete event listener
             page.onLoad(page1 -> check_and_handle_login.run());
 
-            // 设置请求拦截器，用于监控重定向
+            // Set request interceptor to monitor redirects
             page.route("**/*", route -> route.resume());
 
             return true;
         } catch (Exception e) {
-            System.out.println("设置页面导航事件监听器时发生错误: " + e.getMessage());
+            System.out.println("Error occurred while setting up page navigation event listener: " + e.getMessage());
             return false;
         }
     }
 
-    // ==================== 状态管理 ====================
+    // ==================== Status Management ====================
 
     public static boolean is_operation_in_progress() {
         return _operation_in_progress;
@@ -340,7 +340,7 @@ public class BrowserCore {
         return _data_ready;
     }
 
-    // ==================== 登录状态管理 ====================
+    // ==================== Login Status Management ====================
 
     public static Map<String, Boolean> get_login_in_progress() {
         return new HashMap<>(_login_in_progress);
@@ -362,7 +362,7 @@ public class BrowserCore {
         _original_urls.remove(page_id);
     }
 
-    // ==================== 获取器 ====================
+    // ==================== Getters ====================
 
     public static Playwright get_playwright() {
         return _playwright;
@@ -376,7 +376,7 @@ public class BrowserCore {
         return _context;
     }
 
-    // ==================== 兼容旧命名的方法（用于其他类的调用）====================
+    // ==================== Compatibility with old naming methods (for calls from other classes) ====================
 
     public static void ensureBrowser() {
         _ensure_browser();

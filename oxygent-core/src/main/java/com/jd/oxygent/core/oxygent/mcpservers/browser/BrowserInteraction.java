@@ -10,7 +10,7 @@ import java.util.Map;
 public class BrowserInteraction {
 
     /**
-     * 点击页面上的元素
+     * Click element on the page
      */
     @MCPTool(name = "browser_click", description = "点击元素")
     public Map<String, Object> browserClick(
@@ -26,12 +26,12 @@ public class BrowserInteraction {
             BrowserCore.verifyDataReady();
             BrowserCore.setOperationStatus(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("message", "成功点击元素: " + selector + "，数据已准备就绪");
+            result.put("message", "Successfully clicked element: " + selector + ", data is ready");
             return result;
         } catch (Exception e) {
             BrowserCore.setOperationStatus(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "点击元素 " + selector + " 时发生错误: " + e.getMessage());
+            result.put("error", "Error occurred while clicking element " + selector + ": " + e.getMessage());
             return result;
         }
     }
@@ -50,12 +50,12 @@ public class BrowserInteraction {
             BrowserCore.verifyDataReady();
             BrowserCore.setOperationStatus(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("message", "成功悬停在元素上: " + selector + "，数据已准备就绪");
+            result.put("message", "Successfully hovered over element: " + selector + ", data is ready");
             return result;
         } catch (Exception e) {
             BrowserCore.setOperationStatus(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "悬停在元素 " + selector + " 上时发生错误: " + e.getMessage());
+            result.put("error", "Error occurred while hovering over element " + selector + ": " + e.getMessage());
             return result;
         }
     }
@@ -75,12 +75,12 @@ public class BrowserInteraction {
             BrowserCore.verifyDataReady();
             BrowserCore.setOperationStatus(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("message", "成功在元素 " + selector + " 中输入文本，数据已准备就绪");
+            result.put("message", "Successfully typed text in element " + selector + ", data is ready");
             return result;
         } catch (Exception e) {
             BrowserCore.setOperationStatus(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "在元素 " + selector + " 中输入文本时发生错误: " + e.getMessage());
+            result.put("error", "Error occurred while typing text in element " + selector + ": " + e.getMessage());
             return result;
         }
     }

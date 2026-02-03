@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 浏览器搜索功能
+ * Browser search functionality
  *
- * 提供网络搜索功能，支持Google、Bing和百度搜索引擎
+ * Provides web search functionality, supporting Google, Bing and Baidu search engines
  */
 public class BrowserSearch {
 
@@ -26,19 +26,19 @@ public class BrowserSearch {
             @ToolParam(description = "搜索操作的超时时间(秒)", defaultValue = "30") int timeout,
             @ToolParam(description = "是否提取页面主要内容，用于二次确认", defaultValue = "true") boolean extractPageContent) {
 
-        // 检查依赖
+        // Check dependencies
         List<String> missingDeps = BrowserCore.check_dependencies();
         if (!missingDeps.isEmpty()) {
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "缺少必要的库: " + String.join(", ", missingDeps) + "。请使用pip安装: pip install " + String.join(" ", missingDeps));
+            result.put("error", "Missing required libraries: " + String.join(", ", missingDeps) + ". Please install using maven: install " + String.join(" ", missingDeps));
             return result;
         }
 
-        // 限制结果数量在合理范围内
+        // Limit result count to reasonable range
         if (numResults < 1) numResults = 1;
         if (numResults > 10) numResults = 10;
 
-        // 初始化结果变量
+        // Initialize result variables
         List<Map<String, Object>> results = new ArrayList<>();
         boolean partialResults = false;
         String errorMessage = null;
@@ -46,41 +46,41 @@ public class BrowserSearch {
         BrowserCore._set_operation_status(true);
 
         try {
-            // 确保浏览器已启动
+            // Ensure browser is started
             Page page = BrowserCore._ensure_page();
 
-            // 编码搜索查询
+            // Encode search query
             String encodedQuery = URLEncoder.encode(query, "UTF-8");
 
-            // 根据选择的搜索引擎构建URL
+            // Build URL based on selected search engine
             Map<String, String> searchUrls = new LinkedHashMap<>();
             searchUrls.put("google", "https://www.google.com/search?q=" + encodedQuery);
             searchUrls.put("bing", "https://www.bing.com/search?q=" + encodedQuery);
             searchUrls.put("baidu", "https://www.baidu.com/s?wd=" + encodedQuery);
 
-            // 获取搜索URL
+            // Get search URL
             String searchUrl = searchUrls.getOrDefault(searchEngine.toLowerCase(), searchUrls.get("bing"));
 
-            // 使用超时机制导航到搜索页面
+            // Use timeout mechanism to navigate to search page
             try {
                 page.navigate(searchUrl, new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
                 Thread.sleep(2000);
             } catch (Exception e) {
             }
-            // 等待页面加载完成，但设置超时
+            // Wait for page to load completely, but set timeout
             try {
                 Thread.sleep(2000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
 
-            // 根据不同的搜索引擎提取搜索结果，使用超时机制
+            // Extract search results based on different search engines, using timeout mechanism
             String engine = searchEngine.toLowerCase();
             boolean extractionSuccess = false;
 
             try {
                 if ("google".equals(engine)) {
-                    // 提取Google搜索结果
+                    // Extract Google search results
                     String script = "(numResults) => { const searchResults = []; const resultElements = document.querySelectorAll('div[data-sokoban-container]'); for (let i = 0; i < resultElements.length && searchResults.length < numResults; i++) { const element = resultElements[i]; const titleElement = element.querySelector('h3'); if (!titleElement) continue; const linkElement = element.querySelector('a'); if (!linkElement) continue; const title = titleElement.innerText.trim(); const link = linkElement.href; let snippet = ''; const snippetElement = element.querySelector('div[style*=\"webkit-line-clamp\"]') || element.querySelector('div[data-content-feature=\"1\"]'); if (snippetElement) { snippet = snippetElement.innerText.trim(); } if (title && link) { searchResults.push({ title, link, snippet }); } } return searchResults; }";
                     Object evalResult = page.evaluate(script, numResults);
                     if (evalResult instanceof List) {
@@ -97,7 +97,7 @@ public class BrowserSearch {
                     }
                     extractionSuccess = true;
                 } else if ("bing".equals(engine)) {
-                    // 提取Bing搜索结果
+                    // Extract Bing search results
                     String script = "(numResults) => { const searchResults = []; const resultElements = document.querySelectorAll('#b_results > li.b_algo'); for (let i = 0; i < resultElements.length && searchResults.length < numResults; i++) { const element = resultElements[i]; const titleElement = element.querySelector('h2 a'); if (!titleElement) continue; const title = titleElement.innerText.trim(); const link = titleElement.href; let snippet = ''; const snippetElement = element.querySelector('.b_caption p'); if (snippetElement) { snippet = snippetElement.innerText.trim(); } if (title && link) { searchResults.push({ title, link, snippet }); } } return searchResults; }";
                     Object evalResult = page.evaluate(script, numResults);
                     if (evalResult instanceof List) {
@@ -114,7 +114,7 @@ public class BrowserSearch {
                     }
                     extractionSuccess = true;
                 } else if ("baidu".equals(engine)) {
-                    // 提取百度搜索结果
+                    // Extract Baidu search results
                     String script = "(numResults) => { const searchResults = []; const resultElements = document.querySelectorAll('.result'); for (let i = 0; i < resultElements.length && searchResults.length < numResults; i++) { const element = resultElements[i]; const titleElement = element.querySelector('h3 a'); if (!titleElement) continue; const title = titleElement.innerText.trim(); const link = titleElement.href; let snippet = ''; const snippetElement = element.querySelector('.c-abstract'); if (snippetElement) { snippet = snippetElement.innerText.trim(); } if (title && link) { searchResults.push({ title, link, snippet }); } } return searchResults; }";
                     Object evalResult = page.evaluate(script, numResults);
                     if (evalResult instanceof List) {
@@ -132,12 +132,12 @@ public class BrowserSearch {
                     extractionSuccess = true;
                 }
             } catch (Exception e) {
-                // 如果提取结果超时，记录错误并尝试使用通用提取方法
-                errorMessage = "提取搜索结果超时(>" + (timeout / 2) + "秒)，尝试使用通用提取方法";
+                // If result extraction times out, record error and try generic extraction method
+                errorMessage = "Result extraction timeout (>" + (timeout / 2) + " seconds), trying generic extraction method";
                 partialResults = true;
             }
 
-            // 如果没有找到结果或者提取超时，尝试通用提取方法
+            // If no results found or extraction timed out, try generic extraction method
             if (!extractionSuccess || results.isEmpty()) {
                 try {
                     String script = "(numResults) => { const searchResults = []; const allLinks = Array.from(document.querySelectorAll('a')); const resultLinks = allLinks.filter(link => { if (!link.href) return false; if (link.href.includes('search?') || link.href.includes('javascript:') || link.href.includes('#')) return false; if (!link.innerText.trim()) return false; if (link.innerText.trim().length < 15) return false; return true; }); for (let i = 0; i < resultLinks.length && searchResults.length < numResults; i++) { const link = resultLinks[i]; const title = link.innerText.trim(); const url = link.href; let snippet = ''; const parent = link.parentElement; if (parent) { const siblings = Array.from(parent.childNodes); for (const sibling of siblings) { if (sibling !== link && sibling.textContent) { const text = sibling.textContent.trim(); if (text.length > 20) { snippet = text; break; } } } } searchResults.push({ title, link: url, snippet }); } return searchResults; }";
@@ -156,60 +156,60 @@ public class BrowserSearch {
                     }
                 } catch (Exception e) {
                     if (errorMessage != null) {
-                        errorMessage += "，通用提取方法也超时";
+                        errorMessage += ", generic extraction method also timed out";
                     } else {
-                        errorMessage = "通用提取方法超时(>" + (timeout / 3) + "秒)";
+                        errorMessage = "Generic extraction method timed out (>" + (timeout / 3) + " seconds)";
                     }
                 }
             }
 
-            // 构建搜索结果摘要
+            // Build search result summary
             StringBuilder summary = new StringBuilder();
-            summary.append("搜索查询: \"").append(query).append("\"\n");
-            summary.append("搜索引擎: ").append(searchEngine).append("\n");
+            summary.append("Search query: \"").append(query).append("\"\n");
+            summary.append("Search engine: ").append(searchEngine).append("\n");
             if (errorMessage != null) {
-                summary.append("警告: ").append(errorMessage).append("\n");
+                summary.append("Warning: ").append(errorMessage).append("\n");
             }
             if (partialResults) {
-                summary.append("注意: 由于超时，可能只返回部分结果\n");
+                summary.append("Note: Due to timeout, may only return partial results\n");
             }
-            summary.append("找到 ").append(results.size()).append(" 个结果\n\n");
+            summary.append("Found ").append(results.size()).append(" results\n\n");
 
             for (int i = 0; i < results.size(); i++) {
                 Map<String, Object> result = results.get(i);
-                summary.append(i + 1).append(". ").append(result.getOrDefault("title", "无标题")).append("\n");
-                summary.append("   链接: ").append(result.getOrDefault("link", "无链接")).append("\n");
+                summary.append(i + 1).append(". ").append(result.getOrDefault("title", "No title")).append("\n");
+                summary.append("   Link: ").append(result.getOrDefault("link", "No link")).append("\n");
                 String snippet = (String) result.getOrDefault("snippet", "");
                 if (!snippet.isEmpty()) {
                     if (snippet.length() > 100) {
                         snippet = snippet.substring(0, 100) + "...";
                     }
-                    summary.append("   摘要: ").append(snippet).append("\n");
+                    summary.append("   Snippet: ").append(snippet).append("\n");
                 }
                 summary.append("\n");
             }
 
-            // 提取页面主要内容（如果需要）
+            // Extract main page content (if needed)
             Map<String, Object> pageContent = new LinkedHashMap<>();
             if (extractPageContent) {
                 try {
-                    // 获取页面标题
+                    // Get page title
                     pageContent.put("title", page.title());
 
-                    // 获取页面URL
+                    // Get page URL
                     pageContent.put("url", page.url());
 
-                    // 提取页面主要内容
+                    // Extract main page content
                     String pageText = page.evaluate("() => { const mainContent = document.querySelector('main') || document.querySelector('article') || document.querySelector('#content') || document.querySelector('.content') || document.body; return mainContent ? mainContent.innerText : document.body.innerText; }").toString();
 
-                    // 如果文本太长，截取前3000个字符
+                    // If text is too long, truncate to first 3000 characters
                     if (pageText.length() > 3000) {
-                        pageContent.put("content", pageText.substring(0, 3000) + "...(内容已截断)");
+                        pageContent.put("content", pageText.substring(0, 3000) + "...(content truncated)");
                     } else {
                         pageContent.put("content", pageText);
                     }
 
-                    // 提取页面元数据
+                    // Extract page metadata
                     try {
                         Map<String, Object> metaData = (Map<String, Object>) page.evaluate("() => { const metadata = {}; const metaTags = document.querySelectorAll('meta'); for (const meta of metaTags) { const name = meta.getAttribute('name') || meta.getAttribute('property'); const content = meta.getAttribute('content'); if (name && content) { metadata[name] = content; } } return metadata; }");
                         Map<String, Object> importantMeta = new LinkedHashMap<>();
@@ -225,7 +225,7 @@ public class BrowserSearch {
                     } catch (Exception e) {
                     }
                 } catch (Exception contentError) {
-                    pageContent.put("content_error", "提取页面内容时发生错误: " + contentError.getMessage());
+                    pageContent.put("content_error", "Error occurred while extracting page content: " + contentError.getMessage());
                 }
             }
 
@@ -248,27 +248,27 @@ public class BrowserSearch {
             BrowserCore._set_operation_status(false);
             return response;
         } catch (Exception e) {
-            // 捕获所有其他异常
-            String errorMsg = "执行网络搜索时发生错误: " + e.getMessage();
+            // Capture all other exceptions
+            String errorMsg = "Error occurred while performing web search: " + e.getMessage();
 
-            // 如果有部分结果，尝试返回
+            // If there are partial results, try to return them
             if (!results.isEmpty() && results.size() > 0) {
                 StringBuilder errorSummary = new StringBuilder();
-                errorSummary.append("搜索查询: \"").append(query).append("\"\n");
-                errorSummary.append("搜索引擎: ").append(searchEngine).append("\n");
-                errorSummary.append("警告: ").append(errorMsg).append("，返回部分结果\n");
-                errorSummary.append("找到 ").append(results.size()).append(" 个结果\n\n");
+                errorSummary.append("Search query: \"").append(query).append("\"\n");
+                errorSummary.append("Search engine: ").append(searchEngine).append("\n");
+                errorSummary.append("Warning: ").append(errorMsg).append(", returning partial results\n");
+                errorSummary.append("Found ").append(results.size()).append(" results\n\n");
 
                 for (int i = 0; i < results.size(); i++) {
                     Map<String, Object> result = results.get(i);
-                    errorSummary.append(i + 1).append(". ").append(result.getOrDefault("title", "无标题")).append("\n");
-                    errorSummary.append("   链接: ").append(result.getOrDefault("link", "无链接")).append("\n");
+                    errorSummary.append(i + 1).append(". ").append(result.getOrDefault("title", "No title")).append("\n");
+                    errorSummary.append("   Link: ").append(result.getOrDefault("link", "No link")).append("\n");
                     String snippet = (String) result.getOrDefault("snippet", "");
                     if (!snippet.isEmpty()) {
                         if (snippet.length() > 100) {
                             snippet = snippet.substring(0, 100) + "...";
                         }
-                        errorSummary.append("   摘要: ").append(snippet).append("\n");
+                        errorSummary.append("   Snippet: ").append(snippet).append("\n");
                     }
                     errorSummary.append("\n");
                 }
@@ -281,10 +281,10 @@ public class BrowserSearch {
                 errorResult.put("error", errorMsg);
                 errorResult.put("partial_results", true);
 
-                // 在异常处理中，我们不尝试提取页面内容，因为页面可能已经不可用
-                // 只添加一个说明，表明由于错误无法提取页面内容
+                // In exception handling, we don't try to extract page content, as the page may no longer be available
+                // Only add a note indicating that page content could not be extracted due to error
                 if (extractPageContent) {
-                    errorResult.put("content_error", "由于发生错误，无法提取页面内容");
+                    errorResult.put("content_error", "Unable to extract page content due to error");
                 }
 
                 BrowserCore._set_operation_status(false);

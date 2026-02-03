@@ -14,13 +14,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 浏览器自动登录功能
+ * Browser automatic login functionality
  * 
- * 提供自动检测和处理登录表单的功能
+ * Provides functionality to automatically detect and handle login forms
  */
 public class BrowserLogin {
 
-    // 域名登录配置字典，包含不同域名对应的选择器配置
+    // Domain login configuration dictionary, containing selector configurations for different domains
     private static final Map<String, Map<String, String>> LOGIN_DOMAIN_CONFIGS = new LinkedHashMap<>();
 
     static {
@@ -32,15 +32,15 @@ public class BrowserLogin {
     }
 
     /**
-     *  使用配置自动登录
+     *  Use configuration for automatic login
      *
-     *  参数:
-     *     - page: 页面对象
-     *     - domain: 域名，用于获取配置
-     *     - username: 用户名，如果为None则从环境变量获取
-     *     - password: 密码，如果为None则从环境变量获取
-     *     - env_username_key: 环境变量中用户名的键名
-     *     - env_password_key: 环境变量中密码的键名
+     *  Parameters:
+     *     - page: Page object
+     *     - domain: Domain name, used to get configuration
+     *     - username: Username, get from environment variable if None
+     *     - password: Password, get from environment variable if None
+     *     - env_username_key: Key name of username in environment variable
+     *     - env_password_key: Key name of password in environment variable
      */
     public static boolean autoLoginWithConfig(
             Page page,
@@ -50,7 +50,7 @@ public class BrowserLogin {
             String envUsernameKey,
             String envPasswordKey) {
         try {
-            // 如果未提供用户名或密码，则从环境变量获取
+            // If username or password is not provided, get from environment variables
             String loginUsername = username;
             String loginPassword = password;
 
@@ -62,85 +62,85 @@ public class BrowserLogin {
             }
 
             if (loginUsername == null || loginUsername.isEmpty() || loginPassword == null || loginPassword.isEmpty()) {
-                System.out.println("未提供用户名或密码，且未找到环境变量 " + envUsernameKey + " 或 " + envPasswordKey);
+                System.out.println("Username or password not provided, and environment variable " + envUsernameKey + " or " + envPasswordKey + " not found");
                 return false;
             }
 
-            // 获取域名配置
+            // Get domain configuration
             Map<String, String> domainConfig = null;
             if (domain != null && !domain.isEmpty() && LOGIN_DOMAIN_CONFIGS.containsKey(domain)) {
                 domainConfig = LOGIN_DOMAIN_CONFIGS.get(domain);
-                System.out.println("使用域名 " + domain + " 的特定配置");
+                System.out.println("Using specific configuration for domain " + domain);
 
-                // 使用特定配置
+                // Use specific configuration
                 try {
                     String usernameSelector = domainConfig.get("username_selector");
                     String passwordSelector = domainConfig.get("password_selector");
                     String submitSelector = domainConfig.get("submit_selector");
 
-                    // 查找用户名输入框
+                    // Find username input box
                     ElementHandle usernameElement = page.querySelector(usernameSelector);
                     if (usernameElement == null) {
-                        System.out.println("未找到用户名输入框: " + usernameSelector);
-                        // 如果找不到特定选择器，回退到通用模式
+                        System.out.println("Username input box not found: " + usernameSelector);
+                        // If specific selector is not found, fall back to generic mode
                     } else {
-                        // 清除并输入用户名
+                        // Clear and input username
                         Thread.sleep(1000);
                         usernameElement.fill("");
                         usernameElement.type(loginUsername);
 
-                        // 查找密码输入框
+                        // Find password input box
                         ElementHandle passwordElement = page.querySelector(passwordSelector);
                         if (passwordElement == null) {
-                            System.out.println("未找到密码输入框: " + passwordSelector);
-                            // 如果找不到特定选择器，回退到通用模式
+                            System.out.println("Password input box not found: " + passwordSelector);
+                            // If specific selector is not found, fall back to generic mode
                         } else {
-                            // 清除并输入密码
+                            // Clear and input password
                             Thread.sleep(1000);
                             passwordElement.fill("");
                             passwordElement.type(loginPassword);
 
-                            // 等待一下，确保输入完成
+                            // Wait a moment to ensure input is complete
                             Thread.sleep(1000);
 
-                            // 查找提交按钮
+                            // Find submit button
                             ElementHandle submitButton = page.querySelector(submitSelector);
                             if (submitButton == null) {
-                                System.out.println("未找到提交按钮: " + submitSelector);
-                                // 如果找不到特定选择器，回退到通用模式
+                                System.out.println("Submit button not found: " + submitSelector);
+                                // If specific selector is not found, fall back to generic mode
                             } else {
-                                // 点击提交按钮
+                                // Click submit button
                                 submitButton.click();
-                                // 等待登录完成
+                                // Wait for login to complete
                                 Thread.sleep(3000);
                                 return true;
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("使用特定配置登录失败: " + e.getMessage());
-                    // 如果使用特定配置失败，回退到通用模式
+                    System.out.println("Failed to login with specific configuration: " + e.getMessage());
+                    // If using specific configuration fails, fall back to generic mode
                 }
             }
 
-            // 尝试不同的登录表单模式
+            // Try different login form patterns
             List<Map<String, String>> loginPatterns = new ArrayList<>();
 
-            // 模式1: 标准登录表单
+            // Pattern 1: Standard login form
             Map<String, String> pattern1 = new LinkedHashMap<>();
             pattern1.put("username_selector", "input[name='username'], input[id='username'], #username, .username, [placeholder*='用户名'], [placeholder*='账号'], [placeholder*='邮箱']");
             pattern1.put("password_selector", "input[name='password'], input[type='password'], #password, .password, [placeholder*='密码']");
             pattern1.put("submit_selector", "#formsubmitButton, button[type='submit'], input[type='submit'], .login-btn, #login-btn");
             loginPatterns.add(pattern1);
 
-            // 模式2: 京东特定登录表单
+            // Pattern 2: JD specific login form
             Map<String, String> pattern2 = new LinkedHashMap<>();
             pattern2.put("username_selector", ".itxt[name='username'], .itxt[name='loginname'], .itxt[name='account']");
             pattern2.put("password_selector", ".itxt[name='password'], .itxt[type='password']");
             pattern2.put("submit_selector", "#formsubmitButton, .btn-login, .login-btn");
             loginPatterns.add(pattern2);
 
-            // 模式3: 通用邮箱登录表单
+            // Pattern 3: Generic email login form
             Map<String, String> pattern3 = new LinkedHashMap<>();
             pattern3.put("username_selector", "input[type='email'], input[name='email']");
             pattern3.put("password_selector", "input[type='password']");
@@ -149,68 +149,68 @@ public class BrowserLogin {
 
             for (Map<String, String> pattern : loginPatterns) {
                 try {
-                    // 尝试查找用户名输入框
+                    // Try to find username input box
                     ElementHandle usernameElement = page.querySelector(pattern.get("username_selector"));
                     if (usernameElement == null) {
-                        System.out.println("未找到用户名输入框: " + pattern.get("username_selector"));
+                        System.out.println("Username input box not found: " + pattern.get("username_selector"));
                         continue;
                     }
 
-                    // 清除并输入用户名
+                    // Clear and input username
                     usernameElement.fill("");
                     usernameElement.type(loginUsername);
 
-                    // 尝试查找密码输入框
+                    // Try to find password input box
                     ElementHandle passwordElement = page.querySelector(pattern.get("password_selector"));
                     if (passwordElement == null) {
-                        System.out.println("未找到密码输入框: " + pattern.get("password_selector"));
+                        System.out.println("Password input box not found: " + pattern.get("password_selector"));
                         continue;
                     }
 
-                    // 清除并输入密码
+                    // Clear and input password
                     passwordElement.fill("");
                     passwordElement.type(loginPassword);
 
-                    // 等待一下，确保输入完成
+                    // Wait a moment to ensure input is complete
                     Thread.sleep(1000);
 
-                    // 尝试查找提交按钮
+                    // Try to find submit button
                     ElementHandle submitButton = page.querySelector(pattern.get("submit_selector"));
                     if (submitButton == null) {
-                        System.out.println("未找到提交按钮: " + pattern.get("submit_selector"));
+                        System.out.println("Submit button not found: " + pattern.get("submit_selector"));
                         continue;
                     }
 
                     submitButton.click();
-                    // 等待登录完成
+                    // Wait for login to complete
                     Thread.sleep(3000);
                     return true;
                 } catch (Exception e) {
-                    System.out.println("尝试登录模式失败: " + e.getMessage());
+                    System.out.println("Failed to try login pattern: " + e.getMessage());
                     continue;
                 }
             }
 
             return false;
         } catch (Exception e) {
-            System.out.println("自动登录失败: " + e.getMessage());
+            System.out.println("Automatic login failed: " + e.getMessage());
             return false;
         }
     }
 
     /**
-     * 自动登录京东（兼容旧版本，调用_auto_login_with_config）
+     * Automatic login to JD (compatible with old version, calls _auto_login_with_config)
      */
     public static boolean autoLoginJd(Page page){
         String domainFromUrl = BrowserUtils.getDomainFromUrl(page.url());
         return autoLoginWithConfig(page,domainFromUrl,null,null,"JD_ERP_USERNAME","JD_ERP_PASSWORD");
     }
     /**
-     * 检测页面是否需要二次认证（如扫码验证）
+     * Detect if page requires two-factor authentication (such as QR code verification)
      */
     public static boolean detect2faRequired(Page page) {
         try {
-            // 检查页面是否包含二次认证相关元素
+            // Check if page contains 2FA related elements
             String[] qrSelectors = {
                 "img[src*='qrcode']",
                 ".qrcode",
@@ -222,15 +222,15 @@ public class BrowserLogin {
                 "img[alt*='二维码']"
             };
 
-            // 检查是否存在二维码元素
+            // Check if QR code elements exist
             for (String selector : qrSelectors) {
                 if (page.querySelector(selector) != null) {
-                    System.out.println("检测到可能的二维码元素: " + selector);
+                    System.out.println("Detected possible QR code element: " + selector);
                     return true;
                 }
             }
 
-            // 检查页面文本中是否包含二次认证相关词语
+            // Check if page text contains 2FA related words
             String content = page.content().toLowerCase();
             String[] authKeywords = {
                 "扫码登录", "扫码验证", "二次验证", "两步验证", "双重认证",
@@ -240,119 +240,119 @@ public class BrowserLogin {
 
             for (String keyword : authKeywords) {
                 if (content.contains(keyword.toLowerCase())) {
-                    System.out.println("页面内容包含二次认证关键词: " + keyword);
+                    System.out.println("Page content contains 2FA keyword: " + keyword);
                     return true;
                 }
             }
 
             return false;
         } catch (Exception e) {
-            System.out.println("检查二次认证页面时发生错误: " + e.getMessage());
+            System.out.println("Error occurred while checking 2FA page: " + e.getMessage());
             return false;
         }
     }
 
     /**
-     * 保存登录页面截图到缓存目录
+     * Save login page screenshot to cache directory
      */
     public static String saveLoginScreenshot(Page page, String prefix) {
         try {
-            // 创建保存截图的目录
+            // Create directory to save screenshots
             String cacheDir = System.getProperty("user.dir") + File.separator + "cache_dir";
             Files.createDirectories(Paths.get(cacheDir));
 
-            // 创建登录截图子目录
+            // Create login screenshot subdirectory
             String loginDir = cacheDir + File.separator + "login_screenshots";
             Files.createDirectories(Paths.get(loginDir));
 
-            // 生成唯一的文件名
+            // Generate unique filename
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String uniqueId = UUID.randomUUID().toString().substring(0, 8);
             String filename = prefix + "_" + timestamp + "_" + uniqueId + ".png";
 
-            // 完整的保存路径
+            // Complete save path
             String savePath = loginDir + File.separator + filename;
 
-            // 截取截图
+            // Take screenshot
             byte[] screenshotBytes = page.screenshot(new Page.ScreenshotOptions().setFullPage(false));
 
-            // 保存截图到文件
+            // Save screenshot to file
             try (FileOutputStream fos = new FileOutputStream(savePath)) {
                 fos.write(screenshotBytes);
             }
 
-            System.out.println("登录页面截图已保存到: " + savePath);
+            System.out.println("Login page screenshot saved to: " + savePath);
             return savePath;
         } catch (Exception e) {
-            System.out.println("保存登录页面截图时发生错误: " + e.getMessage());
+            System.out.println("Error occurred while saving login page screenshot: " + e.getMessage());
             return null;
         }
     }
 
     /**
-     * 处理二次认证，截屏并等待用户完成认证
-     *     自动填充账号密码并登录，支持自动检测登录表单或使用指定的选择器
+     * Handle two-factor authentication, take screenshot and wait for user to complete authentication
+     *     Automatically fill in account and password and login, supports automatic detection of login forms or using specified selectors
      *
-     *     如果未提供用户名和密码，将从环境变量中获取
-     *     如果未提供选择器，将尝试自动检测登录表单元素
+     *     If username and password are not provided, they will be obtained from environment variables
+     *     If selectors are not provided, it will try to automatically detect login form elements
      */
     public static Map<String, Object> handle2faAuthentication(Page page, boolean waitFor2fa) {
         try {
-            System.out.println("检测到需要二次认证，准备截屏...");
+            System.out.println("Detected need for 2FA, preparing to take screenshot...");
 
-            // 创建保存截图的目录
+            // Create directory to save screenshots
             String cacheDir = System.getProperty("user.dir") + File.separator + "cache_dir";
             Files.createDirectories(Paths.get(cacheDir));
 
-            // 创建二次认证截图子目录
+            // Create 2FA screenshot subdirectory
             String authDir = cacheDir + File.separator + "2fa_auth";
             Files.createDirectories(Paths.get(authDir));
 
-            // 生成唯一的文件名
+            // Generate unique filename
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String uniqueId = UUID.randomUUID().toString().substring(0, 8);
             String filename = "2fa_auth_" + timestamp + "_" + uniqueId + ".png";
 
-            // 完整的保存路径
+            // Complete save path
             String savePath = authDir + File.separator + filename;
 
-            // 截取截图
+            // Take screenshot
             byte[] screenshotBytes = page.screenshot(new Page.ScreenshotOptions().setFullPage(false));
 
-            // 保存截图到文件
+            // Save screenshot to file
             try (FileOutputStream fos = new FileOutputStream(savePath)) {
                 fos.write(screenshotBytes);
             }
 
-            System.out.println("二次认证截图已保存到: " + savePath);
+            System.out.println("2FA screenshot saved to: " + savePath);
 
             Map<String, Object> result = new LinkedHashMap<>();
 
             if (waitFor2fa) {
-                System.out.println("等待用户完成二次认证...");
-                System.out.println("请查看截图 " + savePath + " 并完成扫码认证");
+                System.out.println("Waiting for user to complete 2FA...");
+                System.out.println("Please view screenshot " + savePath + " and complete scan code authentication");
 
-                // 等待一段时间，给用户足够的时间查看截图
+                // Wait for a period of time to give users enough time to view the screenshot
                 Thread.sleep(5000);
 
-                // 返回结果，包含截图路径和状态信息
+                // Return result, including screenshot path and status information
                 result.put("status", "pending_2fa");
-                result.put("message", "需要二次认证，已保存截图");
+                result.put("message", "2FA required, screenshot saved");
                 result.put("screenshot_path", savePath);
-                result.put("action_required", "请查看截图并完成二次认证，然后继续操作");
+                result.put("action_required", "Please view screenshot and complete 2FA, then continue operation");
             } else {
-                // 如果不等待二次认证，直接返回结果
+                // If not waiting for 2FA, return result directly
                 result.put("status", "success");
-                result.put("message", "已处理二次认证请求，但不等待完成");
+                result.put("message", "2FA request handled, but not waiting for completion");
                 result.put("screenshot_path", savePath);
             }
 
             return result;
         } catch (Exception e) {
-            System.out.println("处理二次认证时发生错误: " + e.getMessage());
+            System.out.println("Error occurred while handling 2FA: " + e.getMessage());
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("status", "error");
-            result.put("message", "处理二次认证时发生错误: " + e.getMessage());
+            result.put("message", "Error occurred while handling 2FA: " + e.getMessage());
             result.put("error", e.getMessage());
             return result;
         }
@@ -371,20 +371,20 @@ public class BrowserLogin {
         try {
             Page page = BrowserCore.ensurePage();
 
-            // 导航到登录页面
+            // Navigate to login page
             if (url != null && !url.isEmpty()) {
                 page.navigate(url);
-                Thread.sleep(2000); // 增加等待时间，确保页面完全加载和渲染
+                Thread.sleep(2000); // Increase wait time to ensure page fully loads and renders
             }
 
-            // 保存登录页面截图，无论是否需要二次认证
+            // Save login page screenshot, regardless of whether second factor authentication is needed
             String loginScreenshotPath = saveLoginScreenshot(page, "login_page");
 
-            // 获取登录凭据
+            // Get login credentials
             String loginUsername = username;
             String loginPassword = password;
 
-            // 去除用户名和密码的前后空格
+            // Remove leading and trailing spaces from username and password
             if (loginUsername != null && !loginUsername.isEmpty() && !"#username".equals(loginUsername)) {
                 loginUsername = loginUsername.trim();
             }
@@ -392,7 +392,7 @@ public class BrowserLogin {
                 loginPassword = loginPassword.trim();
             }
 
-            // 如果未提供用户名或密码，则从环境变量获取
+            // If username or password not provided, get from environment variables
             if (loginUsername == null || loginUsername.isEmpty()) {
                 loginUsername = System.getenv("JD_ERP_USERNAME");
             }
@@ -404,84 +404,86 @@ public class BrowserLogin {
                 BrowserCore.setOperationStatus(false);
                 Map<String, Object> result = new LinkedHashMap<>();
                 result.put("status", "error");
-                result.put("message", "未提供用户名或密码，且未找到环境变量 JD_ERP_USERNAME 或 JD_ERP_PASSWORD");
+
+                result.put("message", "Username or password not provided, and environment variable JD_ERP_USERNAME or JD_ERP_PASSWORD not found");
                 result.put("login_screenshot_path", loginScreenshotPath);
                 return result;
             }
 
-            // 获取当前页面的域名
+            // Get current page domain
             String currentDomain = BrowserUtils.getDomainFromUrl(page.url());
 
-            // 检查是否有该域名的特定配置
+            // Check if there's specific configuration for this domain
             Map<String, String> domainConfig = LOGIN_DOMAIN_CONFIGS.get(currentDomain);
 
-            // 初始化通用模式标志
+            // Initialize generic mode flag
             boolean useGenericMode = domainConfig == null;
 
-            // 如果有该域名的特定配置，使用特定的选择器
+            // If there's specific configuration for this domain, use specific selectors
             if (domainConfig != null) {
-                System.out.println("检测到" + currentDomain + "域名，使用特定选择器");
-                // 使用特定的选择器
+
+                System.out.println("Detected domain " + currentDomain + ", using specific selectors");
+                // Use specific selectors
                 String usernameSelector = domainConfig.get("username_selector");
                 String passwordSelector = domainConfig.get("password_selector");
                 String submitSelector = domainConfig.get("submit_selector");
 
                 try {
-                    // 查找用户名输入框
+                    // Find username input field
                     ElementHandle usernameElement = page.querySelector(usernameSelector);
                     if (usernameElement == null) {
-                        System.out.println("未找到用户名输入框: " + usernameSelector);
-                        // 如果找不到特定选择器，回退到通用模式
+                        System.out.println("Username input box not found: " + usernameSelector);
+                        // Fall back to generic mode if specific selector not found
                         useGenericMode = true;
                     } else {
-                        // 清除并输入用户名
+                        // Clear and input username
                         Thread.sleep(1000);
                         usernameElement.fill("");
                         Thread.sleep(1000);
                         usernameElement.type(loginUsername);
 
-                        // 查找密码输入框
+                        // Find password input field
                         ElementHandle passwordElement = page.querySelector(passwordSelector);
                         if (passwordElement == null) {
-                            System.out.println("未找到密码输入框: " + passwordSelector);
-                            // 如果找不到特定选择器，回退到通用模式
+                            System.out.println("Password input box not found: " + passwordSelector);
+                            // Fall back to generic mode if specific selector not found
                             useGenericMode = true;
                         } else {
-                            // 清除并输入密码
+                            // Clear and input password
                             Thread.sleep(1000);
                             passwordElement.fill("");
                             Thread.sleep(1000);
                             passwordElement.type(loginPassword);
 
-                            // 等待一下，确保输入完成
+                            // Wait a moment to ensure input is complete
                             Thread.sleep(1000);
 
-                            // 查找提交按钮
+                            // Find submit button
                             ElementHandle submitButton = page.querySelector(submitSelector);
                             if (submitButton == null) {
-                                System.out.println("未找到提交按钮: " + submitSelector);
-                                // 如果找不到特定选择器，回退到通用模式
+                                System.out.println("Submit button not found: " + submitSelector);
+                                // Fall back to generic mode if specific selector not found
                                 useGenericMode = true;
                             } else {
-                                // 点击提交按钮
+                                // Click submit button
                                 submitButton.click();
-                                // 等待登录完成
+                                // Wait for login to complete
                                 Thread.sleep(waitAfterLogin * 1000);
 
-                                // 检查是否需要二次认证
+                                // Check if second factor authentication is required
                                 boolean needs2fa = detect2faRequired(page);
                                 if (needs2fa) {
-                                    System.out.println("检测到需要二次认证");
-                                    // 处理二次认证
+                                    System.out.println("Detected need for secondary authentication");
+                                    // Handle second factor authentication
                                     Map<String, Object> authResult = handle2faAuthentication(page, waitFor2fa);
 
                                     BrowserCore.verifyDataReady();
                                     BrowserCore.setOperationStatus(false);
 
-                                    // 获取二次认证状态
+                                    // Get second factor authentication status
                                     String authStatus = (String) authResult.get("status");
 
-                                    // 构建返回结果
+                                    // Build return result
                                     Map<String, Object> result = new LinkedHashMap<>();
                                     result.put("url", page.url());
                                     result.put("title", page.title());
@@ -492,14 +494,16 @@ public class BrowserLogin {
                                     result.put("screenshot_path", authResult.get("screenshot_path"));
                                     result.put("login_screenshot_path", loginScreenshotPath);
 
-                                    // 根据二次认证状态设置不同的返回信息
+                                    // Set different return messages based on second factor authentication status
                                     if ("pending_2fa".equals(authStatus)) {
                                         result.put("status", "pending_2fa");
-                                        result.put("message", "登录成功，但需要完成二次认证");
+
+                                        result.put("message", "Login successful, but secondary authentication is required");
                                         result.put("action_required", authResult.get("action_required"));
                                     } else if ("success".equals(authStatus)) {
                                         result.put("status", "success");
-                                        result.put("message", "登录成功，并已处理二次认证");
+
+                                        result.put("message", "Login successful and two-factor authentication has been processed");
                                     } else {
                                         result.put("status", authStatus);
                                         result.put("message", authResult.get("message"));
@@ -512,7 +516,7 @@ public class BrowserLogin {
 
                                     Map<String, Object> result = new LinkedHashMap<>();
                                     result.put("status", "success");
-                                    result.put("message", "使用特定选择器登录成功");
+                                    result.put("message", "Login successful using specific selectors");
                                     result.put("url", page.url());
                                     result.put("title", page.title());
                                     result.put("domain", currentDomain);
@@ -524,34 +528,36 @@ public class BrowserLogin {
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("使用特定选择器登录失败: " + e.getMessage());
-                    // 如果使用特定选择器失败，回退到通用模式
+
+                    System.out.println("Failed to login using specific selectors: " + e.getMessage());
+                    // Fall back to generic mode if using specific selectors fails
                     useGenericMode = true;
                 }
             }
 
-            // 只有在需要使用通用模式时才执行下面的代码
+            // Only execute the following code when generic mode is needed
             if (useGenericMode) {
-                System.out.println("使用通用模式尝试登录...");
-                // 使用自动检测登录表单的方式
-                // 尝试不同的登录表单模式
+
+                System.out.println("Attempting login with generic mode...");
+                // Use automatic login form detection method
+                // Try different login form patterns
                 List<Map<String, String>> loginPatterns = new ArrayList<>();
 
-                // 模式1: 标准登录表单
+                // Pattern 1: Standard login form
                 Map<String, String> pattern1 = new LinkedHashMap<>();
                 pattern1.put("username_selector", "input[name='username'], input[id='username'], #username, .username, [placeholder*='用户名'], [placeholder*='账号'], [placeholder*='邮箱']");
                 pattern1.put("password_selector", "input[name='password'], input[type='password'], #password, .password, [placeholder*='密码']");
                 pattern1.put("submit_selector", "#formsubmitButton, button[type='submit'], input[type='submit'], .login-btn, #login-btn");
                 loginPatterns.add(pattern1);
 
-                // 模式2: 京东特定登录表单
+                // Pattern 2: JD-specific login form
                 Map<String, String> pattern2 = new LinkedHashMap<>();
                 pattern2.put("username_selector", ".itxt[name='username'], .itxt[name='loginname'], .itxt[name='account']");
                 pattern2.put("password_selector", ".itxt[name='password'], .itxt[type='password']");
                 pattern2.put("submit_selector", "#formsubmitButton, .btn-login, .login-btn");
                 loginPatterns.add(pattern2);
 
-                // 模式3: 通用邮箱登录表单
+                // Pattern 3: Generic email login form
                 Map<String, String> pattern3 = new LinkedHashMap<>();
                 pattern3.put("username_selector", "input[type='email'], input[name='email']");
                 pattern3.put("password_selector", "input[type='password']");
@@ -561,60 +567,63 @@ public class BrowserLogin {
                 for (int i = 0; i < loginPatterns.size(); i++) {
                     Map<String, String> pattern = loginPatterns.get(i);
                     try {
-                        // 打印当前尝试的模式
-                        System.out.println("尝试登录模式: " + (i + 1));
+                        // Print current pattern being tried
 
-                        // 尝试查找用户名输入框
+                        System.out.println("Trying login pattern: " + (i + 1));
+
+                        // Try to find username input field
                         ElementHandle usernameElement = page.querySelector(pattern.get("username_selector"));
                         if (usernameElement == null) {
-                            System.out.println("未找到用户名输入框: " + pattern.get("username_selector"));
+                            System.out.println("Username input box not found: " + pattern.get("username_selector"));
                             continue;
                         }
 
-                        // 清除并输入用户名
+                        // Clear and input username
                         usernameElement.fill("");
                         usernameElement.type(loginUsername);
 
-                        // 尝试查找密码输入框
+                        // Try to find password input field
                         ElementHandle passwordElement = page.querySelector(pattern.get("password_selector"));
                         if (passwordElement == null) {
-                            System.out.println("未找到密码输入框: " + pattern.get("password_selector"));
+                            System.out.println("Password input box not found: " + pattern.get("password_selector"));
                             continue;
                         }
 
-                        // 清除并输入密码
+                        // Clear and input password
                         passwordElement.fill("");
                         passwordElement.type(loginPassword);
 
-                        // 等待一下，确保输入完成
+                        // Wait a moment to ensure input is complete
                         Thread.sleep(1000);
 
-                        // 尝试查找提交按钮
+                        // Try to find submit button
                         ElementHandle submitButton = page.querySelector(pattern.get("submit_selector"));
                         if (submitButton == null) {
-                            System.out.println("未找到提交按钮: " + pattern.get("submit_selector"));
+
+                            System.out.println("Submit button not found: " + pattern.get("submit_selector"));
                             continue;
                         }
 
-                        System.out.println("找到完整的登录表单，尝试登录...");
+
+                        System.out.println("Found complete login form, attempting to log in...");
                         submitButton.click();
-                        // 等待登录完成
+                        // Wait for login to complete
                         Thread.sleep(waitAfterLogin * 1000);
 
-                        // 检查是否需要二次认证
+                        // Check if second factor authentication is required
                         boolean needs2fa = detect2faRequired(page);
                         if (needs2fa) {
-                            System.out.println("检测到需要二次认证");
-                            // 处理二次认证
+                            System.out.println("Detected need for secondary authentication");
+                            // Handle second factor authentication
                             Map<String, Object> authResult = handle2faAuthentication(page, waitFor2fa);
 
                             BrowserCore.verifyDataReady();
                             BrowserCore.setOperationStatus(false);
 
-                            // 获取二次认证状态
+                            // Get second factor authentication status
                             String authStatus = (String) authResult.get("status");
 
-                            // 构建返回结果
+                            // Build return result
                             Map<String, Object> result = new LinkedHashMap<>();
                             result.put("url", page.url());
                             result.put("title", page.title());
@@ -624,14 +633,14 @@ public class BrowserLogin {
                             result.put("screenshot_path", authResult.get("screenshot_path"));
                             result.put("login_screenshot_path", loginScreenshotPath);
 
-                            // 根据二次认证状态设置不同的返回信息
+                            // Set different return messages based on second factor authentication status
                             if ("pending_2fa".equals(authStatus)) {
                                 result.put("status", "pending_2fa");
-                                result.put("message", "登录成功，但需要完成二次认证");
+                                result.put("message", "Login successful, but secondary authentication is required");
                                 result.put("action_required", authResult.get("action_required"));
                             } else if ("success".equals(authStatus)) {
                                 result.put("status", "success");
-                                result.put("message", "登录成功，并已处理二次认证");
+                                result.put("message", "Login successful and two-factor authentication has been processed");
                             } else {
                                 result.put("status", authStatus);
                                 result.put("message", authResult.get("message"));
@@ -652,23 +661,26 @@ public class BrowserLogin {
                             return result;
                         }
                     } catch (Exception e) {
-                        System.out.println("尝试登录模式失败: " + e.getMessage());
+
+                        System.out.println("Failed to try login pattern: " + e.getMessage());
                         continue;
                     }
                 }
             }
 
-            // 如果执行了通用模式但所有模式都失败，或者没有执行通用模式（特定域名配置失败）
+            // If generic mode was executed but all patterns failed, or if generic mode wasn't executed (specific domain config failed)
             BrowserCore.setOperationStatus(false);
 
-            // 获取页面HTML结构，帮助调试
+            // Get page HTML structure to help with debugging
             int formsCount = page.querySelectorAll("form").size();
             int inputsCount = page.querySelectorAll("input").size();
             String pageContent = page.content();
 
-            String errorMessage = "无法自动检测登录表单，请提供具体的选择器";
+
+            String errorMessage = "Unable to automatically detect login form, please provide specific selectors";
             if (!useGenericMode) {
-                errorMessage = "特定域名配置处理失败，且未启用通用模式";
+
+                errorMessage = "Specific domain configuration processing failed, and generic mode was not enabled";
             }
 
             Map<String, Object> debugInfo = new LinkedHashMap<>();
@@ -689,7 +701,8 @@ public class BrowserLogin {
             BrowserCore.setOperationStatus(false);
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("status", "error");
-            result.put("message", "自动登录时发生错误: " + e.getMessage());
+
+            result.put("message", "An error occurred during automatic login: " + e.getMessage());
             return result;
         }
     }

@@ -8,13 +8,13 @@ import com.microsoft.playwright.options.WaitUntilState;
 import java.util.*;
 
 /**
- * 浏览器导航功能
+ * Browser navigation functionality
  *
- * 提供页面导航、前进和后退等功能
+ * Provides functionality for page navigation, forward and backward navigation
  */
 public class BrowserNavigation {
 
-    // 域名登录配置字典，包含不同域名对应的选择器配置
+    // Domain login configuration dictionary, containing selector configurations for different domains
     private static final Map<String, Map<String, String>> LOGIN_DOMAIN_CONFIGS = new LinkedHashMap<>();
 
     static {
@@ -31,11 +31,11 @@ public class BrowserNavigation {
             @ToolParam(description = "等待页面加载的条件，可选值: load, domcontentloaded, networkidle", defaultValue = "load") String waitUntil,
             @ToolParam(description = "是否提取页面内容", defaultValue = "true") boolean extractContent) {
 
-        // 检查依赖
+        // Check dependencies
         List<String> missingDeps = BrowserCore.check_dependencies();
         if (!missingDeps.isEmpty()) {
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "缺少必要的库: " + String.join(", ", missingDeps) + "。请使用pip安装: pip install " + String.join(" ", missingDeps));
+            result.put("error", "Missing required libraries: " + String.join(", ", missingDeps) + ". Please install using maven: install " + String.join(" ", missingDeps));
             return result;
         }
 
@@ -44,22 +44,22 @@ public class BrowserNavigation {
         try {
             Page page = BrowserCore._ensure_page();
 
-            // 验证wait_until参数
+            // Validate wait_until parameter
             String[] validWaitOptions = {"load", "domcontentloaded", "networkidle"};
             if (!Arrays.asList(validWaitOptions).contains(waitUntil.toLowerCase())) {
                 waitUntil = "load";
             }
 
-            // 保存原始请求的URL
+            // Save original requested URL
             String originalRequestUrl = url;
 
-            // 导航到URL
+            // Navigate to URL
             Response response = page.navigate(url, new Page.NavigateOptions().setWaitUntil(WaitUntilState.valueOf(waitUntil.toUpperCase())));
 
-            // 等待页面稳定
+            // Wait for page to stabilize
             Thread.sleep(1000);
 
-            // 获取页面ID
+            // Get page ID
             String pageId = null;
             for (Map.Entry<String, Page> entry : BrowserCore.get_pages().entrySet()) {
                 if (entry.getValue() == page) {
@@ -68,171 +68,171 @@ public class BrowserNavigation {
                 }
             }
 
-            // 检测是否发生了重定向
+            // Detect if redirect occurred
             String currentUrl = page.url();
             if (!currentUrl.equals(originalRequestUrl)) {
-                System.out.println("检测到页面重定向: " + originalRequestUrl + " -> " + currentUrl);
+                System.out.println("Detected page redirect: " + originalRequestUrl + " -> " + currentUrl);
 
-                // 判断重定向后的页面是否是登录页面
+                // Determine if redirected page is a login page
                 boolean isLoginPage = BrowserCore._check_login_required(page);
                 if (isLoginPage) {
-                    System.out.println("重定向后的页面是登录页面");
+                    System.out.println("Redirected page is a login page");
                     if (pageId != null) {
                         BrowserCore.set_original_url(pageId, originalRequestUrl);
-                        System.out.println("保存原始请求URL: " + originalRequestUrl);
+                        System.out.println("Saved original requested URL: " + originalRequestUrl);
                     }
                 }
             } else {
-                // 如果没有重定向，也保存原始URL
+                // If no redirect, also save original URL
                 if (pageId != null) {
                     BrowserCore.set_original_url(pageId, url);
                 }
             }
 
-            // 获取当前页面的域名
+            // Get current page domain
             String currentDomain = BrowserUtils.getDomainFromUrl(currentUrl);
 
-            // 检查页面是否需要登录（不再限制只检查配置的域名）
+            // Check if page requires login (no longer limited to only checking configured domains)
             if (pageId != null && !BrowserCore.get_login_in_progress().getOrDefault(pageId, false)) {
-                // 再次检查当前页面是否是登录页面（可能在重定向检测时已经检查过，但为了确保，这里再检查一次）
+                // Check again if current page is a login page (may have been checked during redirect detection, but check again here to be sure)
                 if (BrowserCore._check_login_required(page)) {
-                    System.out.println("检测到需要登录");
+                    System.out.println("Detected need for login");
                     BrowserCore.set_login_in_progress(pageId, true);
 
                     try {
-                        // 优先使用域名特定配置进行登录
+                        // Prioritize using domain-specific configuration for login
                         boolean loginSuccess = false;
                         if (LOGIN_DOMAIN_CONFIGS.containsKey(currentDomain)) {
-                            System.out.println("使用域名 " + currentDomain + " 的特定配置进行登录");
+                            System.out.println("Using specific configuration for domain " + currentDomain + " for login");
                             loginSuccess = BrowserLogin.autoLoginJd(page);
                         } else {
-                            // 尝试通用登录方法
-                            System.out.println("使用通用登录方法");
+                            // Try generic login method
+                            System.out.println("Using generic login method");
                             loginSuccess = BrowserLogin.autoLoginWithConfig(page,null,null,null,"JD_ERP_USERNAME","JD_ERP_PASSWORD");
                         }
 
                         if (loginSuccess) {
-                            System.out.println("自动登录成功");
+                            System.out.println("Automatic login successful");
                             Thread.sleep(2000);
 
-                            // 检查是否需要二次认证
+                            // Check if 2FA is required
                             boolean needs2fa = BrowserLogin.detect2faRequired(page);
                             if (needs2fa) {
-                                System.out.println("检测到需要二次认证");
-                                // 处理二次认证
+                                System.out.println("Detected need for 2FA");
+                                // Handle 2FA
                                 Map<String, Object> authResult = BrowserLogin.handle2faAuthentication(page, true);
-                                System.out.println("二次认证处理结果: " + authResult);
+                                System.out.println("2FA handling result: " + authResult);
                             }
 
-                            // 检查登录后页面是否自动重定向到了其他页面
+                            // Check if page automatically redirected to another page after login
                             String loginRedirectUrl = page.url();
                             if (!loginRedirectUrl.equals(currentUrl)) {
-                                System.out.println("登录后页面自动重定向到: " + loginRedirectUrl);
+                                System.out.println("Page automatically redirected to: " + loginRedirectUrl);
                             }
 
-                            // 如果有原始URL，则重新导航到该URL
+                            // If there is an original URL, re-navigate to that URL
                             if (BrowserCore.get_original_urls().containsKey(pageId) &&
                                     !BrowserCore.get_original_urls().get(pageId).equals(page.url())) {
                                 String originalUrl = BrowserCore.get_original_urls().get(pageId);
-                                System.out.println("重新导航到原始URL: " + originalUrl);
+                                System.out.println("Re-navigating to original URL: " + originalUrl);
                                 try {
                                     page.navigate(originalUrl, new Page.NavigateOptions().setWaitUntil(WaitUntilState.LOAD));
                                     Thread.sleep(2000);
 
-                                    // 检查导航后的URL，可能会有进一步的重定向
+                                    // Check URL after navigation, there may be further redirects
                                     String finalUrl = page.url();
                                     if (!finalUrl.equals(originalUrl)) {
-                                        System.out.println("导航到原始URL后被重定向到: " + finalUrl);
+                                        System.out.println("Redirected to: " + finalUrl + " after navigating to original URL");
                                     }
 
-                                    // 验证是否成功导航（即使有重定向也可能是成功的）
+                                    // Verify if navigation was successful (even with redirects it may be successful)
                                     if (finalUrl.equals(originalUrl) ||
                                             finalUrl.startsWith(originalUrl) ||
                                             !BrowserCore._check_login_required(page)) {
-                                        System.out.println("成功访问目标页面: " + finalUrl);
-                                        // 清除原始URL
+                                        System.out.println("Successfully accessed target page: " + finalUrl);
+                                        // Clear original URL
                                         BrowserCore.remove_original_url(pageId);
                                     } else {
-                                        System.out.println("导航到原始URL后页面仍然需要登录，可能需要不同的登录方式");
+                                        System.out.println("Page still requires login after navigating to original URL, may need different login method");
 
-                                        // 检查重定向后的页面是否仍然需要登录
+                                        // Check if redirected page still requires login
                                         if (BrowserCore._check_login_required(page)) {
-                                            System.out.println("尝试对重定向后的页面进行登录...");
+                                            System.out.println("Trying to login to redirected page...");
                                             String redirectDomain = BrowserUtils.getDomainFromUrl(finalUrl);
                                             boolean secondLoginSuccess = false;
 
                                             if (LOGIN_DOMAIN_CONFIGS.containsKey(redirectDomain)) {
-                                                System.out.println("使用域名 " + redirectDomain + " 的特定配置进行登录");
+                                                System.out.println("Using specific configuration for domain " + redirectDomain + " for login");
                                                 secondLoginSuccess = BrowserLogin.autoLoginJd(page);
                                             } else {
-                                                System.out.println("使用通用登录方法");
+                                                System.out.println("Using generic login method");
                                                 secondLoginSuccess = BrowserLogin.autoLoginWithConfig(page,null,null,null,"JD_ERP_USERNAME","JD_ERP_PASSWORD");
                                             }
 
                                             if (secondLoginSuccess) {
-                                                System.out.println("重定向页面登录成功");
-                                                // 清除原始URL，因为已经成功登录
+                                                System.out.println("Redirected page login successful");
+                                                // Clear original URL, since login was successful
                                                 if (BrowserCore.get_original_urls().containsKey(pageId)) {
                                                     BrowserCore.remove_original_url(pageId);
                                                 }
                                             } else {
-                                                System.out.println("重定向页面登录失败");
+                                                System.out.println("Redirected page login failed");
                                             }
                                         } else {
-                                            System.out.println("重定向后的页面不需要登录，继续访问");
-                                            // 清除原始URL，因为已经成功访问
+                                            System.out.println("Redirected page does not require login, continue access");
+                                            // Clear original URL, since access was successful
                                             if (BrowserCore.get_original_urls().containsKey(pageId)) {
                                                 BrowserCore.remove_original_url(pageId);
                                             }
                                         }
                                     }
                                 } catch (Exception e) {
-                                    System.out.println("导航到原始URL时发生错误: " + e.getMessage() + "，保留原始URL记录");
+                                    System.out.println("Error occurred while navigating to original URL: " + e.getMessage() + ", keeping original URL record");
                                 }
                             }
                         } else {
-                            System.out.println("自动登录失败");
+                            System.out.println("Automatic login failed");
                         }
                     } finally {
-                        // 无论登录成功与否，都标记登录处理完成
+                        // Whether login is successful or not, mark login handling as complete
                         BrowserCore.set_login_in_progress(pageId, false);
                     }
                 }
             }
 
-            // 检查页面是否需要二次认证（无论是否已经登录）
+            // Check if page requires 2FA (whether already logged in or not)
             boolean needs2fa = BrowserLogin.detect2faRequired(page);
             Map<String, Object> authResult = null;
             if (needs2fa) {
-                System.out.println("导航后检测到需要二次认证");
-                // 处理二次认证
+                System.out.println("Detected need for 2FA after navigation");
+                // Handle 2FA
                 authResult = BrowserLogin.handle2faAuthentication(page, true);
-                System.out.println("二次认证处理结果: " + authResult);
+                System.out.println("2FA handling result: " + authResult);
 
-                // 检查二次认证状态
+                // Check 2FA status
                 String authStatus = (String) authResult.getOrDefault("status", "");
                 if ("pending_2fa".equals(authStatus)) {
-                    System.out.println("需要用户完成二次认证，已保存截图");
-                    // 等待一段时间，让用户有机会查看截图
+                    System.out.println("User needs to complete 2FA, screenshot saved");
+                    // Wait for a period of time to give users a chance to view the screenshot
                     try {
                         Thread.sleep(2000);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
                 } else if ("success".equals(authStatus)) {
-                    System.out.println("二次认证处理成功");
-                    // 等待页面可能的变化
+                    System.out.println("2FA handling successful");
+                    // Wait for possible page changes
                     try {
                         Thread.sleep(2000);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
                 } else {
-                    System.out.printf("二次认证处理状态: %s%n", authStatus);
+                    System.out.printf("2FA handling status: %s%n", authStatus);
                 }
             }
 
-            // 获取页面信息
+            // Get page information
             Map<String, Object> pageInfo = new LinkedHashMap<>();
             if (extractContent) {
                 pageInfo = extractPageInfo(page);
@@ -247,14 +247,14 @@ public class BrowserNavigation {
             }
             result.put("url", url);
             result.put("final_url", page.url());
-            result.put("message", "成功导航到 " + url + "，状态码: " + (response != null ? response.status() : "无") + "，数据已准备就绪");
+            result.put("message", "Successfully navigated to " + url + ", status code: " + (response != null ? response.status() : "none") + ", data is ready");
 
-            // 如果提取了页面内容，则添加到结果中
+            // If page content was extracted, add it to the result
             if (extractContent && !pageInfo.isEmpty()) {
                 result.put("page_info", pageInfo);
             }
 
-            // 如果检测到并处理了二次认证，添加到结果中
+            // If 2FA was detected and handled, add it to the result
             if (needs2fa && authResult != null) {
                 result.put("two_factor_auth", true);
                 String authStatus = (String) authResult.getOrDefault("status", "");
@@ -275,7 +275,7 @@ public class BrowserNavigation {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("status", "error");
             result.put("url", url);
-            result.put("message", "导航到 " + url + " 时发生错误: " + e.getMessage());
+            result.put("message", "Error occurred while navigating to " + url + ": " + e.getMessage());
             return result;
         }
     }
@@ -286,16 +286,16 @@ public class BrowserNavigation {
             pageInfo.put("title", page.title());
             pageInfo.put("url", page.url());
 
-            // 提取页面文本内容
-            String pageText = page.evaluate("() => { const mainContent = document.querySelector('main') || document.querySelector('article') || document.querySelector('#content') || document.querySelector('.content') || document.body; return mainContent ? mainContent.innerText : document.body.innerText; }").toString();
+            // Extract page text content
+                String pageText = page.evaluate("() => { const mainContent = document.querySelector('main') || document.querySelector('article') || document.querySelector('#content') || document.querySelector('.content') || document.body; return mainContent ? mainContent.innerText : document.body.innerText; }").toString();
 
-            if (pageText.length() > 3000) {
-                pageInfo.put("content", pageText.substring(0, 3000) + "...(内容已截断)");
-            } else {
-                pageInfo.put("content", pageText);
-            }
+                if (pageText.length() > 3000) {
+                    pageInfo.put("content", pageText.substring(0, 3000) + "...(content truncated)");
+                } else {
+                    pageInfo.put("content", pageText);
+                }
 
-            // 提取页面元数据
+            // Extract page metadata
             try {
                 Map<String, Object> metaData = (Map<String, Object>) page.evaluate("() => { const metadata = {}; const metaTags = document.querySelectorAll('meta'); for (const meta of metaTags) { const name = meta.getAttribute('name') || meta.getAttribute('property'); const content = meta.getAttribute('content'); if (name && content) { metadata[name] = content; } } return metadata; }");
                 Map<String, Object> importantMeta = new LinkedHashMap<>();
@@ -309,10 +309,10 @@ public class BrowserNavigation {
                 }
                 pageInfo.put("metadata", importantMeta);
             } catch (Exception e) {
-                // 忽略元数据提取错误
+                // Ignore metadata extraction error
             }
 
-            // 提取页面链接
+            // Extract page links
             try {
                 Object linksResult = page.evaluate("() => { const mainLinks = []; const links = document.querySelectorAll('a'); let count = 0; for (const link of links) { if (count >= 10) break; const href = link.getAttribute('href'); const text = link.innerText.trim(); if (href && text && href !== '#' && !href.startsWith('javascript:')) { mainLinks.push({ text, href }); count++; } } return mainLinks; }");
                 if (linksResult instanceof List) {
@@ -329,24 +329,24 @@ public class BrowserNavigation {
                     pageInfo.put("main_links", links);
                 }
             } catch (Exception e) {
-                // 忽略链接提取错误
+                // Ignore link extraction error
             }
         } catch (Exception e) {
-            pageInfo.put("content_error", "提取页面内容时发生错误: " + e.getMessage());
+            pageInfo.put("content_error", "Error occurred while extracting page content: " + e.getMessage());
         }
         return pageInfo;
     }
 
     /**
-     * 返回浏览器历史记录中的上一页
+     * Go back to the previous page in browser history
      */
     @MCPTool(name = "browser_navigate_back", description = "返回上一页")
     public Map<String, Object> browserNavigateBack() {
-        // 检查依赖
+        // Check dependencies
         List<String> missingDeps = BrowserCore.check_dependencies();
         if (!missingDeps.isEmpty()) {
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "缺少必要的库: " + String.join(", ", missingDeps) + "。请使用pip安装: pip install " + String.join(" ", missingDeps));
+            result.put("error", "Missing required libraries: " + String.join(", ", missingDeps) + ". Please install using maven: install " + String.join(" ", missingDeps));
             return result;
         }
 
@@ -358,23 +358,23 @@ public class BrowserNavigation {
             BrowserCore._verify_data_ready();
             BrowserCore._set_operation_status(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("message", "成功返回上一页，数据已准备就绪");
+            result.put("message", "Successfully returned to previous page, data is ready");
             return result;
         } catch (Exception e) {
             BrowserCore._set_operation_status(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "返回上一页时发生错误: " + e.getMessage());
+            result.put("error", "Error occurred while returning to previous page: " + e.getMessage());
             return result;
         }
     }
 
     @MCPTool(name = "browser_navigate_forward", description = "前进到下一页")
     public Map<String, Object> browserNavigateForward() {
-        // 检查依赖
+        // Check dependencies
         List<String> missingDeps = BrowserCore.check_dependencies();
         if (!missingDeps.isEmpty()) {
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "缺少必要的库: " + String.join(", ", missingDeps) + "。请使用pip安装: pip install " + String.join(" ", missingDeps));
+            result.put("error", "Missing required libraries: " + String.join(", ", missingDeps) + ". Please install using maven: install " + String.join(" ", missingDeps));
             return result;
         }
 
@@ -386,12 +386,12 @@ public class BrowserNavigation {
             BrowserCore._verify_data_ready();
             BrowserCore._set_operation_status(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("message", "成功前进到下一页，数据已准备就绪");
+            result.put("message", "Successfully navigated forward to next page, data is ready");
             return result;
         } catch (Exception e) {
             BrowserCore._set_operation_status(false);
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "前进到下一页时发生错误: " + e.getMessage());
+            result.put("error", "Error occurred while navigating forward to next page: " + e.getMessage());
             return result;
         }
     }
