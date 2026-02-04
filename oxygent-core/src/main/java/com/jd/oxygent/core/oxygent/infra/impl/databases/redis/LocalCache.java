@@ -302,6 +302,7 @@ public class LocalCache extends BaseDB implements BaseCache {
      * @param key The list key to pop from
      * @return The removed element, or null if the list is empty or doesn't exist
      */
+    @Override
     public String rpop(String key) {
         checkExpiry(key);
         CacheList list = data.get(key);

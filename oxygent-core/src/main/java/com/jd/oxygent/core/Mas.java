@@ -932,7 +932,7 @@ public class Mas {
                     streamMessageData.put("create_time", CommonUtils.getFormatTime());
                     esClient.index(Config.getAppName() + "_message", streamMessageData.get("message_id").toString(), streamMessageData);
                     streamDict.remove(nodeId);
-                } else {
+                } else if (!"stream".equals(messageType)) {
                     Map _copy = null;
                     if (funcProcessMessageBody != null) {
                         _copy = funcProcessMessageBody.apply(body);
