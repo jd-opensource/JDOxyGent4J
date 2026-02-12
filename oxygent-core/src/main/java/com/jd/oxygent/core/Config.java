@@ -342,7 +342,7 @@ public class Config {
     @Data
     public static class ToolConfig {
         private boolean mcpIsKeepAlive = true;
-        private boolean isConcurrentInit = true;
+        private boolean concurrentInit = true;
         private int semaphore = 1024;
         private double timeout = 60.0; // seconds
     }

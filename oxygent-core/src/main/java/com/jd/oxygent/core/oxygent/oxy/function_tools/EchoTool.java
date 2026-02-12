@@ -234,26 +234,26 @@ public class EchoTool extends BaseTool {
             // Validate request
             if (oxyRequest == null) {
                 log.error("OxyRequest is null");
-                return createErrorResponse("Request cannot be null");
+                return new OxyResponse(OxyState.FAILED, "Request cannot be null", null, oxyRequest);
             }
 
             Map<String, Object> arguments = oxyRequest.getArguments();
             if (arguments == null) {
                 log.error("Request arguments are null");
-                return createErrorResponse("Request arguments cannot be null");
+                return new OxyResponse(OxyState.FAILED, "Request arguments cannot be null", null, oxyRequest);
             }
 
             // Extract and validate message parameter
             Object messageObj = arguments.get("message");
             if (messageObj == null) {
                 log.error("Message parameter is missing");
-                return createErrorResponse("Message parameter is required");
+                return new OxyResponse(OxyState.FAILED, "Message parameter is required", null, oxyRequest);
             }
 
             String message = messageObj.toString().trim();
             if (message.isEmpty()) {
                 log.error("Message parameter is empty");
-                return createErrorResponse("Message cannot be empty");
+                return new OxyResponse(OxyState.FAILED, "Message cannot be empty", null, oxyRequest);
             }
 
             // Extract optional prefix parameter with default value
@@ -269,6 +269,7 @@ public class EchoTool extends BaseTool {
 
             // Create successful response
             OxyResponse response = new OxyResponse();
+            response.setOxyRequest(oxyRequest);
             response.setState(OxyState.COMPLETED);
             response.setOutput(echoedMessage);
 
@@ -284,20 +285,7 @@ public class EchoTool extends BaseTool {
 
         } catch (Exception e) {
             log.error("Unexpected error during echo tool execution", e);
-            return createErrorResponse("Error processing echo request: " + e.getMessage());
+            return new OxyResponse(OxyState.FAILED, "Error processing echo request: " + e.getMessage(), null, oxyRequest);
         }
-    }
-
-    /**
-     * Creates an error response with the specified error message.
-     *
-     * @param errorMessage the error message to include in the response
-     * @return OxyResponse with FAILED state and the error message
-     */
-    private OxyResponse createErrorResponse(String errorMessage) {
-        OxyResponse errorResponse = new OxyResponse();
-        errorResponse.setState(OxyState.FAILED);
-        errorResponse.setOutput(errorMessage);
-        return errorResponse;
     }
 }

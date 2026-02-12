@@ -20,9 +20,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.jd.oxygent.core.Config;
+import com.jd.oxygent.core.oxygent.logging.AiLogger;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyState;
+import com.jd.oxygent.core.oxygent.utils.SpringContextHolder;
 import com.jd.oxygent.core.oxygent.utils.StringUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -99,6 +101,8 @@ public class OpenAiLlm extends RemoteLlm {
                     throw new IOException("HTTP " + resp.code() + ": " + (resp.body() != null ? resp.body().string() : null));
                 }
                 JsonNode root = objectMapper.readTree(resp.body() != null ? resp.body().byteStream() : null);
+                long timer = System.currentTimeMillis();
+                aiLogger = SpringContextHolder.getBean(AiLogger.class);
                 if ("true".equalsIgnoreCase((String) payload.get("stream"))) {
                     StringBuilder answerAppend = new StringBuilder();
                     String answer = "";
@@ -156,19 +160,27 @@ public class OpenAiLlm extends RemoteLlm {
                     message.put("content", _content);
                     oxyRequest.sendMessage(message);
 
-                    return OxyResponse.builder()
+                    OxyResponse oxyResponse = OxyResponse.builder()
                             .state(OxyState.COMPLETED)
                             .output(answerAppend.toString())
                             .oxyRequest(oxyRequest)
                             .build();
+                    if (aiLogger != null && aiLogger.isEnabled()) {
+                        aiLogger.log("llm", oxyResponse, this, Map.of("elapsedMillis", System.currentTimeMillis() - timer));
+                    }
+                    return oxyResponse;
                 } else {
                     String output = root.path("choices").path(0).path("message").path("content").asText("");
                     log.info("root: {}", root);
-                    return OxyResponse.builder()
+                    OxyResponse oxyResponse = OxyResponse.builder()
                             .state(OxyState.COMPLETED)
                             .output(output)
                             .oxyRequest(oxyRequest)
                             .build();
+                    if (aiLogger != null && aiLogger.isEnabled()) {
+                        aiLogger.log("llm", oxyResponse, this, Map.of("elapsedMillis", System.currentTimeMillis() - timer));
+                    }
+                    return oxyResponse;
                 }
             } catch (IOException e) {
                 log.error("Request error: {}", e);
@@ -178,9 +190,5 @@ public class OpenAiLlm extends RemoteLlm {
             log.error("JsonProcessing error: {}", e);
             throw new RuntimeException(e);
         }
-
-
     }
-
-
 }

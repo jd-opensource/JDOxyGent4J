@@ -109,11 +109,10 @@ public class MCPTool extends BaseTool {
 
             String paramName = entry.getKey();
             if (entry.getValue() instanceof Map) {
-                Map<String, String> param = (Map<String, String>) entry.getValue();
-                String typeName = param.get("type");
+                Map param = (Map) entry.getValue();
+                Object typeName = param.get("type");
                 boolean required = true; // Can be further determined by annotations
-                String description = param.get("description"); // Can use custom annotations to describe parameters
-
+                String description = (String) param.get("description"); // Can use custom annotations to describe parameters
 
                 Map<String, Object> prop = new HashMap<>();
                 prop.put("description", description);
@@ -192,6 +191,6 @@ public class MCPTool extends BaseTool {
         Object output = results.isEmpty() ? "" :
                 (results.size() == 1 ? results.get(0) : results);
 
-        return new OxyResponse(OxyState.COMPLETED, output);
+        return new OxyResponse(OxyState.COMPLETED, output, null, oxyRequest);
     }
 }

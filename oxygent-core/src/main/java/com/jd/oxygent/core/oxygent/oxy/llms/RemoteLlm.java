@@ -16,6 +16,7 @@
 package com.jd.oxygent.core.oxygent.oxy.llms;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.jd.oxygent.core.oxygent.logging.AiLogger;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import lombok.AllArgsConstructor;
@@ -110,6 +111,8 @@ import java.util.function.Function;
 @NoArgsConstructor
 @AllArgsConstructor
 public abstract class RemoteLlm extends BaseLlM {
+    AiLogger aiLogger;
+
     protected String baseUrl;
     protected String apiKey;
     protected String modelName;

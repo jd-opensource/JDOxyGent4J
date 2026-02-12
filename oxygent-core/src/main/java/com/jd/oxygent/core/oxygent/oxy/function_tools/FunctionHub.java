@@ -308,13 +308,13 @@ public class FunctionHub extends BaseTool {
         try {
             if (oxyRequest == null) {
                 log.warn("Received null OxyRequest");
-                return new OxyResponse(OxyState.FAILED, "Request cannot be null");
+                return new OxyResponse(OxyState.FAILED, "Request cannot be null", null, oxyRequest);
             }
 
             Map<String, Object> arguments = oxyRequest.getArguments();
             if (arguments == null || arguments.isEmpty()) {
                 log.warn("No arguments provided in request");
-                return new OxyResponse(OxyState.FAILED, "No tool arguments provided");
+                return new OxyResponse(OxyState.FAILED, "No tool arguments provided", null, oxyRequest);
             }
 
             // Get the first argument entry as tool name and value
@@ -325,11 +325,11 @@ public class FunctionHub extends BaseTool {
             log.debug("Executing tool '{}' via FunctionHub", toolName);
             Object result = this.call(toolName, toolArgs);
 
-            return new OxyResponse(OxyState.COMPLETED, result);
+            return new OxyResponse(OxyState.COMPLETED, result, null, oxyRequest);
 
         } catch (Exception e) {
             log.error("Failed to execute tool request: {}", e.getMessage(), e);
-            return new OxyResponse(OxyState.FAILED, "Tool execution failed: " + e.getMessage());
+            return new OxyResponse(OxyState.FAILED, "Tool execution failed: " + e.getMessage(), null, oxyRequest);
         }
     }
 

@@ -123,6 +123,7 @@ public class ParallelAgent extends LocalAgent {
                 } catch (Exception ex) {
                     log.warn("[Task Exception] tool={}, error={}", permittedToolName, ex.toString());
                     resp = new OxyResponse();
+                    resp.setOxyRequest(oxyRequest);
                     resp.setOutput("");
                 }
                 return resp;

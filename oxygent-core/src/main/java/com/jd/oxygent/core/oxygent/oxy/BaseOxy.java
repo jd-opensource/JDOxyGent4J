@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.jd.oxygent.core.oxygent.logging.AiLogger;
 import com.jd.oxygent.core.oxygent.utils.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -609,11 +610,16 @@ public class BaseOxy {
         return funcProcessOutput.apply(oxyResponse);
     }
 
-    protected void postLog(OxyResponse oxyResponse) {
+    protected void postLog(OxyResponse oxyResponse, Long timer) {
         String obs = isDetailedObservation && oxyResponse.getOutput() != null ? oxyResponse.getOutput().toString() : "...";
         OxyRequest oxyRequest = oxyResponse.getOxyRequest();
 
         log.info(LogUtils.ANSI_CYAN + "{} {} {} : {}" + LogUtils.ANSI_RESET_ALL, oxyRequest.getCurrentTraceId(), oxyRequest.getNodeId(), String.join(" <<< ", oxyRequest.getCallStack()), obs);
+
+        AiLogger aiLogger = SpringContextHolder.getBean(AiLogger.class);
+        if (aiLogger != null && aiLogger.isEnabled()) {
+            aiLogger.log(null, oxyResponse, this, Map.of("elapsedMillis", timer));
+        }
     }
 
     public void postSaveData(OxyResponse oxyResponse) {
@@ -729,7 +735,6 @@ public class BaseOxy {
                 throw new RuntimeException("Interrupted while acquiring semaphore for: " + this.getName(), e);
             }
         }
-
         try {
             oxyRequest = preProcess(oxyRequest);
             preLog(oxyRequest);
@@ -754,11 +759,13 @@ public class BaseOxy {
             formatInput(oxyRequest);
             preSendMessage(oxyRequest);
             oxyRequest = beforeExecute(oxyRequest);
+            long timer = System.currentTimeMillis();
             OxyResponse oxyResponse = executeWithRetrySync(oxyRequest);
+            timer = System.currentTimeMillis() - timer;
             oxyResponse.setOxyRequest(oxyRequest);
             oxyResponse = afterExecute(oxyResponse);
             oxyResponse = postProcess(oxyResponse);
-            postLog(oxyResponse);
+            postLog(oxyResponse, timer);
             handlePostSaveDataAsync(oxyResponse);
 
             oxyResponse = formatOutput(oxyResponse);
@@ -860,6 +867,7 @@ public class BaseOxy {
                     String errorMessage = this.funcInterceptor.apply(oxyRequest);
                     if (errorMessage != null && !errorMessage.isEmpty()) {
                         response = new OxyResponse();
+                        response.setOxyRequest(oxyRequest);
                         response.setState(OxyState.SKIPPED);
                         response.setOutput(errorMessage);
                         break;

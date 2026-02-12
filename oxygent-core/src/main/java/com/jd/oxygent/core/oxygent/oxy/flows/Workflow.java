@@ -132,6 +132,7 @@ public class Workflow extends BaseFlow {
     @Override
     public OxyResponse _execute(OxyRequest oxyRequest) {
         OxyResponse resp = new OxyResponse();
+        resp.setOxyRequest(oxyRequest);
         if (funcWorkflow == null) {
             resp.setState(OxyState.FAILED);
             resp.setOutput("Workflow function (funcWorkflow) is not configured");

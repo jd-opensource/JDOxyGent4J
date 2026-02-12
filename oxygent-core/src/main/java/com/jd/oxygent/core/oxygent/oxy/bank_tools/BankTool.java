@@ -89,7 +89,7 @@ public class BankTool extends BaseBank {
         try {
             if (serverUrl == null || serverUrl.trim().isEmpty()) {
                 log.error("BankTool '{}': serverUrl is not configured", getName());
-                return new OxyResponse(OxyState.FAILED, "Bank server URL is not configured");
+                return new OxyResponse(OxyState.FAILED, "Bank server URL is not configured", null, oxyRequest);
             }
 
             log.debug("BankTool '{}': Sending request to {}", getName(), serverUrl);
@@ -125,7 +125,7 @@ public class BankTool extends BaseBank {
                 request = requestBuilder.GET().build();
             } else {
                 log.error("BankTool '{}': Unsupported HTTP method: {}", getName(), method);
-                return new OxyResponse(OxyState.FAILED, "Unsupported HTTP method: " + method);
+                return new OxyResponse(OxyState.FAILED, "Unsupported HTTP method: " + method, null, oxyRequest);
             }
 
             // Send HTTP request
@@ -135,24 +135,24 @@ public class BankTool extends BaseBank {
             log.debug("BankTool '{}': Received response with status {}", getName(), response.statusCode());
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return new OxyResponse(OxyState.COMPLETED, response.body());
+                return new OxyResponse(OxyState.COMPLETED, response.body(), null, oxyRequest);
             } else {
                 log.error("BankTool '{}': HTTP request failed with status {}", getName(), response.statusCode());
                 return new OxyResponse(OxyState.FAILED,
                         String.format("HTTP request failed with status %d: %s",
-                                response.statusCode(), response.body()));
+                                response.statusCode(), response.body()), null, oxyRequest);
             }
 
         } catch (IOException e) {
             log.error("BankTool '{}': IO error during HTTP request", getName(), e);
-            return new OxyResponse(OxyState.FAILED, "IO error: " + e.getMessage());
+            return new OxyResponse(OxyState.FAILED, "IO error: " + e.getMessage(), null, oxyRequest);
         } catch (InterruptedException e) {
             log.error("BankTool '{}': Request interrupted", getName(), e);
             Thread.currentThread().interrupt(); // Restore interrupt status
-            return new OxyResponse(OxyState.FAILED, "Request interrupted");
+            return new OxyResponse(OxyState.FAILED, "Request interrupted", null, oxyRequest);
         } catch (Exception e) {
             log.error("BankTool '{}': Unexpected error", getName(), e);
-            return new OxyResponse(OxyState.FAILED, "Unexpected error: " + e.getMessage());
+            return new OxyResponse(OxyState.FAILED, "Unexpected error: " + e.getMessage(), null, oxyRequest);
         }
     }
     /**

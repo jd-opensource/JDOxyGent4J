@@ -435,7 +435,7 @@ public class PlanAndSolve extends BaseFlow {
 
             // Check if there are still steps to execute
             if (planSteps == null || planSteps.isEmpty()) {
-                return new OxyResponse(OxyState.COMPLETED, "All plan steps have been completed");
+                return new OxyResponse(OxyState.COMPLETED, "All plan steps have been completed", null, oxyRequest);
             }
 
             // Execute current step
@@ -476,7 +476,7 @@ public class PlanAndSolve extends BaseFlow {
                 // Use Optional.ifPresentOrElse to simplify response checking
                 var responseOpt = replanResult.getResponse();
                 if (responseOpt.isPresent()) {
-                    return new OxyResponse(OxyState.COMPLETED, responseOpt.get());
+                    return new OxyResponse(OxyState.COMPLETED, responseOpt.get(), null, oxyRequest);
                 }
 
                 // If no response, there should be a new plan
@@ -495,7 +495,7 @@ public class PlanAndSolve extends BaseFlow {
                 planSteps.remove(0);
 
                 if (planSteps.isEmpty()) {
-                    return new OxyResponse(OxyState.COMPLETED, executorResponse.getOutput().toString());
+                    return new OxyResponse(OxyState.COMPLETED, executorResponse.getOutput().toString(), null, oxyRequest);
                 }
             }
         }
@@ -520,7 +520,7 @@ public class PlanAndSolve extends BaseFlow {
                 }}
         );
 
-        return new OxyResponse(OxyState.COMPLETED, response.getOutput());
+        return new OxyResponse(OxyState.COMPLETED, response.getOutput(), null, oxyRequest);
     }
 
     /**

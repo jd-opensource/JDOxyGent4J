@@ -18,9 +18,12 @@ package com.jd.oxygent.core.oxygent.oxy.llms;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.NullNode;
+import com.jd.oxygent.core.oxygent.logging.AiLogger;
+import com.jd.oxygent.core.oxygent.schemas.oxy.OxyState;
 import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
+import com.jd.oxygent.core.oxygent.utils.SpringContextHolder;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -107,6 +110,8 @@ public class HttpLlm extends RemoteLlm {
      */
     @Override
     protected OxyResponse _execute(OxyRequest oxyRequest) {
+        long timer = System.currentTimeMillis();
+        aiLogger = SpringContextHolder.getBean(AiLogger.class);
         try {
             String url = buildUrl();
             boolean isGemini = url.contains("generativelanguage.googleapis.com");
@@ -117,20 +122,25 @@ public class HttpLlm extends RemoteLlm {
 
             // Check if streaming is requested
             boolean stream = Boolean.TRUE.equals(payload.get("stream"));
-
+            OxyResponse oxyResponse;
             if (stream && (useOpenai || !isGemini)) {
-                return executeStreamingRequest(url, requestHeaders, payload, oxyRequest, useOpenai);
+                oxyResponse = executeStreamingRequest(url, requestHeaders, payload, oxyRequest, useOpenai);
             } else {
-                return executeNonStreamingRequest(url, requestHeaders, payload, isGemini, useOpenai);
+                oxyResponse = executeNonStreamingRequest(url, requestHeaders, payload, isGemini, useOpenai);
             }
-
+            if (aiLogger != null && aiLogger.isEnabled()) {
+                aiLogger.log("llm", oxyResponse, this, Map.of("elapsedMillis", System.currentTimeMillis() - timer));
+            }
+            return oxyResponse;
         } catch (Exception e) {
             if (funcProcessLlmException != null) {
                 return funcProcessLlmException.apply(e);
             } else {
                 logger.error("LLM request exception", e);
-                OxyResponse oxyResponse = new OxyResponse();
-                oxyResponse.setOutput("");
+                OxyResponse oxyResponse = OxyResponse.builder().state(OxyState.FAILED).output("").oxyRequest(oxyRequest).build();
+                if (aiLogger != null && aiLogger.isEnabled()) {
+                    aiLogger.log("llm", oxyResponse, this, Map.of("error", e.getMessage(), "elapsedMillis", System.currentTimeMillis() - timer));
+                }
                 return oxyResponse;
             }
         }
@@ -330,9 +340,11 @@ public class HttpLlm extends RemoteLlm {
         streamMessage.put("node_id", oxyRequest.getNodeId());
         oxyRequest.sendMessage(streamMessage);
 
-        OxyResponse oxyResponse = new OxyResponse();
-        oxyResponse.setOutput(result.toString());
-        return oxyResponse;
+        return OxyResponse.builder()
+                .state(OxyState.COMPLETED)
+                .output(result.toString())
+                .oxyRequest(oxyRequest)
+                .build();
     }
 
     /**

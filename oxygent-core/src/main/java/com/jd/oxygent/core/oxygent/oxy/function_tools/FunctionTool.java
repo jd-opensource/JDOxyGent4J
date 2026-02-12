@@ -209,7 +209,7 @@ public class FunctionTool extends BaseTool {
         try {
             if (oxyRequest == null) {
                 log.warn("Received null OxyRequest for tool '{}'", getName());
-                return new OxyResponse(OxyState.FAILED, "Request cannot be null");
+                return new OxyResponse(OxyState.FAILED, "Request cannot be null", null, oxyRequest);
             }
 
             Map<String, Object> requestArgs = oxyRequest.getArguments();
@@ -247,11 +247,11 @@ public class FunctionTool extends BaseTool {
             Object result = funcProcess.apply(args);
 
             log.debug("Tool '{}' executed successfully", getName());
-            return new OxyResponse(OxyState.COMPLETED, result);
+            return new OxyResponse(OxyState.COMPLETED, result, null, oxyRequest);
 
         } catch (Exception e) {
             log.error("Failed to execute tool '{}': {}", getName(), e.getMessage(), e);
-            return new OxyResponse(OxyState.FAILED, "Tool execution failed: " + e.getMessage());
+            return new OxyResponse(OxyState.FAILED, "Tool execution failed: " + e.getMessage(), null, oxyRequest);
         }
     }
 }

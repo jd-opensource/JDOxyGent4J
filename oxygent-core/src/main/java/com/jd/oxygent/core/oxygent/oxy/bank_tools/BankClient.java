@@ -304,6 +304,6 @@ public class BankClient extends BaseBank {
 
     @Override
     protected OxyResponse _execute(OxyRequest oxyRequest) {
-        return new OxyResponse(OxyState.FAILED, "This method is not yet implemented");
+        return new OxyResponse(OxyState.FAILED, "This method is not yet implemented", null, oxyRequest);
     }
 }

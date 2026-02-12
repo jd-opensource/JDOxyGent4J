@@ -55,7 +55,6 @@ import java.util.Optional;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class OxyResponse {
 
     /**
@@ -87,11 +86,11 @@ public class OxyResponse {
      * @param output Execution output, can be null
      * @throws NullPointerException if state is null
      */
-    public OxyResponse(OxyState state, Object output) {
+    public OxyResponse(OxyState state, Object output, Map<String, Object> extra, OxyRequest oxyRequest) {
         this.state = Objects.requireNonNull(state, "Execution state cannot be null");
         this.output = output;
-        this.extra = new HashMap<>();
-        this.oxyRequest = null;
+        this.extra = extra;
+        this.oxyRequest = oxyRequest;
     }
 
     /**

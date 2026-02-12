@@ -282,7 +282,7 @@ public abstract class BaseMCPClient extends BaseTool {
         }
 
         Object output = results.isEmpty() ? "" : (results.size() == 1 ? results.get(0) : results);
-        return new OxyResponse(OxyState.COMPLETED, output);
+        return new OxyResponse(OxyState.COMPLETED, output, null, oxyRequest);
     }
 
     /**
