@@ -126,10 +126,10 @@ public class HttpLlm extends RemoteLlm {
             if (stream && (useOpenai || !isGemini)) {
                 oxyResponse = executeStreamingRequest(url, requestHeaders, payload, oxyRequest, useOpenai);
             } else {
-                oxyResponse = executeNonStreamingRequest(url, requestHeaders, payload, isGemini, useOpenai);
+                oxyResponse = executeNonStreamingRequest(url, requestHeaders, payload, isGemini, useOpenai, oxyRequest);
             }
             if (aiLogger != null && aiLogger.isEnabled()) {
-                aiLogger.log("llm", oxyResponse, this, Map.of("elapsedMillis", System.currentTimeMillis() - timer));
+                aiLogger.log("llm", oxyResponse, this, Map.of("elapsedMillis", String.valueOf(System.currentTimeMillis() - timer)));
             }
             return oxyResponse;
         } catch (Exception e) {
@@ -139,7 +139,7 @@ public class HttpLlm extends RemoteLlm {
                 logger.error("LLM request exception", e);
                 OxyResponse oxyResponse = OxyResponse.builder().state(OxyState.FAILED).output("").oxyRequest(oxyRequest).build();
                 if (aiLogger != null && aiLogger.isEnabled()) {
-                    aiLogger.log("llm", oxyResponse, this, Map.of("error", e.getMessage(), "elapsedMillis", System.currentTimeMillis() - timer));
+                    aiLogger.log("llm", oxyResponse, this, Map.of("error", e.getMessage(), "elapsedMillis", String.valueOf(System.currentTimeMillis() - timer)));
                 }
                 return oxyResponse;
             }
@@ -351,7 +351,7 @@ public class HttpLlm extends RemoteLlm {
      * Execute non-streaming request
      */
     public OxyResponse executeNonStreamingRequest(String url, Map<String, String> requestHeaders,
-                                                  Map<String, Object> payload, boolean isGemini, boolean useOpenai) throws Exception {
+                                                  Map<String, Object> payload, boolean isGemini, boolean useOpenai, OxyRequest oxyRequest) throws Exception {
         payload.put("stream", false);
         String jsonBody = JsonUtils.writeValueAsString(payload);
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
@@ -401,11 +401,7 @@ public class HttpLlm extends RemoteLlm {
             if (result == null || result.trim().isEmpty()) {
                 logger.warn("Content extracted from response is empty, original response: {}", responseBody);
             }
-
-            OxyResponse oxyResponse = new OxyResponse();
-            oxyResponse.setOutput(result != null ? result : "");
-            return oxyResponse;
-
+            return OxyResponse.builder().output(result != null ? result : "").state(OxyState.COMPLETED).oxyRequest(oxyRequest).build();
         } catch (IOException e) {
             logger.error("Network request failed: {}", e.getMessage());
             throw new RuntimeException("Network request failed: " + e.getMessage(), e);

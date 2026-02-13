@@ -31,7 +31,7 @@ public class FileAiLogger implements AiLogger {
      * @param extraData exception or elsp
      */
     @Override
-    public void log(String logType, Object logData, Object logTarget, Map<String, Object> extraData) {
+    public void log(String logType, Object logData, Object logTarget, Map<String, String> extraData) {
         return; // do custom logging here
     }
 }

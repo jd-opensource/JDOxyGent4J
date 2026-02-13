@@ -16,6 +16,7 @@
 package com.jd.oxygent.core.oxygent.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -68,6 +69,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class ObjectUtils {
 
     /**
@@ -205,39 +207,44 @@ public class ObjectUtils {
      * Internal recursive deep copy method with cycle detection
      */
     private static Object deepCopyInternal(Object original, Map<Object, Object> copyMap) {
-        if (original == null) {
+        try {
+            if (original == null) {
+                return null;
+            }
+
+            // Return immutable objects directly
+            if (isImmutable(original)) {
+                return original;
+            }
+
+            // Check for cycles
+            if (copyMap.containsKey(original)) {
+                return copyMap.get(original);
+            }
+
+            Class<?> clazz = original.getClass();
+
+            // Handle arrays
+            if (clazz.isArray()) {
+                return copyArray(original, copyMap);
+            }
+
+            // Handle collections
+            if (original instanceof Collection) {
+                return copyCollection((Collection<?>) original, copyMap);
+            }
+
+            // Handle maps
+            if (original instanceof Map) {
+                return copyMap((Map<?, ?>) original, copyMap);
+            }
+
+            // Handle custom objects
+            return copyObject(original, clazz, copyMap);
+        } catch (Exception e) {
+            log.error("Error during deep copy", e);
             return null;
         }
-
-        // Return immutable objects directly
-        if (isImmutable(original)) {
-            return original;
-        }
-
-        // Check for cycles
-        if (copyMap.containsKey(original)) {
-            return copyMap.get(original);
-        }
-
-        Class<?> clazz = original.getClass();
-
-        // Handle arrays
-        if (clazz.isArray()) {
-            return copyArray(original, copyMap);
-        }
-
-        // Handle collections
-        if (original instanceof Collection) {
-            return copyCollection((Collection<?>) original, copyMap);
-        }
-
-        // Handle maps
-        if (original instanceof Map) {
-            return copyMap((Map<?, ?>) original, copyMap);
-        }
-
-        // Handle custom objects
-        return copyObject(original, clazz, copyMap);
     }
 
     /**

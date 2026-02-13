@@ -618,7 +618,7 @@ public class BaseOxy {
 
         AiLogger aiLogger = SpringContextHolder.getBean(AiLogger.class);
         if (aiLogger != null && aiLogger.isEnabled()) {
-            aiLogger.log(null, oxyResponse, this, Map.of("elapsedMillis", timer));
+            aiLogger.log(null, oxyResponse, this, Map.of("elapsedMillis", String.valueOf(timer)));
         }
     }
 

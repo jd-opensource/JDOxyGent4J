@@ -22,5 +22,5 @@ public interface AiLogger {
      * @param logTarget permits RemoteLlm, BaseOxy
      * @param extraData
      */
-    void log(String logType, Object logData, Object logTarget, Map<String, Object> extraData);
+    void log(String logType, Object logData, Object logTarget, Map<String, String> extraData);
 }

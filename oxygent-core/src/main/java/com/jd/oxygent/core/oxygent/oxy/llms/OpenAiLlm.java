@@ -166,7 +166,7 @@ public class OpenAiLlm extends RemoteLlm {
                             .oxyRequest(oxyRequest)
                             .build();
                     if (aiLogger != null && aiLogger.isEnabled()) {
-                        aiLogger.log("llm", oxyResponse, this, Map.of("elapsedMillis", System.currentTimeMillis() - timer));
+                        aiLogger.log("llm", oxyResponse, this, Map.of("elapsedMillis", String.valueOf(System.currentTimeMillis() - timer)));
                     }
                     return oxyResponse;
                 } else {
@@ -178,7 +178,7 @@ public class OpenAiLlm extends RemoteLlm {
                             .oxyRequest(oxyRequest)
                             .build();
                     if (aiLogger != null && aiLogger.isEnabled()) {
-                        aiLogger.log("llm", oxyResponse, this, Map.of("elapsedMillis", System.currentTimeMillis() - timer));
+                        aiLogger.log("llm", oxyResponse, this, Map.of("elapsedMillis", String.valueOf(System.currentTimeMillis() - timer)));
                     }
                     return oxyResponse;
                 }
