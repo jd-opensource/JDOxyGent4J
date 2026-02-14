@@ -149,26 +149,4 @@ public class ParserFactory {
         }
     }
     
-    /**
-     * Base Parser interface
-     */
-    public interface Parser {
-        // Common parser methods would be defined here
-    }
-    
-    /**
-     * Document interface for parser input
-     */
-    public interface Document {
-        Map<String, Object> getMetadata();
-    }
-    
-    // Stub classes for parser implementations
-    // These would be replaced with actual implementations
-    public static class TokenTextSplitterParser implements Parser {}
-    public static class SentenceSplitterParser implements Parser {}
-    public static class MarkdownNodeParserWrapper implements Parser {}
-    public static class HTMLNodeParserWrapper implements Parser {}
-    public static class JSONNodeParserWrapper implements Parser {}
-    public static class ExtensibleSplitterParser implements Parser {}
 }

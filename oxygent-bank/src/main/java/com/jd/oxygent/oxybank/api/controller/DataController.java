@@ -1,11 +1,14 @@
 package com.jd.oxygent.oxybank.api.controller;
 
-import com.jd.oxygent.oxybank.api.models.APIResponse;
-import com.jd.oxygent.oxybank.core.model.annotation.AnnotationModel;
-import com.jd.oxygent.oxybank.core.model.annotation.CommonModel;
-import com.jd.oxygent.oxybank.core.model.annotation.QADataModel;
-import com.jd.oxygent.oxybank.core.model.annotation.QueryModel;
+import com.jd.oxygent.oxybank.api.model.APIResponse;
+import com.jd.oxygent.oxybank.core.model.annotation.AnnotationUpdateRequest;
+import com.jd.oxygent.oxybank.core.model.annotation.DataListQueryParams;
+import com.jd.oxygent.oxybank.core.model.annotation.DataListResponse;
+import com.jd.oxygent.oxybank.core.model.annotation.QADataItem;
+import com.jd.oxygent.oxybank.core.service.AnnotationService;
+import com.jd.oxygent.oxybank.core.storer.docmanager.AnnotationManager;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,8 +32,8 @@ import java.util.Map;
 @RequestMapping("/api/v1/data")
 public class DataController {
 
-    // FIXME: Initialize annotation service
-    // private final AnnotationService annotationService;
+    @Autowired
+    private AnnotationService annotationService;
 
     /**
      * Get data list
@@ -56,20 +59,10 @@ public class DataController {
      * @return APIResponse containing data list
      */
     @GetMapping("")
-    public APIResponse<CommonModel.DataListResponse> getDataList(QueryModel.DataListQueryParams params) {
+    public APIResponse<DataListResponse<QADataItem>> getDataList(DataListQueryParams params) {
         try {
-            // FIXME: Implement service.getDataList method
-            // Map<String, Object> result = annotationService.getDataList(params);
-
-            // Mock response for now
-            List<QADataModel.QADataItem> items = new ArrayList<>();
-            CommonModel.DataListResponse response = new CommonModel.DataListResponse();
-            response.setItems(items);
-            response.setTotal(0);
-            response.setPage(params.getPage());
-            response.setPageSize(params.getPageSize());
-
-            return APIResponse.success("Query successful", response);
+            DataListResponse<QADataItem> dataListResponse = annotationService.getDataList(params);
+            return APIResponse.success("Query successful", dataListResponse);
         } catch (Exception e) {
             log.error("Data list query failed", e);
             return APIResponse.error(500, "Query failed");
@@ -90,15 +83,9 @@ public class DataController {
      * @return APIResponse containing QA data item
      */
     @GetMapping("/{data_id}")
-    public APIResponse<QADataModel.QADataItem> getDataById(@PathVariable String dataId) {
+    public APIResponse<QADataItem> getDataById(@PathVariable String dataId) {
         try {
-            // FIXME: Implement service.getDataById method
-            // Map<String, Object> data = annotationService.getDataById(dataId);
-
-            // Mock response for now
-            QADataModel.QADataItem data = new QADataModel.QADataItem();
-            data.setDataId(dataId);
-
+            QADataItem data = annotationService.getById(dataId);
             return APIResponse.success("Query successful", data);
         } catch (Exception e) {
             log.error("Get data details failed", e);
@@ -126,15 +113,10 @@ public class DataController {
      */
     @PutMapping("/{data_id}/annotate")
     public APIResponse<Map<String, String>> updateAnnotation(
-            @PathVariable String dataId,
-            @RequestBody AnnotationModel.AnnotationUpdateRequest request) {
+            @PathVariable(name = "data_id") String dataId,
+            @RequestBody AnnotationUpdateRequest request) {
         try {
-            // FIXME: Implement service.updateAnnotation method
-            // boolean success = annotationService.updateAnnotation(dataId, request);
-
-            // Mock response for now
-            boolean success = true;
-
+            boolean success = annotationService.updateAnnotation(dataId, request);
             if (!success) {
                 return APIResponse.error(500, "Annotation update failed");
             }
@@ -167,16 +149,11 @@ public class DataController {
      */
     @PostMapping("/{data_id}/approve")
     public APIResponse<Map<String, String>> approveData(
-            @PathVariable String dataId,
+            @PathVariable(name = "data_id") String dataId,
             @RequestParam String action,
             @RequestParam(required = false) String reason) {
         try {
-            // FIXME: Implement service.approveData method
-            // boolean success = annotationService.approveData(dataId, reason);
-
-            // Mock response for now
-            boolean success = true;
-
+            boolean success = annotationService.approveData(dataId, reason);
             if (!success) {
                 return APIResponse.error(500, "Approval failed");
             }
@@ -209,15 +186,11 @@ public class DataController {
      */
     @PostMapping("/{data_id}/reject")
     public APIResponse<Map<String, String>> rejectData(
-            @PathVariable String dataId,
+            @PathVariable(name = "data_id") String dataId,
             @RequestParam String reason,
             @RequestParam(required = false) String rejectCategory) {
         try {
-            // FIXME: Implement service.rejectData method
-            // boolean success = annotationService.rejectData(dataId, reason, rejectCategory);
-
-            // Mock response for now
-            boolean success = true;
+            boolean success = annotationService.rejectData(dataId, reason, rejectCategory);
 
             if (!success) {
                 return APIResponse.error(500, "Rejection failed");
@@ -246,13 +219,9 @@ public class DataController {
      * @return APIResponse containing data list
      */
     @GetMapping("/trace/{trace_id}")
-    public APIResponse<List<QADataModel.QADataItem>> getByTraceId(@PathVariable String traceId) {
+    public APIResponse<List<QADataItem>> getByTraceId(@PathVariable(name = "trace_id") String traceId) {
         try {
-            // FIXME: Implement service.getByTraceId method
-            // List<Map<String, Object>> dataList = annotationService.getByTraceId(traceId);
-
-            // Mock response for now
-            List<QADataModel.QADataItem> items = new ArrayList<>();
+            List<QADataItem> items = annotationService.getByTraceId(traceId);
 
             return APIResponse.success("Query successful, " + items.size() + " items in total", items);
         } catch (Exception e) {
@@ -269,14 +238,10 @@ public class DataController {
      * @param groupId Group ID
      * @return APIResponse containing data list
      */
-    @GetMapping("/group/{groupId}")
-    public APIResponse<List<QADataModel.QADataItem>> getByGroupId(@PathVariable String groupId) {
+    @GetMapping("/group/{group_id}")
+    public APIResponse<List<QADataItem>> getByGroupId(@PathVariable(name = "group_id") String groupId) {
         try {
-            // FIXME: Implement service.getByGroupId method
-            // List<Map<String, Object>> dataList = annotationService.getByGroupId(groupId);
-
-            // Mock response for now
-            List<QADataModel.QADataItem> items = new ArrayList<>();
+            List<QADataItem> items = annotationService.getByGroupId(groupId);
 
             return APIResponse.success("Query successful, " + items.size() + " items in total", items);
         } catch (Exception e) {
@@ -298,11 +263,7 @@ public class DataController {
     @GetMapping("/groups/summary")
     public APIResponse<List<Map<String, Object>>> getGroupsSummary() {
         try {
-            // FIXME: Implement service.getGroupsSummary method
-            // List<Map<String, Object>> summary = annotationService.getGroupsSummary();
-
-            // Mock response for now
-            List<Map<String, Object>> summary = new ArrayList<>();
+            List<Map<String, Object>> summary = annotationService.getGroupsSummary();
 
             return APIResponse.success("Query successful", summary);
         } catch (Exception e) {

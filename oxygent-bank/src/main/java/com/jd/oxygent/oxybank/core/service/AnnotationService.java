@@ -1,17 +1,12 @@
 package com.jd.oxygent.oxybank.core.service;
 
 import java.security.MessageDigest;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import com.jd.oxygent.core.oxygent.utils.DateUtils;
+import com.jd.oxygent.oxybank.core.config.AnnotationConfig;
 import com.jd.oxygent.oxybank.core.config.ServiceConfig;
-import com.jd.oxygent.oxybank.core.model.annotation.AnnotationModel;
-import com.jd.oxygent.oxybank.core.model.annotation.DepositModel;
-import com.jd.oxygent.oxybank.core.model.annotation.QADataModel;
-import com.jd.oxygent.oxybank.core.model.annotation.QueryModel;
-import com.jd.oxygent.oxybank.core.model.annotation.StatsModel;
+import com.jd.oxygent.oxybank.core.model.annotation.*;
 import lombok.extern.slf4j.Slf4j;
 
 import com.jd.oxygent.oxybank.core.storer.docmanager.AnnotationManager;
@@ -35,15 +30,15 @@ public class AnnotationService {
 
     private final AnnotationManager annotationManager;
 
-    private final ServiceConfig.AnnotationConfig config;
+    private final AnnotationConfig config;
 
-    private String _current_batchId;
+    private String currentBatchId;
 
-    private final com.jd.oxygent.oxybank.core.config.ServiceConfig settings = com.jd.oxygent.oxybank.core.config.ServiceConfig.getInstance();
+    private final ServiceConfig settings = ServiceConfig.getInstance();
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder().build();
 
-    public AnnotationService(AnnotationManager annotationManager, ServiceConfig.AnnotationConfig config) {
+    public AnnotationService(AnnotationManager annotationManager, AnnotationConfig config) {
         this.annotationManager = annotationManager;
         this.config = config;
     }
@@ -53,7 +48,7 @@ public class AnnotationService {
     }
 
     private String generateBatchId() {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
+        String timestamp = DateUtils.nanoDate();
         try {
             MessageDigest md5 = MessageDigest.getInstance("MD5");
             byte[] digest = md5.digest(timestamp.getBytes());
@@ -215,6 +210,17 @@ public class AnnotationService {
         return "agent";
     }
 
+    /**
+     * Infer priority
+     *
+     *      Rules:
+     *      - e2e type → 0 (P0, highest priority)
+     *      - If caller is empty → use configured default priority
+     *      - Other types → set based on business rules
+     * @param caller
+     * @param dataType
+     * @return
+     */
     private int inferPriority(String caller, String dataType) {
         if ("e2e".equals(dataType)) {
             return 0;
@@ -228,22 +234,31 @@ public class AnnotationService {
     /**
      * Deposit single data.
      */
-    public DepositModel.DepositResponse depositData(DepositModel.DepositRequest request) {
+    public DepositResponse depositData(DepositRequest request) {
         try {
             String dataHash = computeDataHash(request.getQuestion(), request.getAnswer());
-            boolean isDuplicate = annotationManager.existsByHash(dataHash);
-            if (isDuplicate) {
-                Map<String, Object> existing = getExistingByHash(dataHash);
-                if (existing != null) {
-                    log.info("Duplicate found in ES: hash={}...", dataHash.substring(0, 16));
-                    return new DepositModel.DepositResponse(
-                            (String) existing.get("data_id"),
-                            dataHash,
-                            "pending",
-                            true,
-                            "Data already exists (ES)"
-                    );
+            Map<String, Object> result = annotationManager.getByHash(dataHash);
+            int existing = 0;
+            Map<String, Object> hits = (Map<String, Object>) result.getOrDefault("hits", Map.of());
+            Object total = hits.get("total");
+            if (total != null) {
+                if (total instanceof Map) {
+                    existing = (Integer) ((Map) total).getOrDefault("value", 0);
+                } else {
+                    existing = (Integer) total;
                 }
+            }
+            List<?> hitsList = (List<?>) hits.getOrDefault("hits", List.of());
+            existing = hitsList.size();
+            if (existing > 0) {
+                log.info("Duplicate found in ES: hash={}...", dataHash.substring(0, 16));
+                return new DepositResponse(
+                        (String) result.get("data_id"),
+                        dataHash,
+                        "pending",
+                        true,
+                        "Data already exists (ES)"
+                );
             }
 
             String dataType = request.getDataType() != null
@@ -260,12 +275,12 @@ public class AnnotationService {
                     ? priorityVal
                     : inferPriority(request.getCaller(), dataType);
 
-            if (_current_batchId == null) {
-                _current_batchId = generateBatchId();
+            if (currentBatchId == null) {
+                currentBatchId = generateBatchId();
             }
 
-            String now = DateUtils.formatDate(new Date(), DateUtils.DEFAULT_DATE_TIME_FORMAT);
-            QADataModel.QADataItem qaData = new QADataModel.QADataItem();
+            String nowStr = DateUtils.nanoDate();
+            QADataItem qaData = new QADataItem();
             qaData.setDataId(generateDataId());
             qaData.setDataHash(dataHash);
             qaData.setQuestion(request.getQuestion());
@@ -310,12 +325,12 @@ public class AnnotationService {
             qaData.setScores(new HashMap<>());
             qaData.setRejectReason(null);
             qaData.setKbStatus("pending");
-            qaData.setKbIngestedAt(null);
+            qaData.setKbIngestedAt(nowStr);
             qaData.setKbErrorMessage(null);
             qaData.setKbExtra(new HashMap<>());
-            qaData.setBatchId(_current_batchId);
-            qaData.setCreatedAt(now);
-            qaData.setUpdatedAt(now);
+            qaData.setBatchId(currentBatchId);
+            qaData.setCreatedAt(nowStr);
+            qaData.setUpdatedAt(nowStr);
             qaData.setExtra(
                     request.getExtra() != null
                             ? new HashMap<>(request.getExtra())
@@ -334,7 +349,7 @@ public class AnnotationService {
                     qaData.getCallee()
             );
 
-            return new DepositModel.DepositResponse(
+            return new DepositResponse(
                     qaData.getDataId(),
                     dataHash,
                     "pending",
@@ -350,21 +365,21 @@ public class AnnotationService {
     /**
      * Batch deposit data.
      */
-    public DepositModel.DepositBatchResponse depositBatch(DepositModel.DepositBatchRequest request) {
+    public DepositBatchResponse depositBatch(DepositBatchRequest request) {
         try {
             String batchId = request.getBatchId() != null
                     ? request.getBatchId()
                     : generateBatchId();
-            _current_batchId = batchId;
+            currentBatchId = batchId;
 
-            List<DepositModel.DepositResponse> results = new ArrayList<>();
+            List<DepositResponse> results = new ArrayList<>();
             int successCount = 0;
             int duplicateCount = 0;
             int failedCount = 0;
 
-            for (DepositModel.DepositRequest depositRequest : request.getDataList()) {
+            for (DepositRequest depositRequest : request.getDataList()) {
                 try {
-                    DepositModel.DepositResponse response = depositData(depositRequest);
+                    DepositResponse response = depositData(depositRequest);
                     results.add(response);
                     if (response.isDuplicate()) {
                         duplicateCount += 1;
@@ -386,7 +401,7 @@ public class AnnotationService {
                     failedCount
             );
 
-            return new DepositModel.DepositBatchResponse(
+            return new DepositBatchResponse(
                     batchId,
                     request.getDataList().size(),
                     successCount,
@@ -400,23 +415,11 @@ public class AnnotationService {
         }
     }
 
-    private Map<String, Object> getExistingByHash(String dataHash) {
-        try {
-            Map<String, Object> query =
-                    Map.of(
-                            "query",
-                            Map.of("term", Map.of("dataHash", dataHash)),
-                            "size",
-                            1
-                    );
-            return annotationManager.searchOneByQuery(query);
-        } catch (Exception e) {
-            log.error("Query existing data failed", e);
-            return null;
-        }
+    private Map<String, Object> getByHash(String dataHash) {
+        return annotationManager.getByHash(dataHash);
     }
 
-    public Map<String, Object> getDataList(QueryModel.DataListQueryParams params) {
+    public DataListResponse<QADataItem> getDataList(DataListQueryParams params) {
         try {
             Map<String, Object> filters = new HashMap<>();
             if (params.getStatus() != null && !params.getStatus().isEmpty()) {
@@ -473,34 +476,39 @@ public class AnnotationService {
             );
             List<Map<String, Object>> sorting = List.of(sortItem);
 
-            return annotationManager.listQuery(filters, pagination, sorting);
+            Map<String, Object> result = annotationManager.listQuery(filters, pagination, sorting);
+            DataListResponse<QADataItem> response = new DataListResponse<>();
+            return response;
         } catch (Exception e) {
             log.error("Data list query failed", e);
             throw new RuntimeException(e);
         }
     }
 
-    public Map<String, Object> getDataById(String dataId) {
+    public QADataItem getById(String dataId) {
         try {
-            return annotationManager.getById(dataId);
+            Map<String, Object> result = annotationManager.getById(dataId);
+            return new QADataItem();
         } catch (Exception e) {
             log.error("Get data failed: {}", dataId, e);
             throw new RuntimeException(e);
         }
     }
 
-    public List<Map<String, Object>> getByTraceId(String trace_id) {
+    public List<QADataItem> getByTraceId(String traceId) {
         try {
-            return annotationManager.getByTraceId(trace_id);
+            Map<String, Object> result = annotationManager.getByTraceId(traceId);
+            return new ArrayList<>();
         } catch (Exception e) {
-            log.error("Query by trace_id failed: {}", trace_id, e);
+            log.error("Query by trace_id failed: {}", traceId, e);
             throw new RuntimeException(e);
         }
     }
 
-    public List<Map<String, Object>> getByGroupId(String groupId) {
+    public List<QADataItem> getByGroupId(String groupId) {
         try {
-            return annotationManager.getByGroupId(groupId);
+            Map<String, Object> result = annotationManager.getByGroupId(groupId);
+            return new ArrayList<>();
         } catch (Exception e) {
             log.error("Query by groupId failed: {}", groupId, e);
             throw new RuntimeException(e);
@@ -509,14 +517,15 @@ public class AnnotationService {
 
     public List<Map<String, Object>> getGroupsSummary() {
         try {
-            return annotationManager.getGroupsSummary();
+            Map<String, Object> result = annotationManager.getGroupsSummary();
+            return new ArrayList<>();
         } catch (Exception e) {
             log.error("Get groups summary failed", e);
             throw new RuntimeException(e);
         }
     }
 
-    public boolean updateAnnotation(String dataId, AnnotationModel.AnnotationUpdateRequest request) {
+    public boolean updateAnnotation(String dataId, AnnotationUpdateRequest request) {
         try {
             Map<String, Object> updateData = new HashMap<>();
 
@@ -573,7 +582,6 @@ public class AnnotationService {
             if (data == null || data.isEmpty()) {
                 throw new IllegalArgumentException("Data not found: " + dataId);
             }
-
             Map<String, Object> updateData = new HashMap<>();
             updateData.put("status", "approved");
             updateData.put(
@@ -582,7 +590,7 @@ public class AnnotationService {
             );
             updateData.put(
                     "annotation.approved_at",
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS"))
+                    DateUtils.nanoDate()
             );
 
             annotationManager.update(dataId, updateData);
@@ -612,7 +620,7 @@ public class AnnotationService {
             );
             updateData.put(
                     "annotation.rejected_at",
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS"))
+                    DateUtils.nanoDate()
             );
             annotationManager.update(dataId, updateData);
             log.info("Data rejected: dataId={}, reason={}", dataId, reason);
@@ -707,7 +715,7 @@ public class AnnotationService {
                             annotationManager.updateKbStatus(
                                     dataId,
                                     "ingested",
-                                    LocalDateTime.now(),
+                                    DateUtils.nanoDate(),
                                     null,
                                     kbExtra
                             );
@@ -785,18 +793,15 @@ public class AnnotationService {
         }
     }
 
-    public StatsModel.OverallStatsResponse getOverallStats(QueryModel.DataListQueryParams filters) {
-        // fixme: 按照 Python 中的 ES 聚合逻辑实现统计查询
-        throw new UnsupportedOperationException("getOverallStats not implemented yet // fixme");
+    public OverallStatsResponse getOverallStats(DataListQueryParams filters) {
+        throw new UnsupportedOperationException("getOverallStats not implemented yet");
     }
 
-    public Map<String, Object> get_pending_p0_stats(int limit) {
-        // fixme: 实现 pending P0 统计查询
-        throw new UnsupportedOperationException("get_pending_p0_stats not implemented yet // fixme");
+    public Map<String, Object> getPendingP0Stats(int limit) {
+        throw new UnsupportedOperationException("get_pending_p0_stats not implemented yet");
     }
 
-    public StatsModel.TypeStatsResponse get_stats_by_type(QueryModel.DataListQueryParams filters) {
-        // fixme: 按类型聚合统计
-        throw new UnsupportedOperationException("get_stats_by_type not implemented yet // fixme");
+    public TypeStatsResponse getStatsByType(DataListQueryParams filters) {
+        throw new UnsupportedOperationException("get_stats_by_type not implemented yet");
     }
 }

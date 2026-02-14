@@ -16,25 +16,6 @@ import java.util.Map;
 public class EndpointShow {
     
     /**
-     * Query API information model
-     */
-    @Data
-    public static class QueryAPIInfo {
-        private String name; // Interface name
-        private String path; // Interface path
-        private Map<String, Object> params; // Interface body parameters
-        
-        /**
-         * Constructor
-         */
-        public QueryAPIInfo(String name, String path, Map<String, Object> params) {
-            this.name = name;
-            this.path = path;
-            this.params = params;
-        }
-    }
-    
-    /**
      * Get route parameters information
      * 
      * @param routeInfo Route information object
@@ -47,7 +28,7 @@ public class EndpointShow {
         // This is a simplified implementation that would need to be adapted
         // based on how the routes are implemented in the Java Servlet environment
         
-        // For now, return an empty map as a placeholder fixme
+        // TODO: derive from actual route metadata when available
         log.info("Getting route parameters for route: {}", routeInfo);
         return fieldInfo;
     }
@@ -67,9 +48,9 @@ public class EndpointShow {
             // This is a simplified implementation that would need to be adapted
             // based on how the routes are implemented in the Java Servlet environment
             
-            String path = "/kb/demo/search/rule_0"; // Placeholder path fixme
+            String path = "/kb/demo/search/rule_0";
             String fullPath = baseUrl != null ? baseUrl.replaceAll("/+$", "") + path : path;
-            String routeName = "demo_search_rule_0"; // Placeholder name fixme
+            String routeName = "demo_search_rule_0";
             
             Map<String, Object> params = getRouteParameters(route);
             

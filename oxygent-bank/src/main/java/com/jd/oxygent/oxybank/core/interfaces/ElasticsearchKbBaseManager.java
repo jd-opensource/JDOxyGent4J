@@ -1,11 +1,14 @@
 package com.jd.oxygent.oxybank.core.interfaces;
 
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Simulated ElasticsearchKbBaseManager class
  */
+@Component
 public class ElasticsearchKbBaseManager {
 
     /**

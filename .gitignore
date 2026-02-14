@@ -44,7 +44,7 @@ log
 ### VS Code ###
 .joycode/
 .env
-
+.windsurf
 *.jsonl
 *.log
 cache_dir/

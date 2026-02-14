@@ -15,6 +15,7 @@
  */
 package com.jd.oxygent.core.oxygent.infra.databases;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -192,4 +193,6 @@ public interface BaseEs {
     Map<String, Object> deleteIndex(String indexName);
 
     Map<String, Object> refreshIndex(String indexName);
+
+    int getHitsTotal(Map<String, Object> response);
 }

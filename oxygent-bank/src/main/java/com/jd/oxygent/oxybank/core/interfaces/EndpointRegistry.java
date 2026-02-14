@@ -1,6 +1,7 @@
 package com.jd.oxygent.oxybank.core.interfaces;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -24,8 +25,8 @@ public class EndpointRegistry {
     // Application instance (in Java, this would be a ServletContext or similar)
     private final Object app;
     
-    // ES client for querying knowledge bases (simulated)
-    private final ElasticsearchKbBaseManager kbBaseClient;
+    @Autowired
+    private ElasticsearchKbBaseManager kbBaseClient;
     
     // Registered endpoints list (simulates FastAPI routes)
     private final List<EndpointRoute> routes = new ArrayList<>();

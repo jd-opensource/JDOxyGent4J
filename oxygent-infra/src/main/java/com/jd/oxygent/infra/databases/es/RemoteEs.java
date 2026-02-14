@@ -510,4 +510,22 @@ public class RemoteEs extends BaseDB implements BaseEs {
             return handleException(e, "createIndex");
         }
     }
+
+    @Override
+    public int getHitsTotal(Map<String, Object> response) {
+        if (response == null) {
+            return 0;
+        }
+        Map<String, Object> hits = (Map<String, Object>) response.getOrDefault("hits", Map.of());
+        Object total = hits.get("total");
+        if (total != null) {
+            if (total instanceof Map) {
+                return (Integer) ((Map) total).getOrDefault("value", 0);
+            } else {
+                return (Integer) total;
+            }
+        }
+        List<?> hitsList = (List<?>) hits.getOrDefault("hits", List.of());
+        return hitsList.size();
+    }
 }
