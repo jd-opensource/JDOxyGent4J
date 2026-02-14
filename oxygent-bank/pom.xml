@@ -10,11 +10,16 @@
     </parent>
 
     <artifactId>oxygent-bank</artifactId>
+    <packaging>jar</packaging>
 
     <dependencies>
     	<dependency>
             <groupId>com.jd.oxygent</groupId>
             <artifactId>oxygent-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.jd.oxygent</groupId>
+            <artifactId>oxygent-infra</artifactId>
         </dependency>
         <!-- Spring Boot Web -->
         <dependency>

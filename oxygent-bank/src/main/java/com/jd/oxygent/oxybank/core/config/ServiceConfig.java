@@ -25,10 +25,6 @@ public class ServiceConfig {
 
     private static final ServiceConfig INSTANCE = new ServiceConfig();
 
-    private final ElasticsearchConfig esConfig;
-
-    private final VearchConfig vearchConfig;
-
     private final EmbeddingConfig embeddingConfig;
 
     private final AnnotationConfig annotationConfig;
@@ -53,41 +49,14 @@ public class ServiceConfig {
         this.host = "0.0.0.0";
         this.port = 8000;
         this.apiBaseUrl = null;
-        this.esConfig = new ElasticsearchConfig();
-        this.vearchConfig = new VearchConfig();
         this.embeddingConfig = new EmbeddingConfig();
         this.annotationConfig = new AnnotationConfig();
-        this.initEsClient();
         this.initVearchClient();
         this.initEmbeddingModel();
     }
 
     public static ServiceConfig getInstance() {
         return INSTANCE;
-    }
-
-    private void initEsClient() {
-        try {
-            List<String> hosts = esConfig.getHosts();
-            List<HttpHost> hostLists = new ArrayList<>();
-//            String[] hostList = esProperties.getClusterNodes().split(";");
-//            for (String addr : hostList) {
-//                if (StringUtils.isEmpty(addr)) {
-//                    continue;
-//                }
-//                String[] addrDetail = addr.split(":");
-//                String host = addrDetail[0];
-//                String port = addrDetail[1];
-//                hostLists.add(new HttpHost(host, Integer.parseInt(port), esProperties.getSchema()));
-//            }
-            HttpHost[] httpHost = hostLists.toArray(new HttpHost[]{});
-            // Build connection object
-            RestClientBuilder builder = RestClient.builder(httpHost);
-            this.esClient = new RestHighLevelClient(builder);
-        } catch (Exception e) {
-            log.error("初始化 Elasticsearch 客户端失败", e);
-            // fixme: 根据需要决定是否抛出运行时异常
-        }
     }
 
     private void initVearchClient() {
@@ -101,8 +70,8 @@ public class ServiceConfig {
 
     private void initEmbeddingModel() {
         try {
-            String embedding_type = embeddingConfig.getType().toLowerCase();
-            if ("glm".equals(embedding_type)) {
+            String embeddingType = embeddingConfig.getType().toLowerCase();
+            if ("glm".equals(embeddingType)) {
                 // 对应 Python: EmbeddingFactory.create_embedding(...)
                 this.embeddingModel = EmbeddingFactory.createEmbedding(
                         "glm",
@@ -117,7 +86,7 @@ public class ServiceConfig {
                                 """
                                 Unsupported embedding type: %s. Supported type: glm
                                 """,
-                                embedding_type
+                                embeddingType
                         )
                 );
             }
@@ -136,14 +105,6 @@ public class ServiceConfig {
 
     public Object getEmbeddingModel() {
         return embeddingModel;
-    }
-
-    public ElasticsearchConfig getEsConfig() {
-        return esConfig;
-    }
-
-    public VearchConfig getVearchConfig() {
-        return vearchConfig;
     }
 
     public EmbeddingConfig getEmbeddingConfig() {
@@ -200,28 +161,6 @@ public class ServiceConfig {
 
         public ElasticsearchConfig() {
             // fixme: 从环境变量 ELASTICSEARCH_* 中加载配置
-        }
-    }
-
-    @Data
-    public static class VearchConfig {
-
-        /**
-         * host: str = ""
-         * token: str | None = None
-         * dbName: str = ""
-         * vectorDimension: int = 1024
-         */
-        private String host = "";
-
-        private String token;
-
-        private String dbName = "";
-
-        private int vectorDimension = 1024;
-
-        public VearchConfig() {
-            // fixme: 从环境变量 VEARCH_* 中加载配置
         }
     }
 
@@ -333,14 +272,14 @@ public class ServiceConfig {
             if (kbTimeout < 0 || kbRetryTimes < 0 || kbRetryInterval < 0) {
                 throw new IllegalArgumentException("Must be a positive integer");
             }
-            List<String> valid_types = List.of("e2e", "agent", "llm", "tool", "custom");
-            if (!valid_types.contains(defaultDataType)) {
+            List<String> validTypes = List.of("e2e", "agent", "llm", "tool", "custom");
+            if (!validTypes.contains(defaultDataType)) {
                 throw new IllegalArgumentException(
                         String.format(
                                 """
                                 Invalid data type, must be one of: %s
                                 """,
-                                String.join(", ", valid_types)
+                                String.join(", ", validTypes)
                         )
                 );
             }

@@ -183,7 +183,7 @@ public class EmbeddingFactory {
     private static Object createGLMEmbedding(String model, String apiKey, Map<String, Object> kwargs) throws ClassNotFoundException {
         try {
             // Try to load GLMEmbedding class
-            Class<?> glmEmbeddingClass = Class.forName("com.jd.oxygent.oxybank.core.model.embedding.GLMEmbedding2");
+            Class<?> glmEmbeddingClass = Class.forName("com.jd.oxygent.oxybank.core.model.embedding.GLMEmbedding");
             
             // TODO: Implement proper instance creation with reflection
             // For now, return a dummy instance
