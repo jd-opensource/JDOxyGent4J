@@ -147,7 +147,7 @@ public class BankManagerByApiRouter {
             return "string";
         } else if (paramClass == Integer.class || paramClass == int.class) {
             return "integer";
-        } else if (paramClass == Float.class || paramClass == float.class ||
+        } else if (paramClass == Double.class || paramClass == float.class ||
                 paramClass == Double.class || paramClass == double.class) {
             return "number";
         } else if (paramClass == Boolean.class || paramClass == boolean.class) {

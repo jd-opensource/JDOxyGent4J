@@ -3,28 +3,23 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>com.jd.oxygent</groupId>
         <artifactId>JDOxyGent4J</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <artifactId>oxygent-studio</artifactId>
-    <name>oxygent-studio</name>
-    <packaging>jar</packaging>
+    <artifactId>oxygent-bank</artifactId>
 
     <dependencies>
-        <!-- Internal Dependencies -->
-        <dependency>
+    	<dependency>
             <groupId>com.jd.oxygent</groupId>
-            <artifactId>oxygent-infra</artifactId>
+            <artifactId>oxygent-core</artifactId>
         </dependency>
-
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
         <!-- Test Dependencies -->
@@ -33,6 +28,21 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Elasticsearch -->
+        <dependency>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-high-level-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

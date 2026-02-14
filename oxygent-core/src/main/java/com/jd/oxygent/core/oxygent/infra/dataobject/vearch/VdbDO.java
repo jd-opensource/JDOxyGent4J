@@ -158,7 +158,7 @@ public class VdbDO {
      *
      * <strong>Performance Optimization</strong>:
      * <ul>
-     *   <li>Use float[] instead of List<Float>, reducing object overhead</li>
+     *   <li>Use float[] instead of List<Double>, reducing object overhead</li>
      *   <li>Support SIMD instruction accelerated vector operations</li>
      *   <li>Fully compatible with Vearch's native storage format</li>
      * </ul>

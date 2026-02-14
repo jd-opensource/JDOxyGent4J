@@ -129,7 +129,7 @@ public class RemoteVearch implements BaseVDB {
                             // ⭐ Fix: Use IntStream.range to handle float[], avoiding the problem of being unable to parse stream(float[])
                             vectorMap.put("feature",
                                     IntStream.range(0, v.feature().length)
-                                            .mapToObj(i -> v.feature()[i]) // v.feature()[i] is float, will be boxed to Float
+                                            .mapToObj(i -> v.feature()[i]) // v.feature()[i] is float, will be boxed to Double
                                             .collect(Collectors.toList()));
 
                             vectorMap.put("min_score", v.minScore());

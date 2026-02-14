@@ -1,0 +1,18 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: oxygent-bank
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 100MB
+      file-size-threshold: 2KB
+
+logging:
+  level:
+    com.jd.oxygent: debug

@@ -173,8 +173,8 @@ public class MCPToolRegistry {
                 return Double.parseDouble(defaultValue);
             if (targetType == Boolean.class || targetType == boolean.class)
                 return Boolean.parseBoolean(defaultValue);
-            if (targetType == Float.class || targetType == float.class)
-                return Float.parseFloat(defaultValue);
+            if (targetType == Double.class || targetType == float.class)
+                return Double.parseDouble(defaultValue);
             if (targetType == Long.class || targetType == long.class)
                 return Long.parseLong(defaultValue);
             return defaultValue;
@@ -197,8 +197,8 @@ public class MCPToolRegistry {
                 return Integer.parseInt(stringValue);
             if (targetType == Double.class || targetType == double.class)
                 return Double.parseDouble(stringValue);
-            if (targetType == Float.class || targetType == float.class)
-                return Float.parseFloat(stringValue);
+            if (targetType == Double.class || targetType == float.class)
+                return Double.parseDouble(stringValue);
             if (targetType == Long.class || targetType == long.class)
                 return Long.parseLong(stringValue);
             if (targetType == Boolean.class || targetType == boolean.class)
