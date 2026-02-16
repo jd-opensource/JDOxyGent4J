@@ -599,7 +599,7 @@ public class ReActAgent extends LocalAgent {
 
                 // Add to reactMemory for next round use
                 reactMemory.addMessage(Message.assistantMessage(llmResponse.getOriResponse()));
-                reactMemory.addMessage(Message.userMessage(observation.toContent(this.isDiscardReactMemory)));
+                reactMemory.addMessage(Message.userMessage(observation.toContent(this.isMultimodalSupported)));
 
             } else {
                 // Parse error, record to reactMemory for correction
