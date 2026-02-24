@@ -189,6 +189,19 @@ public class RouteController {
         }
     }
 
+    @GetMapping("/get_description")
+    public ResponseEntity<Map<String, Object>> getDescription() {
+        try {
+            String desc = mas.getOxyByName(mas.getMasterAgentName()).getDesc();
+            Map<String, Object> data = Map.of("description", desc);
+            return ResponseEntity.ok(WebResponse.success(data).toMap());
+        } catch (Exception e) {
+            log.error("Failed to get description message", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(WebResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Failed to get description message").toMap());
+        }
+    }
+
     /**
      * List all saved scripts.
      *
