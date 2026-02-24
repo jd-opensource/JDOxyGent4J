@@ -583,6 +583,41 @@ public class OxyRequest implements Cloneable {
      */
     public void sendMessage(SSEMessage sseMessage) {
         if (isSendMessage && this.mas != null && sseMessage != null && sseMessage.getData() != null) {
+
+            // Record first response time on user-facing messages
+            // Exclude: tool_call (preparing to execute), observation (internal execution result)
+            // Include: answer, stream, stream_end (messages sent to user)
+            if (sseMessage.getData() instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> messageMap = (Map<String, Object>) sseMessage.getData();
+                String msgType = (String) messageMap.getOrDefault("type", "");
+                
+                // Check if message type should trigger metric collection
+                if (!"tool_call".equals(msgType) && !"observation".equals(msgType)) {
+                    Map<String, Object> metrics = (Map<String, Object>) this.sharedData.get("_metrics");
+                    // Only record first response time once
+                    if (!metrics.containsKey("first_response_time_ms")) {
+                        Object queryStartTimeObj = metrics.get("_query_start_time");
+                        if (queryStartTimeObj instanceof Long) {
+                            double queryStartTime = ((Long) queryStartTimeObj);
+                            double currentTime = System.currentTimeMillis() / 1000.0;
+                            double firstResponseMs = (currentTime - queryStartTime) * 1000;
+                            
+                            metrics.put("first_response_time_ms", firstResponseMs);
+                            
+                            logger.info(String.format(
+                                "First response time: %.2fms, trace_id=%s, node_id=%s, message_type=%s",
+                                firstResponseMs,
+                                this.currentTraceId,
+                                this.nodeId,
+                                msgType
+                            ));
+                        }
+                    }
+                }
+            }
+
+
             var redisKey = mas.getMessagePrefix() + ":" + mas.getName() + ":" + this.getCurrentTraceId();
             this.mas.sendMessage(sseMessage, redisKey, this);
         }

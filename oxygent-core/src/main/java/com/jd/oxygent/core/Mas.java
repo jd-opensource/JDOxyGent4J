@@ -1034,9 +1034,13 @@ public class Mas {
         }
 
         Object query = payload.get("query");
-        String queryString = (query instanceof String) ? (String) query
-                : (query != null ? JsonUtils.toJSONString(query) : null);
+        String queryString = (query instanceof String) ? (String) query : (query != null ? JsonUtils.toJSONString(query) : null);
         sharedData.put("query", queryString);
+
+        // initialize metrics dict and record query start time
+        Map<String, Object> metrics = (Map<String, Object>) sharedData.computeIfAbsent("_metrics",k -> new HashMap<>());
+        metrics.put("_query_start_time", System.currentTimeMillis() / 1000.0);
+
         payload.put("shared_data", sharedData);
 
         // Check for restart_node_id and reference_trace_id in payload
