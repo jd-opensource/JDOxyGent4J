@@ -316,13 +316,13 @@ public class StringTools extends FunctionHub {
 
         // Test 4: Edge cases
         System.out.println("\n4. Edge Cases Test:");
-        
+
         // Empty text
         String emptyResult = stringTools.call("extract_emails", "").toString();
         System.out.println("   Empty text email extraction: " + emptyResult);
-        
+
         // Null email validation
-        String nullValidation = stringTools.call("validate_email", null).toString();
+        String nullValidation = stringTools.call("validate_email", (Object) null).toString();
         System.out.println("   Null email validation: " + nullValidation);
         
         // Text without emails

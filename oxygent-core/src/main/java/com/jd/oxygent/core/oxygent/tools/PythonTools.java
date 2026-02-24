@@ -16,15 +16,13 @@
 package com.jd.oxygent.core.oxygent.tools;
 
 import com.jd.oxygent.core.oxygent.oxy.function_tools.FunctionHub;
+import org.python.core.PyException;
+import org.python.core.PySystemState;
+import org.python.util.PythonInterpreter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Python code execution tool class providing dynamic Python code execution functionality.
@@ -73,14 +71,12 @@ import java.util.Objects;
  * @author OxyGent Team
  * @version 1.0.0
  * @see FunctionHub Tool execution framework base class
- * @see ScriptEngineManager JSR-223 scripting engine manager
  * @since 1.0.0
  */
 public class PythonTools extends FunctionHub {
 
     private static final Logger logger = LoggerFactory.getLogger(PythonTools.class);
-    private final ScriptEngineManager scriptEngineManager;
-    private final ScriptEngine pythonEngine;
+    private final PythonInterpreter interpreter;
 
     /**
      * Constructor to initialize Python tools.
@@ -93,10 +89,10 @@ public class PythonTools extends FunctionHub {
         super("python_tools");
         this.setDesc("Tool set providing Python code execution functionality in Java environment, supports variable extraction and result return");
 
-        this.scriptEngineManager = new ScriptEngineManager();
-        this.pythonEngine = scriptEngineManager.getEngineByName("python");
-        
-        if (this.pythonEngine == null) {
+        // 创建Python解释器
+        this.interpreter = new PythonInterpreter(null, new PySystemState());
+
+        if (this.interpreter == null) {
             logger.warn("Python engine not found, some features may be limited");
         }
     }
@@ -144,39 +140,30 @@ public class PythonTools extends FunctionHub {
             }
     )
     public String runPythonCode(String code, String variableToReturn, Map<String, Object> safeGlobals, Map<String, Object> safeLocals) {
-        Objects.requireNonNull(code, "Python code cannot be null");
-        
+
         if (code.trim().isEmpty()) {
             return "Error: Python code cannot be empty";
         }
 
         try {
             logger.debug("Running Python code:\n\n{}\n\n", code);
-            
-            // Check if Python engine is available
-            if (pythonEngine == null) {
-                return "Error: Python engine not available in current environment";
-            }
+
 
             // Set up execution context
             if (safeGlobals != null) {
-                for (Map.Entry<String, Object> entry : safeGlobals.entrySet()) {
-                    pythonEngine.put(entry.getKey(), entry.getValue());
-                }
+                safeGlobals.forEach((k, v) -> interpreter.set(k, v));
             }
             
             if (safeLocals != null) {
-                for (Map.Entry<String, Object> entry : safeLocals.entrySet()) {
-                    pythonEngine.put(entry.getKey(), entry.getValue());
-                }
+                safeLocals.forEach((k, v) -> interpreter.set(k, v));
             }
 
             // Execute Python code
-            Object result = pythonEngine.eval(code);
+            interpreter.exec(code);
 
             // Handle variable return
             if (variableToReturn != null && !variableToReturn.trim().isEmpty()) {
-                Object variableValue = pythonEngine.get(variableToReturn.trim());
+                Object variableValue = interpreter.get(variableToReturn.trim());
                 if (variableValue == null) {
                     return "Variable " + variableToReturn + " not found";
                 }
@@ -185,8 +172,7 @@ public class PythonTools extends FunctionHub {
             } else {
                 return "Successfully executed Python code";
             }
-            
-        } catch (ScriptException e) {
+        } catch (PyException e) {
             logger.error("Error executing Python code: {}", e.getMessage(), e);
             return "Error executing Python code: " + e.getMessage();
         } catch (Exception e) {
@@ -195,22 +181,7 @@ public class PythonTools extends FunctionHub {
         }
     }
 
-    /**
-     * Execute Python code with default parameters.
-     * <p>
-     * Convenience method for executing Python code without specifying return variables
-     * or custom scopes. Suitable for simple execution scenarios.
-     * </p>
-     *
-     * @param code Python code to execute
-     * @return Execution result string
-     */
-    public String runPythonCode(String code) {
-        return runPythonCode(code, null, null, null);
-    }
-
     // ========== Test Methods ==========
-
     /**
      * Test method demonstrating basic functionality of PythonTools.
      * <p>
@@ -227,7 +198,7 @@ public class PythonTools extends FunctionHub {
 
         // Test 1: Simple calculation
         System.out.println("1. Simple calculation test:");
-        String calcResult = (String) pythonTools.call("run_python_code", "result = 10 + 20");
+        String calcResult = (String) pythonTools.call("run_python_code", "result = 10 + 20",null,null,null);
         System.out.println("   Calculation result: " + calcResult);
 
         // Test 2: Variable return
@@ -245,7 +216,7 @@ public class PythonTools extends FunctionHub {
 
         // Test 4: Error handling
         System.out.println("\n4. Error handling test:");
-        String errorResult = (String) pythonTools.call("run_python_code", "undefined_variable + 1");
+        String errorResult = (String) pythonTools.call("run_python_code", "undefined_variable + 1",null,null,null);
         System.out.println("   Error handling: " + errorResult);
 
         // Test 5: With custom scope

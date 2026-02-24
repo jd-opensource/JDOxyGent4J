@@ -203,7 +203,7 @@ public class HttpTools extends FunctionHub {
     )
     public String httpPost(String url, Map<String, Object> data, Map<String, String> headers) {
         Objects.requireNonNull(url, "URL cannot be null");
-        
+
         if (url.trim().isEmpty()) {
             return "{\"error\": \"URL cannot be empty\"}";
         }
@@ -222,7 +222,7 @@ public class HttpTools extends FunctionHub {
             // Add headers (ensure Content-Type is set)
             Map<String, String> finalHeaders = headers != null ? new HashMap<>(headers) : new HashMap<>();
             finalHeaders.putIfAbsent("Content-Type", "application/json");
-            
+
             for (Map.Entry<String, String> header : finalHeaders.entrySet()) {
                 requestBuilder.addHeader(header.getKey(), header.getValue());
             }

@@ -22,11 +22,8 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * Shell command execution tool class providing system command execution functionality.
@@ -95,17 +92,18 @@ public class ShellTools extends FunctionHub {
     }
 
     /**
-     * Execute shell command.
+     * Execute shell command with full parameter support.
      * <p>
      * Executes specified shell command and returns command output or error information.
-     * Supports command argument list specification, working directory setting, and output
-     * line count limitation. Automatically handles cross-platform command format differences
+     * Supports both command string and argument list specification, working directory setting,
+     * and output line count limitation. Automatically handles cross-platform command format differences
      * and provides comprehensive error handling.
      * </p>
      *
      * <p><strong>Execution Process:</strong></p>
      * <ol>
-     *   <li>Validate command arguments</li>
+     *   <li>Validate command parameters (either command or args must be provided)</li>
+     *   <li>Convert args list to command string if needed</li>
      *   <li>Set working directory if specified</li>
      *   <li>Execute command and capture output</li>
      *   <li>Process output according to line count limit</li>
@@ -119,40 +117,62 @@ public class ShellTools extends FunctionHub {
      *   <li>Automatic platform detection and adaptation</li>
      * </ul>
      *
-     * @param args    Command arguments list, cannot be null or empty
+     * @param command Optional complete command string, can be null if args provided
+     * @param args    Optional command arguments list, can be null if command provided
      * @param tail    Output line count limit, defaults to 10 lines
      * @param baseDir Optional working directory, can be null
      * @return Command execution output or error information
-     * @throws IllegalArgumentException when args is null or empty
+     * @throws IllegalArgumentException when both command and args are null/empty
      */
     @Tool(
             name = "run_shell_command",
-            description = "Execute shell command and return output or error information. Supports command arguments, working directory specification, and output line count control. Handles cross-platform compatibility automatically.",
+            description = "Execute shell command and return output or error information. Supports both command string and argument list, working directory specification, and output line count control. Handles cross-platform compatibility automatically.",
             paramMetas = {
-                    @ParamMetaAuto(name = "args", type = "List<String>", description = "Command arguments list, e.g.: [\"ls\", \"-la\"] or [\"dir\"]"),
+                    @ParamMetaAuto(name = "command", type = "String", description = "Complete command string, e.g.: \"ls -la\" or \"dir\"", defaultValue = "null"),
+                    @ParamMetaAuto(name = "args", type = "List<String>", description = "Command arguments list, e.g.: [\"ls\", \"-la\"] or [\"dir\"]", defaultValue = "null"),
                     @ParamMetaAuto(name = "tail", type = "int", description = "Output line count limit, returns last N lines", defaultValue = "10"),
                     @ParamMetaAuto(name = "base_dir", type = "String", description = "Optional working directory path, uses current directory when null", defaultValue = "null")
             }
     )
-    public String runShellCommand(List<String> args, int tail, String baseDir) {
-        Objects.requireNonNull(args, "Command arguments cannot be null");
-        
-        if (args.isEmpty()) {
-            return "Error: Command arguments list cannot be empty";
+    public String runShellCommand(String command, List<String> args, int tail, String baseDir) {
+        // Validate that either command or args is provided
+        if ((command == null || command.trim().isEmpty()) && (args == null || args.isEmpty())) {
+            return "Error: Either command string or args list must be provided";
+        }
+
+        // Convert args to command string if command is not provided
+        String finalCommand;
+        if (command != null && !command.trim().isEmpty()) {
+            finalCommand = command.trim();
+        } else {
+            // Build command from args list
+            StringBuilder commandBuilder = new StringBuilder();
+            for (int i = 0; i < args.size(); i++) {
+                if (i > 0) {
+                    commandBuilder.append(" ");
+                }
+                String arg = args.get(i);
+                // Quote arguments containing spaces (basic shell escaping)
+                if (arg.contains(" ") && !arg.startsWith("\"") && !arg.endsWith("\"")) {
+                    commandBuilder.append("\"").append(arg).append("\"");
+                } else {
+                    commandBuilder.append(arg);
+                }
+            }
+            finalCommand = commandBuilder.toString();
         }
 
         try {
-            logger.info("Running shell command: {}", args);
+            logger.info("Running shell command: {}", finalCommand);
 
             // Prepare command based on operating system
             ProcessBuilder processBuilder;
             if (isWindows()) {
-                // Windows: wrap command in cmd.exe
-                processBuilder = new ProcessBuilder("cmd.exe", "/c");
-                processBuilder.command().addAll(args);
+                // Windows: use cmd.exe /c for command execution
+                processBuilder = new ProcessBuilder("cmd.exe", "/c", finalCommand);
             } else {
-                // Unix-like systems: direct command execution
-                processBuilder = new ProcessBuilder(args);
+                // Unix-like systems: use shell -c for command execution
+                processBuilder = new ProcessBuilder("/bin/sh", "-c", finalCommand);
             }
 
             // Set working directory
@@ -172,16 +192,29 @@ public class ShellTools extends FunctionHub {
             StringBuilder output = new StringBuilder();
             StringBuilder errorOutput = new StringBuilder();
 
-            // Read stdout
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            // Determine appropriate charset based on OS
+            java.nio.charset.Charset charset = java.nio.charset.StandardCharsets.UTF_8;
+            
+            // Windows systems typically use GBK encoding for command output
+            if (isWindows()) {
+                try {
+                    charset = java.nio.charset.Charset.forName("GBK");
+                } catch (Exception e) {
+                    logger.debug("GBK charset not available, falling back to UTF-8");
+                    charset = java.nio.charset.StandardCharsets.UTF_8;
+                }
+            }
+
+            // Read stdout with proper encoding
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), charset))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append(System.lineSeparator());
                 }
             }
 
-            // Read stderr
-            try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+            // Read stderr with proper encoding
+            try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), charset))) {
                 String errorLine;
                 while ((errorLine = errorReader.readLine()) != null) {
                     errorOutput.append(errorLine).append(System.lineSeparator());
@@ -223,35 +256,6 @@ public class ShellTools extends FunctionHub {
     }
 
     /**
-     * Execute shell command with default parameters.
-     * <p>
-     * Convenience method for executing shell commands with default line count limit (10 lines)
-     * and current working directory.
-     * </p>
-     *
-     * @param args Command arguments list
-     * @return Command execution output or error information
-     */
-    public String runShellCommand(List<String> args) {
-        return runShellCommand(args, 10, null);
-    }
-
-    /**
-     * Execute shell command with line count limit.
-     * <p>
-     * Convenience method for executing shell commands with specified line count limit
-     * and current working directory.
-     * </p>
-     *
-     * @param args Command arguments list
-     * @param tail Output line count limit
-     * @return Command execution output or error information
-     */
-    public String runShellCommand(List<String> args, int tail) {
-        return runShellCommand(args, tail, null);
-    }
-
-    /**
      * Check if current system is Windows.
      * <p>
      * Detects operating system type for platform-specific command handling.
@@ -280,44 +284,54 @@ public class ShellTools extends FunctionHub {
 
         System.out.println("=== Shell Tools Test ===");
 
-        // Test 1: Directory listing (cross-platform)
-        System.out.println("1. Directory listing test:");
-        List<String> dirCommand = System.getProperty("os.name").toLowerCase().contains("windows") 
+        // Test 1: Directory listing using args list (cross-platform)
+        System.out.println("1. Directory listing test (using args list):");
+        List<String> dirArgs = System.getProperty("os.name").toLowerCase().contains("windows") 
             ? List.of("dir") 
             : List.of("ls", "-la");
-        String dirResult = (String) shellTools.call("run_shell_command", dirCommand, 5, null);
+        String dirResult = (String) shellTools.call("run_shell_command", null, dirArgs, 5, null);
         System.out.println("   Directory listing result:");
         System.out.println(dirResult);
 
-        // Test 2: Current directory
-        System.out.println("\n2. Current directory test:");
-        List<String> pwdCommand = System.getProperty("os.name").toLowerCase().contains("windows")
-            ? List.of("cd")
-            : List.of("pwd");
-        String pwdResult = (String) shellTools.call("run_shell_command", pwdCommand);
+        // Test 2: Directory listing using command string (cross-platform)
+        System.out.println("\n2. Directory listing test (using command string):");
+        String dirCommand = System.getProperty("os.name").toLowerCase().contains("windows") 
+            ? "dir" 
+            : "ls -la";
+        String dirResult2 = (String) shellTools.call("run_shell_command", dirCommand, null, 5, null);
+        System.out.println("   Directory listing result:");
+        System.out.println(dirResult2);
+
+        // Test 3: Current directory
+        System.out.println("\n3. Current directory test:");
+        String pwdCommand = System.getProperty("os.name").toLowerCase().contains("windows")
+            ? "cd"
+            : "pwd";
+        String pwdResult = (String) shellTools.call("run_shell_command", pwdCommand, null, 10, null);
         System.out.println("   Current directory: " + pwdResult);
 
         // Test 3: System information
         System.out.println("\n3. System information test:");
-        List<String> sysCommand = System.getProperty("os.name").toLowerCase().contains("windows")
-            ? List.of("systeminfo")
-            : List.of("uname", "-a");
-        String sysResult = (String) shellTools.call("run_shell_command", sysCommand, 3, null);
+        String sysCommand = System.getProperty("os.name").toLowerCase().contains("windows")
+            ? "systeminfo"
+            : "uname -a";
+        String sysResult = (String) shellTools.call("run_shell_command", sysCommand, null, 3, null);
         System.out.println("   System info (first 3 lines):");
         System.out.println(sysResult);
 
-        // Test 4: Error handling
-        System.out.println("\n4. Error handling test:");
-        String errorResult = (String) shellTools.call("run_shell_command", List.of("nonexistent-command"));
+        // Test 5: Error handling
+        System.out.println("\n5. Error handling test:");
+        String errorResult = (String) shellTools.call("run_shell_command", "nonexistent-command", null, 10, null);
         System.out.println("   Error handling result: " + errorResult);
 
-        // Test 5: Working directory test
-        System.out.println("\n5. Working directory test:");
+        // Test 6: Working directory test
+        System.out.println("\n6. Working directory test:");
         String tempDir = System.getProperty("java.io.tmpdir");
         String dirTestResult = (String) shellTools.call("run_shell_command", 
             System.getProperty("os.name").toLowerCase().contains("windows")
-                ? List.of("dir")
-                : List.of("ls", "-la"),
+                ? "dir"
+                : "ls -la",
+            null,
             3, 
             tempDir);
         System.out.println("   Temp directory listing:");
