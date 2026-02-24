@@ -779,6 +779,11 @@ public class LocalEs extends BaseDB implements BaseEs {
     }
 
     @Override
+    public Map<String, Object> getMapping(String indexName) {
+        return Map.of();
+    }
+
+    @Override
     public int getHitsTotal(Map<String, Object> response) {
         if (response == null) {
             return 0;

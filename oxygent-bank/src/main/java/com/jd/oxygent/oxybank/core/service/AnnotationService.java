@@ -4,6 +4,8 @@ import java.security.MessageDigest;
 import java.util.*;
 
 import com.jd.oxygent.core.oxygent.utils.DateUtils;
+import com.jd.oxygent.core.oxygent.utils.JsonUtils;
+import com.jd.oxygent.core.oxygent.utils.ObjectUtils;
 import com.jd.oxygent.oxybank.core.config.AnnotationConfig;
 import com.jd.oxygent.oxybank.core.config.ServiceConfig;
 import com.jd.oxygent.oxybank.core.model.annotation.*;
@@ -14,6 +16,8 @@ import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.apache.commons.collections4.MapUtils;
+import org.springframework.stereotype.Service;
 
 /**
  * Annotation service - Core business logic
@@ -26,6 +30,7 @@ import okhttp3.Response;
  * - Statistics and analysis
  */
 @Slf4j
+@Service
 public class AnnotationService {
 
     private final AnnotationManager annotationManager;
@@ -487,8 +492,11 @@ public class AnnotationService {
 
     public QADataItem getById(String dataId) {
         try {
-            Map<String, Object> result = annotationManager.getById(dataId);
-            return new QADataItem();
+            Map<String, Object> response = annotationManager.getById(dataId);
+            Map<String, Object> hits = (Map<String, Object>) response.getOrDefault("hits", Map.of());
+            List<Map<String, Object>> hitsList = (List<Map<String, Object>>) hits.getOrDefault("hits", List.of());
+            Map<String, Object> source = (Map<String, Object>) hitsList.get(0).getOrDefault("_source", Map.of());
+            return JsonUtils.OBJECT_MAPPER.convertValue(source, QADataItem.class);
         } catch (Exception e) {
             log.error("Get data failed: {}", dataId, e);
             throw new RuntimeException(e);

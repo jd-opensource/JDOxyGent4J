@@ -1,8 +1,9 @@
 package com.jd.oxygent.oxybank.api.controller;
 
 import com.jd.oxygent.oxybank.api.model.APIResponse;
-import com.jd.oxygent.oxybank.core.interfaces.ElasticsearchKbBaseManager;
+import com.jd.oxygent.oxybank.core.storer.docmanager.ElasticsearchKbBaseManager;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,9 +20,10 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/query_interface")
-public class QueryEndpointController {
+public class QueryController {
 
-    private static final ElasticsearchKbBaseManager kbBaseClient = new ElasticsearchKbBaseManager();
+    @Autowired
+    private ElasticsearchKbBaseManager kbBaseClient;
 
     /**
      * Get endpoint registry singleton instance
@@ -98,7 +100,6 @@ public class QueryEndpointController {
     /**
      * Get bound knowledge base retrieval endpoint information based on kb_name
      *
-     * @param request Spring Request object
      * @param kbName Knowledge base name
      * @return APIResponse containing endpoint information
      */

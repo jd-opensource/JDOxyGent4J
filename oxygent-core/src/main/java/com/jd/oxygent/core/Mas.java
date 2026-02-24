@@ -570,7 +570,7 @@ public class Mas {
         return root;
     }
 
-    private void getEsSetting(Map mappings) {
+    public static void getEsSetting(Map mappings) {
         Map setting = new HashMap();
         if (Config.getEsSettings().getNumberOfShards() != null) {
             setting.put("number_of_shards", Config.getEsSettings().getNumberOfShards());

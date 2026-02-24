@@ -83,7 +83,7 @@ public class DataController {
      * @return APIResponse containing QA data item
      */
     @GetMapping("/{data_id}")
-    public APIResponse<QADataItem> getDataById(@PathVariable String dataId) {
+    public APIResponse<QADataItem> getDataById(@PathVariable(name = "data_id") String dataId) {
         try {
             QADataItem data = annotationService.getById(dataId);
             return APIResponse.success("Query successful", data);

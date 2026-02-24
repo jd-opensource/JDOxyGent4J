@@ -74,7 +74,6 @@ public class RagService {
     @Autowired
     private BaseVDB baseVDB;
 
-
     @Value("${oxygent.vearch.database:oxygent_java_memory}")
     private String dbName;
 

@@ -52,3 +52,5 @@ cache_dir/
 ### github ###
 
 
+/oxybank/dist
+/oxygent-bank/frontend/dist

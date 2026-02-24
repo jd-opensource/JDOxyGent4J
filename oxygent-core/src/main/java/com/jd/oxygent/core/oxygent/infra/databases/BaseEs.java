@@ -194,5 +194,7 @@ public interface BaseEs {
 
     Map<String, Object> refreshIndex(String indexName);
 
+    Map<String, Object> getMapping(String indexName);
+
     int getHitsTotal(Map<String, Object> response);
 }

@@ -1,6 +1,7 @@
 package com.jd.oxygent.oxybank.core.config;
 
 import lombok.Data;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
@@ -9,6 +10,7 @@ import java.util.List;
  * Knowledge base structured field description see ServiceConfig javadoc.
  */
 @Data
+@Component
 public class AnnotationConfig {
 
     private String esIndexPrefix = "qa_annotation";

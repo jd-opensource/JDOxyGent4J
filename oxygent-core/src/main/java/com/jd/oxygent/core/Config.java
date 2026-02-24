@@ -329,6 +329,11 @@ public class Config {
     @Data
     public static class VearchConfig {
         private boolean enabled = false;
+        private String routerUrl;
+        private String masterUrl;
+        private String dbName;
+        private String toolSpaceName;
+        private String embeddingModelUrl;
     }
 
     @Data

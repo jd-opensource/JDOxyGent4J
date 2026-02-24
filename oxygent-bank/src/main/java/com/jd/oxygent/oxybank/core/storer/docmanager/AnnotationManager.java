@@ -1,14 +1,15 @@
 package com.jd.oxygent.oxybank.core.storer.docmanager;
 
-import com.jd.oxygent.core.Config;
+import com.jd.oxygent.core.Mas;
 import com.jd.oxygent.core.oxygent.infra.databases.BaseEs;
 import com.jd.oxygent.core.oxygent.utils.JsonUtils;
-import com.jd.oxygent.core.oxygent.utils.StringUtils;
+import com.jd.oxygent.infra.databases.es.EsConfiguration;
 import com.jd.oxygent.oxybank.core.model.annotation.QADataItem;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,79 +27,125 @@ public class AnnotationManager {
     private String indexPrefix = "qa_annotation";
 
     @Autowired
+    EsConfiguration esConfiguration;
+    @Autowired
     private BaseEs esClient;
 
-    public boolean initialize(String indexPrefix) {
-        if (StringUtils.isNotBlank(indexPrefix)) {
-            this.indexPrefix = indexPrefix;
-        }
+    @PostConstruct
+    public boolean initialize() {
         this.indexName = indexPrefix + "_data";
         Map<String, Object> root = JsonUtils.parseJsonString("""
                 {
-                        "properties": {
-                            "data_id": {"type": "keyword"},
-                            "data_hash": {"type": "keyword"},
-                
-                            "question": {
-                                "type": "text",
-                                "fields": {
-                                    "keyword": {"type": "keyword", "ignore_above": 256}
-                                }
-                            },
-                            "answer": {
-                                "type": "text",
-                                "fields": {
-                                    "keyword": {"type": "keyword", "ignore_above": 256}
-                                }
-                            },
-                
-                            "source_trace_id": {"type": "keyword"},
-                            "source_request_id": {"type": "keyword"},
-                            "source_group_id": {"type": "keyword"},
-                
-                            "caller": {"type": "keyword"},
-                            "callee": {"type": "keyword"},
-                            "caller_type": {"type": "keyword"},
-                            "callee_type": {"type": "keyword"},
-                
-                            "data_type": {"type": "keyword"},
-                            "priority": {"type": "integer"},
-                            "category": {"type": "keyword"},
-                            "tags": {"type": "keyword"},
-                
-                            "status": {"type": "keyword"},
-                            "annotation": {"type": "object", "enabled": True},
-                            "scores": {"type": "object", "enabled": True},
-                            "reject_reason": {"type": "text"},
-                
-                            "kb_status": {"type": "keyword"},
-                            "kb_ingested_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss.SSSSSS||yyyy-MM-dd HH:mm:ss||epoch_millis"},
-                            "kb_error_message": {"type": "text"},
-                            "kb_extra": {"type": "object", "enabled": True},
-                
-                            "batch_id": {"type": "keyword"},
-                
-                            "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss.SSSSSS||yyyy-MM-dd HH:mm:ss||epoch_millis"},
-                            "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss.SSSSSS||yyyy-MM-dd HH:mm:ss||epoch_millis"},
-                
-                            "extra": {"type": "object", "enabled": True}
-                        }
+                  "mappings" : {
+                     "properties": {
+                         "data_id": {
+                             "type": "keyword"
+                         },
+                         "data_hash": {
+                             "type": "keyword"
+                         },
+                         "question": {
+                             "type": "text",
+                             "fields": {
+                                 "keyword": {
+                                     "type": "keyword",
+                                     "ignore_above": 256
+                                 }
+                             }
+                         },
+                         "answer": {
+                             "type": "text",
+                             "fields": {
+                                 "keyword": {
+                                     "type": "keyword",
+                                     "ignore_above": 256
+                                 }
+                             }
+                         },
+                         "source_trace_id": {
+                             "type": "keyword"
+                         },
+                         "source_request_id": {
+                             "type": "keyword"
+                         },
+                         "source_group_id": {
+                             "type": "keyword"
+                         },
+                         "caller": {
+                             "type": "keyword"
+                         },
+                         "callee": {
+                             "type": "keyword"
+                         },
+                         "caller_type": {
+                             "type": "keyword"
+                         },
+                         "callee_type": {
+                             "type": "keyword"
+                         },
+                         "data_type": {
+                             "type": "keyword"
+                         },
+                         "priority": {
+                             "type": "integer"
+                         },
+                         "category": {
+                             "type": "keyword"
+                         },
+                         "tags": {
+                             "type": "keyword"
+                         },
+                         "status": {
+                             "type": "keyword"
+                         },
+                         "annotation": {
+                             "type": "object",
+                             "enabled": "true"
+                         },
+                         "scores": {
+                             "type": "object",
+                             "enabled": "true"
+                         },
+                         "reject_reason": {
+                             "type": "text"
+                         },
+                         "kb_status": {
+                             "type": "keyword"
+                         },
+                         "kb_ingested_at": {
+                             "type": "date",
+                             "format": "yyyy-MM-dd HH:mm:ss.SSSSSS||yyyy-MM-dd HH:mm:ss||epoch_millis"
+                         },
+                         "kb_error_message": {
+                             "type": "text"
+                         },
+                         "kb_extra": {
+                             "type": "object",
+                             "enabled": "true"
+                         },
+                         "batch_id": {
+                             "type": "keyword"
+                         },
+                         "extra": {
+                             "type": "object",
+                             "enabled": "true"
+                         },
+                         "created_at": {
+                             "type": "date",
+                             "format": "yyyy-MM-dd HH:mm:ss.SSSSSS||yyyy-MM-dd HH:mm:ss||epoch_millis"
+                         },
+                         "updated_at": {
+                             "type": "date",
+                             "format": "yyyy-MM-dd HH:mm:ss.SSSSSS||yyyy-MM-dd HH:mm:ss||epoch_millis"
+                         }
+                     }
+                  }
+                }
                 """);
+        Mas.getEsSetting(root);
         esClient.createIndex(indexName, root);
+        Map mapping = esClient.getMapping(indexName);
         return true;
-    }
-
-    private void getEsSetting(Map mappings) {
-        Map setting = new HashMap();
-        if (Config.getEsSettings().getNumberOfShards() != null) {
-            setting.put("number_of_shards", Config.getEsSettings().getNumberOfShards());
-        }
-        if (Config.getEsSettings().getNumberOfReplicas() != null) {
-            setting.put("number_of_replicas", Config.getEsSettings().getNumberOfReplicas());
-        }
-        if (!setting.isEmpty()) {
-            mappings.put("settings", setting);
-        }
     }
 
     public Map<String, Object> getByHash(String dataHash) {
@@ -154,7 +201,7 @@ public class AnnotationManager {
      * List query with filtering, pagination and sorting
      *
      * @param filters    Filter conditions
-     * @param pagination  Pagination params {page, page_size}
+     * @param pagination Pagination params {page, page_size}
      * @param sorting    Sorting params [{field, order}]
      * @return Query result {total, items}
      */
@@ -290,22 +337,21 @@ public class AnnotationManager {
 
             // Use match_all if no filter conditions
             if (must.isEmpty()) {
-                queryObj.put("match_all", Map.of());
+                query.put("query", Map.of("match_all", Map.of()));
             }
 
-            // Add sorting
-            if (sorting != null && !sorting.isEmpty()) {
-                List<Map<String, Object>> sortList = new ArrayList<>();
-                for (Map<String, Object> sortItem : sorting) {
-                    String field = (String) sortItem.getOrDefault("field", "created_at");
-                    String order = (String) sortItem.getOrDefault("order", "desc");
-                    sortList.add(Map.of(field, Map.of("order", order)));
-                }
-                query.put("sort", sortList);
-            } else {
-                // Default sort by creation time descending
-                query.put("sort", List.of(Map.of("created_at", Map.of("order", "desc"))));
-            }
+            // Add sorting fixme
+//            if (sorting != null && !sorting.isEmpty()) {
+//                List<Map<String, Object>> sortList = new ArrayList<>();
+//                for (Map<String, Object> sortItem : sorting) {
+//                    String field = (String) sortItem.getOrDefault("field", "created_at");
+//                    String order = (String) sortItem.getOrDefault("order", "desc");
+//                    sortList.add(Map.of(field, Map.of("order", order)));
+//                }
+//                query.put("sort", sortList);
+//            } else {
+//                query.put("sort", List.of(Map.of("created_at", Map.of("order", "desc")))); fixme
+//            }
 
             // Add pagination
             if (pagination != null) {
@@ -326,52 +372,52 @@ public class AnnotationManager {
 
     public Map<String, Object> getByTraceId(String traceId) {
         Map query = JsonUtils.parseJsonString(String.format("""
-            {
-                "query": {
-                    "term": {"source_trace_id": %s}
-                },
-                "sort": [{"created_at": {"order": "desc"}}],
-                "size": 100
-            }
-            """, traceId));
+                {
+                    "query": {
+                        "term": {"source_trace_id": %s}
+                    },
+                    "sort": [{"created_at": {"order": "desc"}}],
+                    "size": 100
+                }
+                """, traceId));
         return esClient.search(indexName, query);
     }
 
     public Map<String, Object> getByGroupId(String groupId) {
         Map query = JsonUtils.parseJsonString(String.format("""
-            {
-                "query": {
-                    "term": {"source_group_id": %s}
-                },
-                "sort": [{"created_at": {"order": "desc"}}],
-                "size": 100
-            }
-            """, groupId));
+                {
+                    "query": {
+                        "term": {"source_group_id": %s}
+                    },
+                    "sort": [{"created_at": {"order": "desc"}}],
+                    "size": 100
+                }
+                """, groupId));
         return esClient.search(indexName, query);
     }
 
     public Map<String, Object> getGroupsSummary() {
         Map query = JsonUtils.parseJsonString("""
-            {
-             "size": 0,
-             "aggs": {
-                 "group_by_source_group_id": {
-                     "terms": {
-                         "field": "source_group_id",
-                         "size": 1000
-                     },
-                     "aggs": {
-                         "by_status": {
-                             "terms": {
-                                 "field": "status",
-                                 "size": 10
-                             }
-                         }
-                     }
-                 }
-             }
-         }
-         """);
+                   {
+                    "size": 0,
+                    "aggs": {
+                        "group_by_source_group_id": {
+                            "terms": {
+                                "field": "source_group_id",
+                                "size": 1000
+                            },
+                            "aggs": {
+                                "by_status": {
+                                    "terms": {
+                                        "field": "status",
+                                        "size": 10
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                """);
         return esClient.search(indexName, query);
     }
 
