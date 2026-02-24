@@ -68,6 +68,8 @@
         <velocity.version>2.3</velocity.version>
         <!-- Apache Commons -->
         <commons.version>1.11.0</commons.version>
+        <!-- Jython -->
+        <jython.version>2.7.3</jython.version>
     </properties>
 
     <dependencyManagement>
@@ -241,6 +243,12 @@
                 <version>${junit.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- Python -->
+            <dependency>
+                <groupId>org.python</groupId>
+                <artifactId>jython-standalone</artifactId>
+                <version>${jython.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

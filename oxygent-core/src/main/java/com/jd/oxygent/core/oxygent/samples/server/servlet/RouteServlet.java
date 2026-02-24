@@ -57,6 +57,7 @@ import org.apache.tomcat.util.http.fileupload.FileUpload;
 import org.apache.tomcat.util.http.fileupload.FileUploadBase;
 import org.apache.tomcat.util.http.fileupload.disk.DiskFileItemFactory;
 import org.apache.tomcat.util.http.fileupload.servlet.ServletRequestContext;
+import org.springframework.http.ResponseEntity;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -134,6 +135,9 @@ public class RouteServlet extends HttpServlet {
                     break;
                 case "/get_welcome_message":
                     getWelcomeMessage(request, response);
+                    break;
+                case "/get_description":
+                    getDescription(request, response);
                     break;
                 case "/list_script":
                     listScript(request, response);
@@ -232,9 +236,9 @@ public class RouteServlet extends HttpServlet {
             OrganizationWrapper organizedWithPath = AgentNodeConverter.convertToOrganization(mas.getAgentOrganization());
             sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(organizedWithPath).toMap());
         } catch (Exception e) {
-            log.error("Getorganization structurefailed", e);
+            log.error("Get organization structure failed", e);
             sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    WebResponse.error(500, "Getorganization structurefailed").toMap());
+                    WebResponse.error(500, "Get organization structure failed").toMap());
         }
     }
 
@@ -248,9 +252,9 @@ public class RouteServlet extends HttpServlet {
             Map<String, Object> data = Map.of("first_query", firstQuery);
             sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(data).toMap());
         } catch (Exception e) {
-            log.error("Getfirst queryfailed", e);
+            log.error("Get first query failed", e);
             sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    WebResponse.error(500, "Getfirst queryfailed").toMap());
+                    WebResponse.error(500, "Get first query failed").toMap());
         }
     }
 
@@ -263,9 +267,24 @@ public class RouteServlet extends HttpServlet {
             Map<String, Object> data = Map.of("welcome_message", welcomeMessage);
             sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(data).toMap());
         } catch (Exception e) {
-            log.error("Getwelcome messagefailed", e);
+            log.error("Get welcome message failed", e);
             sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    WebResponse.error(500, "Getwelcome messagefailed").toMap());
+                    WebResponse.error(500, "Get welcome message failed").toMap());
+        }
+    }
+
+    /**
+     * Get description message
+     */
+    private void getDescription(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String desc = mas.getOxyByName(mas.getMasterAgentName()).getDesc();
+            Map<String, Object> data = Map.of("description", desc);
+            sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(data).toMap());
+        } catch (Exception e) {
+            log.error("Get description message failed", e);
+            sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    WebResponse.error(500, "Get description message failed").toMap());
         }
     }
 
@@ -288,9 +307,9 @@ public class RouteServlet extends HttpServlet {
             sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(data).toMap());
 
         } catch (IOException e) {
-            log.error("Listscriptfailed", e);
+            log.error("List script failed", e);
             sendJsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    WebResponse.error(500, "Listscriptfailed").toMap());
+                    WebResponse.error(500, "List script failed").toMap());
         }
     }
 

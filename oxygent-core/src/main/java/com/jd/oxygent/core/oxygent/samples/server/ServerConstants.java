@@ -59,6 +59,7 @@ public final class ServerConstants {
         this.put("/get_organization", "RouteServlet");
         this.put("/get_first_query", "RouteServlet");
         this.put("/get_welcome_message", "RouteServlet");
+        this.put("/get_description", "RouteServlet");
         this.put("/list_script", "RouteServlet");
         this.put("/save_script", "RouteServlet");
         this.put("/load_script", "RouteServlet");
