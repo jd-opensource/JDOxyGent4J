@@ -16,7 +16,6 @@
         <module>oxygent-core</module>
         <module>oxygent-infra</module>
         <module>oxygent-studio</module>
-<!--        <module>oxygent-bank</module>-->
     </modules>
 
     <properties>
