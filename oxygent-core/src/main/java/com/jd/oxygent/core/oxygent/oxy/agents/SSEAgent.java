@@ -224,6 +224,35 @@ public class SSEAgent extends RemoteAgent {
             .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
             .build();
 
+    private Map<String, Object>  remoteRequest(String path){
+        // Use WebClient to send GET request to retrieve organization information
+        // Set 10 second timeout to avoid long blocking
+        var requestSpec = webClient.get().uri(getServerUrl() + path);
+
+        // Add custom HTTP headers to initialization request
+        if (customHeaders != null && !customHeaders.isEmpty()) {
+            for (Map.Entry<String, String> header : customHeaders.entrySet()) {
+                if (!EXCLUDED_HEADERS.contains(header.getKey().toLowerCase())) {
+                    requestSpec = requestSpec.header(header.getKey(), header.getValue());
+                }
+            }
+            log.debug("Added {} custom headers to organization request", customHeaders.size());
+        }
+
+        String responseBody = requestSpec
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(10))
+                .block();
+
+        if (responseBody != null) {
+            // Parse JSON response and extract organization structure data
+            var response = JsonUtils.parseObject(responseBody, Map.class);
+            return (Map<String, Object>) response.get("data");
+        }
+        return null;
+    }
+
     /**
      * Initialize SSE Agent
      * Retrieve organization structure information from remote server and cache locally
@@ -234,35 +263,19 @@ public class SSEAgent extends RemoteAgent {
         super.init();
 
         try {
-            // Use WebClient to send GET request to retrieve organization information
-            // Set 10 second timeout to avoid long blocking
-            var requestSpec = webClient.get()
-                    .uri(getServerUrl() + "/get_organization");
-
-            // Add custom HTTP headers to initialization request
-            if (customHeaders != null && !customHeaders.isEmpty()) {
-                for (Map.Entry<String, String> header : customHeaders.entrySet()) {
-                    if (!EXCLUDED_HEADERS.contains(header.getKey().toLowerCase())) {
-                        requestSpec = requestSpec.header(header.getKey(), header.getValue());
-                    }
-                }
-                log.debug("Added {} custom headers to organization request", customHeaders.size());
+            Map<String, Object> responseBodyMap = remoteRequest("/get_organization");
+            if (responseBodyMap != null) {
+                this.setOrg((Map<String, Object>) responseBodyMap.get("organization"));
+                log.info("Initialized SSE Agent with organization from: {}", getServerUrl());
             }
 
-            String responseBody = requestSpec
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .timeout(Duration.ofSeconds(10))
-                    .block();
-
-            if (responseBody != null) {
-                // Parse JSON response and extract organization structure data
-                var response = JsonUtils.parseObject(responseBody, Map.class);
-                @SuppressWarnings("unchecked")
-                var data = (Map<String, Object>) response.get("data");
-                super.setOrg((Map<String, Object>) data.get("organization"));
-
-                log.info("Initialized SSE Agent with organization from: {}", getServerUrl());
+            if(this.getDesc().isEmpty()){
+                Map<String, Object> responseBodyDescMap = remoteRequest("/get_description");
+                if (responseBodyDescMap != null) {
+                    this.setDesc((String) responseBodyMap.get("description"));
+                    log.info("Initialized SSE Agent with description from: {}", getServerUrl());
+                }
+                this.setDescForLlm();
             }
         } catch (Exception e) {
             // Initialization failure will not prevent Agent creation, only log warning
