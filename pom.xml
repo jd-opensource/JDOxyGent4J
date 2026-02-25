@@ -32,7 +32,7 @@
         <!-- Document Processing -->
         <pdfbox.version>2.0.31</pdfbox.version>
         <poi.version>5.4.1</poi.version>
-        <commons-io.version>2.21.0</commons-io.version>
+        <commons-io.version>2.15.1</commons-io.version>
         <!-- HTTP Client -->
         <okhttp.version>4.12.0</okhttp.version>
         <kotlin.version>2.2.21</kotlin.version>
@@ -253,23 +253,6 @@
     </dependencyManagement>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>true</filtering>
-            </resource>
-            <resource>
-                <directory>./</directory>
-                <excludes>
-                    <exclude>**/node_modules/**</exclude>
-                    <exclude>**/.idea/**</exclude>
-                    <exclude>**/frontend/src/**</exclude>
-                    <exclude>**/frontend/public/**</exclude>
-                    <exclude>**/package.json</exclude>
-                    <exclude>**/package-lock.json</exclude>
-                </excludes>
-            </resource>
-        </resources>
         <plugins>
             <!-- Flatten Maven Plugin - for proper version resolution -->
             <plugin>
@@ -325,12 +308,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>3.3.0</version>
-                <configuration>
-                    <excludeResources>true</excludeResources>
-                    <archive>
-                        <forced>true</forced>
-                    </archive>
-                </configuration>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -388,9 +365,9 @@
                         </goals>
                     </execution>
                 </executions>
-<!--                <configuration>-->
-<!--                    <skip>true</skip>-->
-<!--                </configuration>-->
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.sonatype.central</groupId>
