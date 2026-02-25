@@ -89,6 +89,11 @@ public class DateUtils {
     public static final String DEFAULT_DATE_TIME_FORMAT2 = "yyyy-MM-dd HH:mm:ss.SSSSSSSSS";
 
     /**
+     * Default date-time format with nanoseconds: yyyy-MM-dd HH:mm:ss.SSSSSSSSS
+     */
+    public static final String DEFAULT_DATE_TIME_FORMAT3 = "yyyyMMddHHmmss";
+
+    /**
      * Default date format: yyyy-MM-dd
      */
     public static final String DEFAULT_DATE_FORMAT = "yyyy-MM-dd";
