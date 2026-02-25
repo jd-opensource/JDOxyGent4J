@@ -11,6 +11,7 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.GetMappingsRequest;
 import org.elasticsearch.client.indices.GetMappingsResponse;
+import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -75,32 +76,32 @@ public class ElasticsearchIndexManager {
         }
 
         GetMappingsResponse getMappingsResponse = getIndexMapping(indexName);
-//        Map<String, Object> currentProperties = getMappingsResponse.mappings();
-//        Map<String, Object> expectedProperties = (Map<String, Object>) expectedMapping.get("properties");
-//
-//        // Simple comparison: check if all expected fields exist in current mapping and types match
-//        for (Map.Entry<String, Object> entry : expectedProperties.entrySet()) {
-//            String field = entry.getKey();
-//            Map<String, Object> fieldConfig = (Map<String, Object>) entry.getValue();
-//
-//            if (!currentProperties.containsKey(field)) {
-//                log.info("Field {} does not exist in current index", field);
-//                return false;
-//            }
-//
-//            Object currentType = currentProperties.get(field);
-//            String expectedType = (String) fieldConfig.get("type");
-//
-//            // For object type, also accept when ES returns no type (version compatibility)
-//            if ("object".equals(expectedType) && currentType == null) {
-//                continue;
-//            }
-//
-//            if (!expectedType.equals(currentType)) {
-//                log.error("Field {} type mismatch: expected {}, actual {}", field, expectedType, currentType);
-//                return false;
-//            }
-//        }
+        Map<String, MappingMetaData> currentProperties = getMappingsResponse.mappings();
+        Map<String, Object> expectedProperties = (Map<String, Object>) expectedMapping.get("properties");
+
+        // Simple comparison: check if all expected fields exist in current mapping and types match
+        for (Map.Entry<String, Object> entry : expectedProperties.entrySet()) {
+            String field = entry.getKey();
+            Map<String, Object> fieldConfig = (Map<String, Object>) entry.getValue();
+
+            if (!currentProperties.containsKey(field)) {
+                log.info("Field {} does not exist in current index", field);
+                return false;
+            }
+
+            Object currentType = currentProperties.get(field);
+            String expectedType = (String) fieldConfig.get("type");
+
+            // For object type, also accept when ES returns no type (version compatibility)
+            if ("object".equals(expectedType) && currentType == null) {
+                continue;
+            }
+
+            if (!expectedType.equals(currentType)) {
+                log.error("Field {} type mismatch: expected {}, actual {}", field, expectedType, currentType);
+                return false;
+            }
+        }
 
         return true;
     }

@@ -1,5 +1,7 @@
 package com.jd.oxygent.oxybank.core.storer.docmanager;
 
+import com.jd.oxygent.oxybank.core.model.FieldInfo;
+import com.jd.oxygent.oxybank.core.model.KBSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +30,7 @@ public class SchemaUtils {
      * @return 转换后的数据列表
      * @throws IllegalArgumentException 如果整数/浮点列包含空值
      */
-    public List<Map<String, Object>> convertDataTypesBySchema(List<Map<String, Object>> dataList, KBSchema kbSchema) {
+    public static List<Map<String, Object>> convertDataTypesBySchema(List<Map<String, Object>> dataList, KBSchema kbSchema) {
         if (kbSchema.getFields() == null || kbSchema.getFields().isEmpty()) {
             log.warn("Schema has no fields defined, skipping type conversion");
             return dataList;
@@ -78,7 +80,7 @@ public class SchemaUtils {
      * @param dataList 数据列表
      * @param fieldName 字段名
      */
-    private void convertStringField(List<Map<String, Object>> dataList, String fieldName) {
+    private static void convertStringField(List<Map<String, Object>> dataList, String fieldName) {
         for (Map<String, Object> data : dataList) {
             Object value = data.get(fieldName);
             if (value == null) {
@@ -97,7 +99,7 @@ public class SchemaUtils {
      * @param fieldName 字段名
      * @throws IllegalArgumentException 如果字段包含空值或无效值
      */
-    private void convertIntegerField(List<Map<String, Object>> dataList, String fieldName) {
+    private static void convertIntegerField(List<Map<String, Object>> dataList, String fieldName) {
         List<Integer> invalidIndices = new ArrayList<>();
         List<String> invalidValues = new ArrayList<>();
 
@@ -146,7 +148,7 @@ public class SchemaUtils {
      * @param fieldName 字段名
      * @throws IllegalArgumentException 如果字段包含空值或无效值
      */
-    private void convertFloatField(List<Map<String, Object>> dataList, String fieldName) {
+    private static void convertFloatField(List<Map<String, Object>> dataList, String fieldName) {
         List<Integer> invalidIndices = new ArrayList<>();
         List<String> invalidValues = new ArrayList<>();
 

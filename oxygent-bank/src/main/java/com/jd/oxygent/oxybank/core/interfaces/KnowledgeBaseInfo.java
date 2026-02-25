@@ -1,22 +1,11 @@
 package com.jd.oxygent.oxybank.core.interfaces;
 
-/**
- * Simulated KnowledgeBaseInfo class
- */
+import com.jd.oxygent.oxybank.core.model.KBSchema;
+import lombok.Data;
+
+@Data
 public class KnowledgeBaseInfo {
     private String kbName;
     private boolean autoBindQuery = true;
     private KBSchema kbSchema;
-
-    public String getKbName() {
-        return kbName;
-    }
-
-    public boolean isAutoBindQuery() {
-        return autoBindQuery;
-    }
-
-    public KBSchema getKbSchema() {
-        return kbSchema;
-    }
 }

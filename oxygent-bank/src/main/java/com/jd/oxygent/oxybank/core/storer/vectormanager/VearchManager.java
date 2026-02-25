@@ -975,7 +975,7 @@ public class VearchManager {
     /**
      * 空间信息
      */
-    static class SpaceInfo {
+    public static class SpaceInfo {
         private String name;
 
         public SpaceInfo(String name) {
@@ -994,7 +994,7 @@ public class VearchManager {
     /**
      * 空间Schema
      */
-    static class SpaceSchema {
+    public static class SpaceSchema {
         private String name;
         private List<Field> fields;
 
@@ -1022,7 +1022,7 @@ public class VearchManager {
     /**
      * 字段定义
      */
-    static class Field {
+    public static class Field {
         private String name;
         private DataType dataType;
         private String desc;

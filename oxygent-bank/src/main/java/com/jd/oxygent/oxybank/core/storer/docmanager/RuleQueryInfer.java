@@ -1,5 +1,8 @@
 package com.jd.oxygent.oxybank.core.storer.docmanager;
 
+import com.jd.oxygent.oxybank.core.model.KBSchema;
+import com.jd.oxygent.oxybank.core.model.MatchPolicy;
+import com.jd.oxygent.oxybank.core.model.MatchRule;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchRequest;

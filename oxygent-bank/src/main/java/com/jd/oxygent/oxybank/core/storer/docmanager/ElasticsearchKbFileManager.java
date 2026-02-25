@@ -303,6 +303,9 @@ public class ElasticsearchKbFileManager {
 
             List<KnowledgeBaseItem> kbList = new ArrayList();
             for (Map each : result) {
+                each.put("kb_name", each.get("file_name"));
+                each.put("kb_description", each.get("file_name"));
+                each.put("kb_type", "structured");
                 kbList.add(JsonUtils.convertValue(each, KnowledgeBaseItem.class));
             }
             return Map.of(

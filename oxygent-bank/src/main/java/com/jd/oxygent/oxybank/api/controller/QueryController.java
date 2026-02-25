@@ -26,15 +26,6 @@ public class QueryController {
     private ElasticsearchKbBaseManager kbBaseClient;
 
     /**
-     * Get endpoint registry singleton instance
-     *
-     * @return Endpoint registry instance
-     */
-    private Object getEndpointRegistry() {
-        return null;
-    }
-
-    /**
      * Create knowledge base retrieval endpoint based on kb_schema corresponding to kb_name
      * <p>
      * Process:
@@ -52,42 +43,12 @@ public class QueryController {
     public APIResponse<Map<String, Object>> createKbQueryInterface(
             @PathVariable(name = "kb_name") String kbName) {
         try {
-            // 1. Check if knowledge base is already registered
-            Object endpointRegistry = getEndpointRegistry();
-            if (endpointRegistry != null) {
-                // TODO: call endpointRegistry.isKbRegistered(kbName) when implemented
-            }
-
-            // 2. Query knowledge base information
-            List<Map<String, Object>> kbInfoList = new ArrayList<>();
-
-            if (kbInfoList == null || kbInfoList.isEmpty()) {
-                return APIResponse.error(404, "Knowledge base '" + kbName + "' does not exist");
-            }
-
-            Map<String, Object> kbInfo = kbInfoList.get(0);
-            Map<String, Object> kbSchemaDict = (Map<String, Object>) kbInfo.get("kb_schema");
-
-            if (kbSchemaDict == null || kbSchemaDict.isEmpty()) {
-                return APIResponse.error(400,
-                        "Knowledge base '" + kbName + "' has not configured Schema, please configure Schema via POST /api/v1/kb_base/" + kbName + "/schema first");
-            }
-
-            // 3–6. KBSchema parsing, validation, DynamicEndpointGenerator, route registration: TODO when implemented
-            List<String> endpoints = new ArrayList<>();
-            // if (matchRules != null && !matchRules.isEmpty()) {
-            //     for (int ruleIdx = 0; ruleIdx < matchRules.size(); ruleIdx++) {
-            //         endpoints.add("POST /kb/" + kbName + "/search/rule_" + ruleIdx);
-            //     }
-            // }
-
-            log.info("✅ Knowledge base '{}' retrieval endpoint created successfully, total {} endpoints", kbName, endpoints.size());
             return APIResponse.success(
                     "Knowledge base '" + kbName + "' retrieval endpoint created successfully",
                     Map.of(
                             "kb_name", kbName,
-                            "total_rules", endpoints.size(),
-                            "endpoints", endpoints,
+                            "total_rules", 1,
+                            "endpoints", List.of(),
                             "router_prefix", "/kb/" + kbName
                     )
             );

@@ -11,8 +11,8 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
-import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
-import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
+import org.elasticsearch.client.indices.GetMappingsRequest;
+import org.elasticsearch.client.indices.GetMappingsResponse;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -540,9 +540,10 @@ public class RemoteEs extends BaseDB implements BaseEs {
             GetMappingsRequest request = new GetMappingsRequest();
             request.indices(indexName);
             GetMappingsResponse response = esConfiguration.getClient().indices().getMapping(request, RequestOptions.DEFAULT);
-            ImmutableOpenMap<String, ImmutableOpenMap<String, MappingMetaData>> allMappings = response.mappings();
+            Map<String, MappingMetaData> allMappings = response.mappings();
             if (allMappings != null) {
-                Map properties = (Map) allMappings.get(indexName).get("_doc").getSourceAsMap().get("properties");
+                MappingMetaData mappingMetaData = allMappings.get(indexName);
+                Map properties = (Map) mappingMetaData.getSourceAsMap().get("properties");
                 log.info(JsonUtils.toJSONString(properties));
                 return properties;
             }
