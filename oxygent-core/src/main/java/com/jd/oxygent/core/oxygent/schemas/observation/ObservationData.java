@@ -97,10 +97,13 @@ public class ObservationData {
      *
      * @return Formatted text string containing all execution results
      */
-    public String toStr() {
+    public String toStr(boolean isPrefixIncluded) {
         List<String> outs = new ArrayList<>();
         for (ExecResult execResult : execResults) {
-            String prefix = "Tool [" + execResult.getExecutor() + "] execution result: ";
+            String prefix ="";
+            if(isPrefixIncluded){
+                prefix = "Tool [" + execResult.getExecutor() + "] execution result: ";
+            }
             Object output = execResult.getOxyResponse().getOutput();
             if (output instanceof OxyOutput) {
                 outs.add(prefix + ((OxyOutput) output).getResult().toString());

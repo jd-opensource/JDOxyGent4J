@@ -587,11 +587,14 @@ public class ReActAgent extends LocalAgent {
                 // Execute tool calls
                 ObservationData observation = executeToolCalls(oxyRequest, llmResponse.getOutput());
 
+                // Handle trust_mode propagation from oxy_response to llm_response
+                handleTrustModePropagation(llmResponse, oxyResponse);
+
                 // Check trust mode
                 if (shouldUseTrustMode(llmResponse.getOutput())) {
                     return OxyResponse.builder()
                             .state(OxyState.COMPLETED)
-                            .output(observation.toStr())
+                            .output(observation.toStr(false))
                             .extra(Map.of("react_memory", reactMemory.toDictList()))
                             .build();
                 }
@@ -654,6 +657,51 @@ public class ReActAgent extends LocalAgent {
 
     private String generateShortUUID() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+    }
+
+    /**
+     * Handle trust_mode propagation from oxy_response to llm_response
+     * 
+     * @param llmResponse The LLM response to update
+     * @param oxyResponse The Oxy response containing trust_mode information
+     */
+    protected void handleTrustModePropagation(LLMResponse llmResponse, OxyResponse oxyResponse) {
+        try {
+            // Get trust_mode from oxy_response output
+            Object trustModeValue = null;
+            Object output = oxyResponse.getOutput();
+            
+            if (output instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> outputMap = (Map<String, Object>) output;
+                trustModeValue = outputMap.get("trust_mode");
+            } else if (output instanceof String) {
+                // Try to extract trust_mode from JSON string using regex
+                String outputStr = (String) output;
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                    "\"trust_mode\"\s*:\s*(\\d+)"
+                );
+                java.util.regex.Matcher matcher = pattern.matcher(outputStr);
+                if (matcher.find()) {
+                    trustModeValue = Integer.parseInt(matcher.group(1));
+                }
+            }
+            
+            // Set trust_mode in llm_response output
+            if (trustModeValue != null) {
+                Object llmOutput = llmResponse.getOutput();
+                if (llmOutput instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> llmOutputMap = (Map<String, Object>) llmOutput;
+                    llmOutputMap.put("trust_mode", trustModeValue);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Failed to propagate trust_mode: {}", e.getMessage());
+            if (llmResponse.getOutput() instanceof Map) {
+                ((Map)llmResponse.getOutput()).put("trust_mode", 0);
+            }
+        }
     }
 
 }
