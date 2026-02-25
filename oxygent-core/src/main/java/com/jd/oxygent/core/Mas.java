@@ -31,6 +31,7 @@ import com.jd.oxygent.core.oxygent.oxy.BaseTool;
 import com.jd.oxygent.core.oxygent.oxy.agents.BaseAgent;
 import com.jd.oxygent.core.oxygent.oxy.agents.RemoteAgent;
 import com.jd.oxygent.core.oxygent.oxy.llms.BaseLlM;
+import com.jd.oxygent.core.oxygent.oxy.skills.SkillRegistry;
 import com.jd.oxygent.core.oxygent.schemas.SSEMessage;
 import com.jd.oxygent.core.oxygent.schemas.contextengineer.ContextEngine;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
@@ -144,6 +145,12 @@ public class Mas {
     private BaseEs esClient;
     @Autowired
     private BaseCache redisClient;
+
+    /**
+     * Reference to the skill registry for loading skills.
+     * This is excluded from serialization.
+     */
+    private SkillRegistry skillRegistry;
 
     @Autowired
     private ContextEngine contextEngine;
