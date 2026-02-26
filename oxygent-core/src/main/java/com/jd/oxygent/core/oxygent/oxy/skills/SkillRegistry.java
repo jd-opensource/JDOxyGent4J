@@ -24,19 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class SkillRegistry {
 
-    // Discovery precedence: later entries override earlier ones on name collision.
-    private static final Path PACKAGE_OXYGENT_DIR = Paths.get(SkillRegistry.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent().getParent();
-
-    // Priority (low -> high): preset < personal < project.
-    // This follows the Codex/Claude Code convention: project-local skills override personal skills.
-    private static final List<String> DEFAULT_SKILL_DIRS = Arrays.asList(
-            PACKAGE_OXYGENT_DIR.resolve("preset_skills").toString(),  // Built-in preset skills (lowest priority)
-            "~/.oxygent/skills/",  // Personal OxyGent skills
-            "~/.claude/skills/",  // Personal Claude/Codex skills
-            ".oxygent/skills/",  // Project-local OxyGent skills
-            ".claude/skills/"  // Project-local Claude/Codex skills (highest priority)
-    );
-
     // Directories inside a skill that must not be treated as separate skills.
     private static final Set<String> NON_SKILL_SUBDIRS = Set.of("scripts", "references", "assets");
 
@@ -59,8 +46,23 @@ public class SkillRegistry {
      * @param autoDiscover If True, automatically discover skills on init.
      */
     public SkillRegistry(List<String> skillDirs, boolean autoDiscover) {
-        this.skillDirs = skillDirs != null ? skillDirs : new ArrayList<>(DEFAULT_SKILL_DIRS);
-        
+        if (skillDirs != null) {
+            this.skillDirs = skillDirs;
+        } else {
+            // Discovery precedence: later entries override earlier ones on name collision.
+            Path PACKAGE_OXYGENT_DIR = Paths.get(SkillRegistry.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent().getParent();
+
+            // Priority (low -> high): preset < personal < project.
+            // This follows the Codex/Claude Code convention: project-local skills override personal skills.
+            List<String> DEFAULT_SKILL_DIRS = Arrays.asList(
+                PACKAGE_OXYGENT_DIR.resolve("preset_skills").toString(),  // Built-in preset skills (lowest priority)
+                "~/.oxygent/skills/",  // Personal OxyGent skills
+                "~/.claude/skills/",  // Personal Claude/Codex skills
+                ".oxygent/skills/",  // Project-local OxyGent skills
+                ".claude/skills/"  // Project-local Claude/Codex skills (highest priority)
+            );
+            this.skillDirs = new ArrayList<>(DEFAULT_SKILL_DIRS);
+        }
         if (autoDiscover) {
             discoverAll();
         }

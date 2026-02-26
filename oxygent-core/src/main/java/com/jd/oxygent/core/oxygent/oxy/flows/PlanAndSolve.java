@@ -211,6 +211,23 @@ public class PlanAndSolve extends BaseFlow {
         }
     }
 
+    public record TodoListData(@JsonProperty("list") List<String> list, @JsonProperty("currentStep") int currentStep) {
+        private static final ObjectMapper M = new ObjectMapper();
+
+        @Override
+        public String toString() {
+            try {
+                return M.writeValueAsString(this);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public TodoListData deepCopy() {
+            return new TodoListData(new ArrayList<>(list), this.currentStep);
+        }
+    }
+
     // ==================== Core Configuration Fields ====================
 
     /**
@@ -346,6 +363,7 @@ public class PlanAndSolve extends BaseFlow {
      *
      * @since 1.0.0
      */
+    @Override
     @PostConstruct
     public void init() {
         super.setCategory("agent");
@@ -401,18 +419,7 @@ public class PlanAndSolve extends BaseFlow {
         var planSteps = Optional.ofNullable(prePlanSteps)
                 .map(ArrayList::new)
                 .orElse(null);
-        record TodoListData(@JsonProperty("list") List<String> list, @JsonProperty("currentStep") int currentStep) {
-            private static final ObjectMapper M = new ObjectMapper();
 
-            @Override
-            public String toString() {
-                try {
-                    return M.writeValueAsString(this);
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
         // Save original complete plan, fixed and unchanged after planning is completed
         List<String> originalPlanList = null;
 
