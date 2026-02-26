@@ -17,9 +17,11 @@ package com.jd.oxygent.core.oxygent.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.SerializationUtils;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -401,7 +403,6 @@ public class ObjectUtils {
         try {
             // Create new instance
             Object newObj = clazz.getDeclaredConstructor().newInstance();
-
             // Register in copy map
             copyMap.put(original, newObj);
 
@@ -417,7 +418,11 @@ public class ObjectUtils {
 
             return newObj;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to copy object: " + e.getMessage(), e);
+            try {
+                return clazz.getDeclaredMethod("deepCopy", (Class[]) null).invoke(original); // jdk14+ record class type do not have no-arg constructor, must manually write deepCopy method
+            } catch (Exception ex) {
+                throw new RuntimeException("Failed to copy object: " + e.getMessage(), e);
+            }
         }
     }
 
