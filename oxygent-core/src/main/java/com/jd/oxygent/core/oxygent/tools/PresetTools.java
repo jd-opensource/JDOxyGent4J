@@ -96,8 +96,37 @@ public final class PresetTools {
      * </p>
      */
     public static final FunctionHub MATH_TOOLS = new MathTool();
-
+    /**
+     * Joke generation tool instance.
+     */
     public static final FunctionHub IMAGE_GEN_TOOLS = new ImageGenTools();
+    /**
+     * Joke generation tool instance.
+     */
     public static final FhMathTools FH_MATH_TOOLS = new FhMathTools();
+    /**
+     * Http tool instance.
+     */
+    public static final HttpTools HTTP_TOOLS = new HttpTools();
+    /**
+     * Python tool instance.
+     */
+    public static final PythonTools PYTHON_TOOLS = new PythonTools();
+    /**
+     * Shell tool instance.
+     */
+    public static final ShellTools SHELL_TOOLS = new ShellTools();
+    /**
+     * String tool instance.
+     */
+    public static final StringTools STRING_TOOLS = new StringTools();
+    /**
+     * System tool instance.
+     */
+    public static final SystemTools SYSTEM_TOOLS = new SystemTools();
+    /**
+     * Skill tool instance.
+     */
+    public static final SkillTools SKILL_TOOLS = new SkillTools();
 
 }
