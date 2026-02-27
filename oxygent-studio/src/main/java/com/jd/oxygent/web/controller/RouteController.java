@@ -30,6 +30,7 @@ import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import com.jd.oxygent.core.oxygent.utils.ClassModelDumpUtils;
 import com.jd.oxygent.core.oxygent.utils.CommonUtils;
 import com.jd.oxygent.core.oxygent.utils.DataUtils;
+import com.jd.oxygent.core.oxygent.utils.StringUtils;
 import com.jd.oxygent.web.adapter.FileItemAdapter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -494,6 +495,11 @@ public class RouteController {
         return emitter;
     }
 
+    @RequestMapping(value = "/async/chat", method = {RequestMethod.GET})
+    public ResponseEntity<Map<String, Object>> asyncByGet(@RequestParam("payload") String payloadJson, @RequestHeader Map<String, String> headers) throws JsonProcessingException {
+        return this.asyncChat(webMvcObjectMapper.readValue(payloadJson, Map.class), headers);
+    }
+
     /**
      * Async chat endpoint.
      * <p>
@@ -503,12 +509,10 @@ public class RouteController {
      * @param headers HTTP request headers
      * @return ResponseEntity containing confirmation WebResponse
      */
-    @RequestMapping(value = "/async/chat", method = {RequestMethod.GET, RequestMethod.POST})
+    @RequestMapping(value = "/async/chat", method = {RequestMethod.POST})
     public ResponseEntity<Map<String, Object>> asyncChat(@RequestBody Map<String, Object> payload, @RequestHeader Map<String, String> headers) {
         try {
-
             requestToPayload(payload, headers);
-
             // Apply interceptor
             if (mas.getFuncInterceptor() != null) {
                 Object interceptedResponse = mas.getFuncInterceptor().apply(payload);
@@ -516,12 +520,13 @@ public class RouteController {
                     return ResponseEntity.ok((Map<String, Object>) interceptedResponse);
                 }
             }
-
-            String currentTraceId = payload.getOrDefault("current_trace_id", "").toString();
+            String currentTraceIdTemp = payload.getOrDefault("current_trace_id", "").toString();
+            if (StringUtils.isBlank(currentTraceIdTemp)) {
+                currentTraceIdTemp = CommonUtils.generateShortUUID();
+            }
+            String currentTraceId = currentTraceIdTemp;
             log.info("Async task created. trace_id: {}", currentTraceId);
-
             String redisKey = mas.getMessagePrefix() + ":" + mas.getName() + ":" + currentTraceId;
-
             // Execute chat asynchronously
             CompletableFuture<OxyResponse> task = CompletableFuture.supplyAsync(
                     () -> {
@@ -532,7 +537,6 @@ public class RouteController {
                         }
                     }
             );
-
             // Handle task completion
             task.whenComplete((result, throwable) -> {
                 this.mas.getActiveTasks().remove(currentTraceId);
@@ -540,15 +544,36 @@ public class RouteController {
                     log.error("Async chat task failed", throwable);
                 }
             });
-
             this.mas.getActiveTasks().put(currentTraceId, task);
-
-            return ResponseEntity.ok(WebResponse.success(null).toMap());
+            return ResponseEntity.ok(WebResponse.success(currentTraceId).toMap());
         } catch (Exception e) {
             log.error("Async chat failed", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(WebResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Async chat failed: " + e.getMessage()).toMap());
         }
+    }
+
+    @RequestMapping(value = "/async/trace", method = {RequestMethod.GET, RequestMethod.POST})
+    public SseEmitter asyncTrace(@RequestParam("trace_id") String currentTraceId) {
+        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
+        try {
+            log.info("asyncTrace trace_id: {}", currentTraceId);
+            String redisKey = mas.getMessagePrefix() + ":" + mas.getName() + ":" + currentTraceId;
+            CompletableFuture<OxyResponse> task = (CompletableFuture<OxyResponse>) this.mas.getActiveTasks().get(currentTraceId);
+            // Start event stream
+            CompletableFuture.runAsync(() -> {
+                try {
+                    processRedisMessage(redisKey, currentTraceId, task, emitter);
+                } catch (Exception e) {
+                    log.error("Event stream failed", e);
+                    emitter.completeWithError(e);
+                }
+            });
+        } catch (Exception e) {
+            log.error("asyncTrace failed", e);
+            emitter.completeWithError(e);
+        }
+        return emitter;
     }
 
     /**
