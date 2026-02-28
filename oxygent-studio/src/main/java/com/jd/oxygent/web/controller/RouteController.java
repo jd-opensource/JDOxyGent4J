@@ -112,7 +112,7 @@ public class RouteController {
      */
     @GetMapping("/")
     public RedirectView readRoot() {
-        return new RedirectView("web.bak/index.html");
+        return new RedirectView("./web/index.html");
     }
 
     /**

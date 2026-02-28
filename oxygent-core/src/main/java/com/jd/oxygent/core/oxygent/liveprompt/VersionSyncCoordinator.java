@@ -39,7 +39,7 @@ public class VersionSyncCoordinator {
     private BaseEs esClient;
 
     private int pollingInterval = Config.getLivePrompt().getEsPollingInterval();
-    private boolean useEsPolling = false;
+    private boolean active = false;
     private ScheduledExecutorService pollingExecutor;
 
     private boolean isRunning = false;
@@ -63,7 +63,7 @@ public class VersionSyncCoordinator {
         if (esClient instanceof LocalEs) {
             log.info("Local ES detected, polling disabled for multi-instance sync");
         } else {
-            this.useEsPolling = Config.getLivePrompt().isUseEsPolling();
+            this.active = Config.getLivePrompt().isActive();
             log.info("ES polling enabled for remote hosts");
         }
     }
@@ -80,7 +80,7 @@ public class VersionSyncCoordinator {
         initializeLocalVersions();
 
         // Start ES polling if enabled
-        if (useEsPolling && pollingInterval > 0) {
+        if (active && pollingInterval > 0) {
             startEsPolling();
         }
         log.info("Version sync coordinator started");
@@ -94,7 +94,7 @@ public class VersionSyncCoordinator {
         isRunning = false;
 
         // Stop ES polling
-        if (useEsPolling && pollingExecutor != null) {
+        if (active && pollingExecutor != null) {
             stopEsPolling();
         }
 
@@ -143,7 +143,7 @@ public class VersionSyncCoordinator {
     }
 
     private void esPoller() {
-        if (isRunning && useEsPolling) {
+        if (isRunning && active) {
             try {
                 checkEsVersions();
             } catch (Exception e) {

@@ -354,7 +354,7 @@ public class Config {
 
     @Data
     public static class LivePromptConfig {
-        private boolean useEsPolling = false;
+        private boolean active = false;
         /**
          * ES polling interval in seconds for version sync, set 0 to disable polling
          */

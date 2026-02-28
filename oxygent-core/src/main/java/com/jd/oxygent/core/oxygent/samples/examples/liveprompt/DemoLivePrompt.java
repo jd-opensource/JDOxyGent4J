@@ -101,7 +101,7 @@ public class DemoLivePrompt {
     }
 
     public static void main(String[] args) throws Exception {
-        Config.getLivePrompt().setUseEsPolling(true);
+        Config.getLivePrompt().setActive(true);
         var currentClassName = Thread.currentThread().getStackTrace()[1].getClassName();
         GlobalDefaultOxySpaceMapping.searchCurrentThreadStackAnnotationOxySpaceName(currentClassName);
         ServerApp.main(args);

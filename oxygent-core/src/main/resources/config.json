@@ -76,7 +76,7 @@
             "timeout": 60
         },
         "live_prompt": {
-            "use_es_polling": false,
+            "is_active": false,
             "es_polling_interval": 2
         }
     },

@@ -76,7 +76,7 @@ import java.util.Map;
 public class PythonTools extends FunctionHub {
 
     private static final Logger logger = LoggerFactory.getLogger(PythonTools.class);
-    private final PythonInterpreter interpreter;
+    private PythonInterpreter interpreter = null;
 
     /**
      * Constructor to initialize Python tools.
@@ -90,7 +90,11 @@ public class PythonTools extends FunctionHub {
         this.setDesc("Tool set providing Python code execution functionality in Java environment, supports variable extraction and result return");
 
         // 创建Python解释器
-        this.interpreter = new PythonInterpreter(null, new PySystemState());
+        try {
+            this.interpreter = new PythonInterpreter(null, new PySystemState());
+        } catch (Exception e) {
+            // do nothing
+        }
 
         if (this.interpreter == null) {
             logger.warn("Python engine not found, some features may be limited");
