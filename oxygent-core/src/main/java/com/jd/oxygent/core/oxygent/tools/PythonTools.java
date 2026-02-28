@@ -89,11 +89,11 @@ public class PythonTools extends FunctionHub {
         super("python_tools");
         this.setDesc("Tool set providing Python code execution functionality in Java environment, supports variable extraction and result return");
 
-        // 创建Python解释器
+        // Initialize Python interpreter
         try {
             this.interpreter = new PythonInterpreter(null, new PySystemState());
         } catch (Exception e) {
-            // do nothing
+            logger.error("Failed to initialize Python engine");
         }
 
         if (this.interpreter == null) {
@@ -145,13 +145,16 @@ public class PythonTools extends FunctionHub {
     )
     public String runPythonCode(String code, String variableToReturn, Map<String, Object> safeGlobals, Map<String, Object> safeLocals) {
 
+        if(interpreter== null){
+            return "Error: Python engine not found";
+        }
+
         if (code.trim().isEmpty()) {
             return "Error: Python code cannot be empty";
         }
 
         try {
             logger.debug("Running Python code:\n\n{}\n\n", code);
-
 
             // Set up execution context
             if (safeGlobals != null) {

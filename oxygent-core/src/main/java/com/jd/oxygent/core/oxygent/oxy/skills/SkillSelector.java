@@ -127,7 +127,7 @@ public class SkillSelector {
      * @param query User query string
      * @return true if query appears to be about creating a skill
      */
-    public static boolean looksLikeSkillCreationRequest(String query) {
+    private static boolean looksLikeSkillCreationRequest(String query) {
         String q = (query == null) ? "" : query.trim();
         if (q.isEmpty()) {
             return false;
@@ -180,7 +180,7 @@ public class SkillSelector {
      * @param skills List of skill metadata
      * @return Ranked list of skills
      */
-    public static List<SkillMetadata> rankSkillsByKeywordOverlap(String query, List<SkillMetadata> skills) {
+    private static List<SkillMetadata> rankSkillsByKeywordOverlap(String query, List<SkillMetadata> skills) {
         if (skills == null || skills.isEmpty()) {
             return Collections.emptyList();
         }
