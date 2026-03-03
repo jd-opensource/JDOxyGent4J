@@ -325,7 +325,8 @@ public class ReActAgent extends LocalAgent {
         Memory tempMemory = new Memory();
         tempMemory.addMessage(Message.systemMessage(this.buildInstruction(oxyRequest.getArguments())));
         tempMemory.addMessages(Message.dictListToMessages(oxyRequest.getShortMemory(false)));
-        tempMemory.addMessage(Message.userMessage(oxyRequest.getQueryObject(false)));
+//        tempMemory.addMessage(Message.userMessage(oxyRequest.getQueryObject(false)));
+        // Add ReAct history (includes the user query as the first message)
         tempMemory.addMessages(reactMemory.getMessages());
         return tempMemory;
     }
@@ -554,7 +555,11 @@ public class ReActAgent extends LocalAgent {
         } catch (Exception e) {
             if (oriResponse.contains("tool_name") && oriResponse.contains("arguments") && oriResponse.contains("{") && oriResponse.contains("}")) {
                 return new LLMResponse(LLMState.ERROR_PARSE,
-                        "JSON cannot be parsed properly, please provide the answer again.",
+                         "MAT_ERROR: Your previous message looks like a tool call, but the JSON is invalid. "+
+                                "Reply with ONLY ONE valid JSON object (no markdown/code fences, no extra text). "+
+                                "Required keys: tool_name, arguments. "+
+                                "In string values, escape newlines as \\n and quotes as \\\". "+
+                                "Example: {\"tool_name\":\"write_file\",\"arguments\":{\"path\":\"/abs/path\",\"content\":\"line1\\nline2\"}}",
                         oriResponse);
             } else {
                 // Apply reflexion function if available
@@ -573,7 +578,8 @@ public class ReActAgent extends LocalAgent {
     // Execute ReAct loop (synchronous)
     public OxyResponse _execute(OxyRequest oxyRequest) {
         Memory reactMemory = new Memory();
-
+        // Add the current user query once; subsequent correction/act loops reuse react_memory.
+        reactMemory.addMessage(Message.userMessage(oxyRequest.getQuery()));
         for (int currentRound = 0; currentRound <= maxReactRounds; currentRound++) {
             // Build message context and call LLM
             Memory tempMemory = buildMessageContext(oxyRequest, reactMemory);
@@ -594,7 +600,7 @@ public class ReActAgent extends LocalAgent {
                 if (shouldUseTrustMode(llmResponse.getOutput())) {
                     return OxyResponse.builder()
                             .state(OxyState.COMPLETED)
-                            .output(observation.toStr(false))
+                            .output(observation.toStr(true))
                             .extra(Map.of("react_memory", reactMemory.toDictList()))
                             .build();
                 }
@@ -607,7 +613,9 @@ public class ReActAgent extends LocalAgent {
                 // Parse error, record to reactMemory for correction
                 log.warn("Format error, adding to react_memory: " + llmResponse.getOriResponse());
                 reactMemory.addMessage(Message.assistantMessage(llmResponse.getOriResponse()));
-                reactMemory.addMessage(Message.userMessage(llmResponse.getOutput().toString()));
+
+                reactMemory.addMessage(Message.systemMessage(llmResponse.getOutput().toString()+"\n\n"+"(This is system feedback about output format. Do NOT attribute it to the user.)"));
+                reactMemory.addMessage(Message.userMessage("Please output ONLY the corrected JSON object now (no markdown, no extra keys)."));
             }
         }
 
