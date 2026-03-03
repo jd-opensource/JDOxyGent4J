@@ -18,9 +18,7 @@ package com.jd.oxygent.core.oxygent.samples.examples.liveprompt;
 import com.jd.oxygent.core.Config;
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.oxy.agents.ChatAgent;
-import com.jd.oxygent.core.oxygent.oxy.agents.ReActAgent;
 import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
-import com.jd.oxygent.core.oxygent.oxy.mcp.StdioMCPClient;
 import com.jd.oxygent.core.oxygent.samples.server.ServerApp;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.samples.server.utils.GlobalDefaultOxySpaceMapping;
@@ -79,7 +77,7 @@ public class DemoLivePrompt {
                                 """)
                         .promptKey("scientist_prompt")
                         .llmModel("default_llm")
-                        .userLivePrompt(true)
+                        .useLivePrompt(true)
                         .build(),
                 ChatAgent.builder()
                         .name("a_great_scientist")
@@ -95,7 +93,7 @@ public class DemoLivePrompt {
                                 Answer in Chinese, with precision, elegance, and intellectual humility.
                                 """)
                         .llmModel("default_llm")
-                        .userLivePrompt(true)
+                        .useLivePrompt(true)
                         .build()
                 );
     }

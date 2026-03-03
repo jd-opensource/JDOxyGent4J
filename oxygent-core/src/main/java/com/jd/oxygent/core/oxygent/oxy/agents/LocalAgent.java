@@ -140,7 +140,7 @@ public class LocalAgent extends BaseAgent {
      * Whether to use live prompt system. If False, only uses the static 'prompt' parameter from code.
      */
     @Builder.Default
-    protected boolean userLivePrompt = false;
+    protected boolean useLivePrompt = Config.getLivePrompt().isActive();
 
     /**
      * Additional prompt
@@ -372,7 +372,7 @@ public class LocalAgent extends BaseAgent {
     @Override
     public void init() {
         // Resolve dynamic prompt if live prompt is enabled
-        if (userLivePrompt) {
+        if (useLivePrompt) {
             if (promptKey == null) {
                 promptKey = getName() + "_prompt";
             }
@@ -799,7 +799,7 @@ public class LocalAgent extends BaseAgent {
      */
     public boolean reloadPrompt() {
         // Check if live prompt is enabled
-        if (!userLivePrompt) {
+        if (!useLivePrompt) {
             logger.debug("Agent {} has live prompt disabled, skipping reload", getName());
             return false;
         }

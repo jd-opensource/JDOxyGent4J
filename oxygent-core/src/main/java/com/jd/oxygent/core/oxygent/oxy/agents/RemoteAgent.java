@@ -155,6 +155,7 @@ public abstract class RemoteAgent extends BaseAgent {
      * @throws IllegalArgumentException if server URL format is invalid or empty
      * @throws IllegalStateException    if remote service connection fails
      */
+    @Override
     public void init() {
         super.init();
         if (serverUrl == null || serverUrl.trim().isEmpty()) {

@@ -76,7 +76,7 @@ public class DynamicAgentManager {
 
     private boolean agentUsesLivePrompts(BaseOxy agentInstance) {
         if (agentInstance instanceof LocalAgent agent) {
-            return agent.isUserLivePrompt();
+            return agent.isUseLivePrompt();
         } else {
             return false;
         }
