@@ -381,10 +381,8 @@ public class SkillAgent extends ReActAgent {
             toolArgs.put("name", skillName);
             toolArgs.put("arguments", skillArgs != null ? skillArgs : "");
             toolArgs.put("invocation_source", invocationSource);
-            if (skillDirs != null) {
-                toolArgs.put("skill_dirs", skillDirs);
-            }
-            
+            toolArgs.put("skill_dirs", skillDirs);
+
             OxyResponse toolResp = oxyRequest.call(
                     Map.of(
                             "callee", "Skill",
@@ -707,10 +705,4 @@ public class SkillAgent extends ReActAgent {
         return super.afterExecute(oxyResponse);
     }
 
-    /**
-     * Get permitted tool name list (compatibility method).
-     */
-    public List<String> getPermittedToolNameList() {
-        return getTools();
-    }
 }

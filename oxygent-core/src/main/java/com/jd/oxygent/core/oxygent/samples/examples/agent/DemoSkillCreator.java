@@ -76,6 +76,7 @@ public class DemoSkillCreator {
                     .apiKey(apiKey)
                     .baseUrl(baseUrl)
                     .modelName(modelName)
+                    .llmParams(Map.of("stream",false))
                     .build();
         }
 

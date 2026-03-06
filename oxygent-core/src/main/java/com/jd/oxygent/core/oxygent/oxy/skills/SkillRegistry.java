@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.yaml.snakeyaml.Yaml;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -50,8 +51,14 @@ public class SkillRegistry {
             this.skillDirs = skillDirs;
         } else {
             // Discovery precedence: later entries override earlier ones on name collision.
-            Path PACKAGE_OXYGENT_DIR = Paths.get(SkillRegistry.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent().getParent();
+            String location = SkillRegistry.class.getResource("").getPath();
 
+            // Handle Windows paths (remove leading slash)
+            if (location.startsWith("/") && location.indexOf(":") == 2) {
+                location = location.substring(1); // 移除开头的"/"
+            }
+
+            Path PACKAGE_OXYGENT_DIR = Paths.get(location).getParent().getParent();
             // Priority (low -> high): preset < personal < project.
             // This follows the Codex/Claude Code convention: project-local skills override personal skills.
             List<String> DEFAULT_SKILL_DIRS = Arrays.asList(
@@ -263,14 +270,14 @@ public class SkillRegistry {
      */
     private SkillContent loadContentFromFile(Path skillPath) {
         try {
-            String content = Files.readString(skillPath);
+            String content = Files.readString(skillPath, StandardCharsets.UTF_8);
 
             // Parse frontmatter and body
             if (!content.startsWith("---")) {
                 return null;
             }
 
-            String[] parts = content.split("---", 2);
+            String[] parts = content.split("---", 3);
             if (parts.length < 3) {
                 return null;
             }

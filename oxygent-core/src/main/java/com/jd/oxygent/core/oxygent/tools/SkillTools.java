@@ -63,7 +63,7 @@ import java.util.concurrent.TimeUnit;
  * String result = skillTools.runSkillScript(
  *     oxyRequest,
  *     "skill-creator",
- *     "init_skill.py",
+ *     "init_skill.java",
  *     Arrays.asList("--path", "./my-skill"),
  *     60,
  *     80,
@@ -81,7 +81,7 @@ public class SkillTools extends FunctionHub {
 
     private static final Logger logger = LoggerFactory.getLogger(SkillTools.class);
 
-    private static final Set<String> ALLOWED_SCRIPT_EXTENSIONS = Set.of(".java", ".py", ".sh", ".bash", ".zsh");
+    private static final Set<String> ALLOWED_SCRIPT_EXTENSIONS = Set.of(".class",".java", ".py", ".sh", ".bash", ".zsh");
 
     /**
      * Constructor to initialize Skill tools.
@@ -162,7 +162,7 @@ public class SkillTools extends FunctionHub {
             paramMetas = {
                     @ParamMetaAuto(name = "oxy_request", type = "OxyRequest", description = "OxyRequest object for accessing MAS", defaultValue = "null"),
                     @ParamMetaAuto(name = "skill_name", type = "String", description = "Skill name (as discovered by SkillRegistry)", defaultValue = "null"),
-                    @ParamMetaAuto(name = "script_relpath", type = "String", description = "Path relative to the skill's scripts/ directory (e.g. 'init_skill.py') If 'scripts/' prefix is provided, it will be stripped.", defaultValue = "null"),
+                    @ParamMetaAuto(name = "script_relpath", type = "String", description = "Path relative to the skill's scripts/ directory (e.g. 'init_skill.java') If 'scripts/' prefix is provided, it will be stripped.", defaultValue = "null"),
                     @ParamMetaAuto(name = "args", type = "List<String>", description = "Optional arguments to pass to the script", defaultValue = "null"),
                     @ParamMetaAuto(name = "timeout", type = "int", description = "Execution timeout in seconds", defaultValue = "60"),
                     @ParamMetaAuto(name = "tail", type = "int", description = "Maximum number of output lines to return", defaultValue = "80"),
@@ -219,7 +219,13 @@ public class SkillTools extends FunctionHub {
         }
 
         if (!Files.exists(targetPath) || !Files.isRegularFile(targetPath)) {
-            return "Error: script not found: " + targetPath;
+            //执行阶段转换为classv
+            if(scriptRelpath.endsWith(".java")){
+                targetPath = targetPath.getParent().resolve(scriptRelpath.replace(".java", ".class"));
+            }
+            if (!Files.exists(targetPath) || !Files.isRegularFile(targetPath)) {
+                return "Error: script not found: " + targetPath;
+            }
         }
 
         String ext = getFileExtension(targetPath.toString()).toLowerCase();
@@ -248,6 +254,12 @@ public class SkillTools extends FunctionHub {
             cmd.add(scriptsDir.toString());
             String className = targetPath.getFileName().toString().replace(".java", "");
             cmd.add(className);
+        } else if (".class".equals(ext)) {
+            cmd.add(getJavaExecutable("java"));
+            cmd.add("-cp");
+            cmd.add(scriptsDir.toString());
+            String className = targetPath.getFileName().toString().replace(".class", "");
+            cmd.add(className);
         }
 
         List<String> finalArgs = new ArrayList<>();
@@ -260,7 +272,7 @@ public class SkillTools extends FunctionHub {
         }
         cmd.addAll(finalArgs);
 
-        // Common case: skill scripts that take an output directory (e.g. init_skill.py --path ...).
+        // Common case: skill scripts that take an output directory (e.g. init_skill.java --path ...).
         // If the provided path is relative, interpret it relative to the *process* cwd (project root),
         // not the skill directory, to avoid creating nested folders under the skill itself.
         if (finalArgs.contains("--path")) {
