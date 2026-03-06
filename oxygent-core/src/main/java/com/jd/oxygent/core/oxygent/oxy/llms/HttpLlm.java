@@ -24,6 +24,7 @@ import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import com.jd.oxygent.core.oxygent.utils.SpringContextHolder;
+import com.networknt.schema.utils.StringUtils;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -270,6 +271,7 @@ public class HttpLlm extends RemoteLlm {
         }
 
         StringBuilder result = new StringBuilder();
+        String usage = null;
         boolean isGemini = url.contains("generativelanguage.googleapis.com");
 
         try (java.io.InputStream inputStream = response.body();
@@ -286,19 +288,22 @@ public class HttpLlm extends RemoteLlm {
 
                     try {
                         JsonNode node = JsonUtils.readTree(jsonData);
-                        String content = extractStreamContent(node, isGemini, useOpenai);
-                        if (content != null && !content.isEmpty()) {
-                            result.append(content);
+                        String[] contentAndUsage = extractStreamContent(node, isGemini, useOpenai);
+                        if (contentAndUsage != null && StringUtils.isNotBlank(contentAndUsage[0])) {
+                            result.append(contentAndUsage[0]);
 
                             Map<String, Object> streamMessage = new HashMap<>();
                             streamMessage.put("type", this.getStreamOutputType());
                             Map<String, Object> contentMap = new HashMap<>();
-                            contentMap.put("delta", content);
+                            contentMap.put("delta", contentAndUsage[0]);
                             contentMap.put("agent", oxyRequest.getCaller());
                             contentMap.put("node_id", oxyRequest.getNodeId());
                             streamMessage.put("content", contentMap);
 
                             oxyRequest.sendMessage(streamMessage);
+                        }
+                        if (contentAndUsage != null && StringUtils.isNotBlank(contentAndUsage[1])) {
+                            usage = contentAndUsage[1];
                         }
                     } catch (Exception e) {
                         logger.warn("Failed to parse streaming JSON: {}, error: {}", jsonData, e.getMessage());
@@ -309,18 +314,21 @@ public class HttpLlm extends RemoteLlm {
                     try {
                         if (line.trim().startsWith("{")) {
                             JsonNode node = JsonUtils.readTree(line);
-                            String content = extractStreamContent(node, isGemini, useOpenai);
-                            if (content != null && !content.isEmpty()) {
-                                result.append(content);
+                            String[] contentAndUsage = extractStreamContent(node, isGemini, useOpenai);
+                            if (contentAndUsage != null && StringUtils.isNotBlank(contentAndUsage[0])) {
+                                result.append(contentAndUsage[0]);
 
                                 Map<String, Object> streamMessage = new HashMap<>();
                                 streamMessage.put("type", "stream");
                                 Map<String, Object> contentMap = new HashMap<>();
-                                contentMap.put("delta", content);
+                                contentMap.put("delta", contentAndUsage[0]);
                                 contentMap.put("agent", oxyRequest.getCaller());
                                 contentMap.put("node_id", oxyRequest.getNodeId());
                                 streamMessage.put("content", contentMap);
                                 oxyRequest.sendMessage(streamMessage);
+                            }
+                            if (contentAndUsage != null && StringUtils.isNotBlank(contentAndUsage[1])) {
+                                usage = contentAndUsage[1];
                             }
                         }
                     } catch (Exception e) {
@@ -343,6 +351,7 @@ public class HttpLlm extends RemoteLlm {
         return OxyResponse.builder()
                 .state(OxyState.COMPLETED)
                 .output(result.toString())
+                .extra(usage != null ? Map.of("usage", usage) : null)
                 .oxyRequest(oxyRequest)
                 .build();
     }
@@ -396,12 +405,18 @@ public class HttpLlm extends RemoteLlm {
                 throw new RuntimeException("LLM API error: " + errorMsg);
             }
 
-            String result = extractNonStreamContent(data, isGemini, useOpenai);
+            String[] resultAndUsage = extractNonStreamContent(data, isGemini, useOpenai);
 
-            if (result == null || result.trim().isEmpty()) {
+            if (resultAndUsage == null || (StringUtils.isBlank(resultAndUsage[0]) && StringUtils.isBlank(resultAndUsage[1]))) {
                 logger.warn("Content extracted from response is empty, original response: {}", responseBody);
             }
-            return OxyResponse.builder().output(result != null ? result : "").state(OxyState.COMPLETED).oxyRequest(oxyRequest).build();
+            return OxyResponse
+                    .builder()
+                    .output(resultAndUsage[0] != null ? resultAndUsage[0] : "")
+                    .extra(resultAndUsage[1] != null ? Map.of("usage", resultAndUsage[1]) : null)
+                    .state(OxyState.COMPLETED)
+                    .oxyRequest(oxyRequest)
+                    .build();
         } catch (IOException e) {
             logger.error("Network request failed: {}", e.getMessage());
             throw new RuntimeException("Network request failed: " + e.getMessage(), e);
@@ -413,8 +428,10 @@ public class HttpLlm extends RemoteLlm {
 
     /**
      * Extract content from streaming response
+     * @return String[] {content, usage}
      */
-    private String extractStreamContent(JsonNode node, boolean isGemini, boolean useOpenai) {
+    private String[] extractStreamContent(JsonNode node, boolean isGemini, boolean useOpenai) {
+        String result[] = new String[2];
         try {
             if (isGemini) {
                 JsonNode candidates = node.get("candidates");
@@ -425,13 +442,18 @@ public class HttpLlm extends RemoteLlm {
                         if (parts != null && parts.isArray() && parts.size() > 0) {
                             JsonNode text = parts.get(0).get("text");
                             if (text == null || (text instanceof NullNode nn && nn.isNull())) {
-                                return null;
+                                result[0] = null;
                             } else {
-                                return text.asText();
+                                result[0] = text.asText();
                             }
                         }
                     }
                 }
+                JsonNode usage = node.get("usageMetadata");
+                if (usage != null && !usage.isNull() && !"null".equals(usage.toString())) {
+                    result[1] = usage.toString();
+                }
+                return result;
             } else if (useOpenai) {
                 JsonNode choices = node.get("choices");
                 if (choices != null && choices.isArray() && choices.size() > 0) {
@@ -441,15 +463,20 @@ public class HttpLlm extends RemoteLlm {
                         if (content == null || content.isNull()) {
                             content = delta.get("reasoning_content");
                             if (content == null || content.isNull()) {
-                                return null;
+                                result[0] = null;
                             } else {
-                                return content.asText();
+                                result[0] = content.asText();
                             }
                         } else {
-                            return content.asText();
+                            result[0] = content.asText();
                         }
                     }
                 }
+                JsonNode usage = node.get("usage");
+                if (usage != null && !usage.isNull() && !"null".equals(usage.toString())) {
+                    result[1] = usage.toString();
+                }
+                return result;
             } else {
                 JsonNode message = node.get("message");
                 if (message != null && !message.isNull()) {
@@ -457,20 +484,22 @@ public class HttpLlm extends RemoteLlm {
                     if (content == null || content.isNull()) {
                         return null;
                     } else {
-                        return content.asText();
+                        return new String[]{content.asText(), null};
                     }
                 }
             }
         } catch (Exception e) {
             logger.warn("Failed to extract stream content", e);
         }
-        return null;
+        return result;
     }
 
     /**
      * Extract content from non-streaming response
+     * @return String[] {content, usage}
      */
-    private String extractNonStreamContent(Map<String, Object> data, boolean isGemini, boolean useOpenai) {
+    private String[] extractNonStreamContent(Map<String, Object> data, boolean isGemini, boolean useOpenai) {
+        String result[] = new String[2];
         try {
             if (isGemini) {
                 List<Map<String, Object>> candidates = (List<Map<String, Object>>) data.get("candidates");
@@ -479,28 +508,39 @@ public class HttpLlm extends RemoteLlm {
                     if (content != null) {
                         List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
                         if (parts != null && !parts.isEmpty()) {
-                            return parts.get(0).getOrDefault("text", "").toString();
+                            result[0] = parts.get(0).getOrDefault("text", "").toString();
                         }
                     }
                 }
+                List<Map<String, Object>> usage = (List<Map<String, Object>>) data.get("usageMetadata");
+                if (usage != null) {
+                    result[1] = JsonUtils.toJSONString(usage);
+                }
+                return result;
             } else if (useOpenai) {
                 Object choices = data.get("choices");
                 if (choices != null && choices instanceof List && !((List<?>) choices).isEmpty()) {
                     Map<String, Object> message = (Map<String, Object>) ((Map<String, Object>) ((List<?>) choices).get(0)).get("message");
                     if (message != null) {
                         Object content = message.get("content");
-                        return content != null ? content.toString() : message.getOrDefault("reasoning_content", "").toString();
+                        result[0] = content != null ? content.toString() : message.getOrDefault("reasoning_content", "").toString();
                     }
                 }
+                Object usage = data.get("usage");
+                if (usage != null) {
+                    result[1] = JsonUtils.toJSONString(usage);
+                }
+                return result;
             } else {
                 Map<String, Object> message = (Map<String, Object>) data.get("message");
                 if (message != null) {
-                    return message.getOrDefault("content", "").toString();
+                    result[0] = message.getOrDefault("content", "").toString();
                 }
+                return result;
             }
         } catch (Exception e) {
             logger.warn("Failed to extract non-stream content", e);
         }
-        return null;
+        return result;
     }
 }
