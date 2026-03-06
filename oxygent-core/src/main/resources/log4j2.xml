@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="INFO">
+    <Properties>
+        <Property name="CONSOLE_LOG_PATTERN">%d{HH:mm:ss.SSS} [%highlight{%t}{FATAL=red, ERROR=red, WARN=yellow, INFO=cyan, DEBUG=green, TRACE=blue}] %-5level %cyan{%logger{36}} %magenta{%M} (%F:%L) - %highlight{%msg}%n</Property>
+
+        <Property name="FILE_LOG_PATTERN">%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} %M (%F:%L) - %msg%n</Property>
+
+        <Property name="LOG_PATH">log</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="${CONSOLE_LOG_PATTERN}" disableAnsi="false"/>
+        </Console>
+
+        <RollingFile name="FILE"
+                     fileName="${LOG_PATH}/oxygent.log"
+                     filePattern="${LOG_PATH}/oxygent.%d{yyyy-MM-dd}.%i.log">
+            <PatternLayout pattern="${FILE_LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="${LOG_PATH}" maxDepth="1">
+                    <IfFileName glob="oxygent.*.log" />
+                    <IfLastModified age="15d" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Logger name="com.jd.oxygent" level="INFO" additivity="true"/>
+
+        <Root level="INFO">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="FILE"/>
+        </Root>
+    </Loggers>
+</Configuration>
