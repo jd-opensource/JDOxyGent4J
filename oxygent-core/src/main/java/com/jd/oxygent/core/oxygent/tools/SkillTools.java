@@ -257,8 +257,8 @@ public class SkillTools extends FunctionHub {
         } else if (".class".equals(ext)) {
             cmd.add(getJavaExecutable("java"));
             cmd.add("-cp");
-            cmd.add(scriptsDir.toString());
-            String className = targetPath.getFileName().toString().replace(".class", "");
+            cmd.add(scriptsDir.toString().substring(0,scriptsDir.toString().indexOf("classes")+"classes".length()));
+            String className = targetPath.toString().substring(scriptsDir.toString().indexOf("classes")+"classes".length()).replace(".class", "").replace("\\",".").substring(1);
             cmd.add(className);
         }
 

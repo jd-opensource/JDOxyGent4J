@@ -51,7 +51,7 @@ public class InitSkill {
     private static final String SKILL_TEMPLATE = """
 ---
 name: %s
-description: [TODO: Complete and informative explanation of what the skill does and when to use it. Include WHEN to use this skill - specific scenarios, file types, or tasks that trigger it.]
+description: "[TODO: Complete and informative explanation of what the skill does and when to use it. Include WHEN to use this skill - specific scenarios, file types, or tasks that trigger it.]"
 ---
 
 # %s

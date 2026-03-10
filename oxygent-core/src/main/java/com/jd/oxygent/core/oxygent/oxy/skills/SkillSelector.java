@@ -398,7 +398,7 @@ public class SkillSelector {
             Memory mem = buildSelectorPrompt(q, candidates);
             //大模型请求参数
             Map<String, Object> llmArgs = new HashMap<>();
-            llmArgs.put("messages", mem.toDictList());
+            llmArgs.put("messages", mem);
             llmArgs.put("temperature", 0);
             //大模型请求,skill工具选择结果返回
             OxyResponse resp = oxyRequest.call(Map.of(

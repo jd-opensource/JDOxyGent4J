@@ -16,6 +16,7 @@
 
 package com.jd.oxygent.core.oxygent.oxy.agents;
 
+import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.oxy.skills.SkillMetadata;
 import com.jd.oxygent.core.oxygent.oxy.skills.SkillRegistry;
 import com.jd.oxygent.core.oxygent.oxy.skills.SkillSelector;
@@ -218,9 +219,9 @@ public class SkillAgent extends ReActAgent {
 
             // Initialize shell_tools if needed
             if (!getMas().getOxyNameToOxy().containsKey("run_shell_command")) {
-                Object hub = getMas().getOxyNameToOxy().get("shell_tools");
+                BaseOxy hub = getMas().getOxyNameToOxy().get("shell_tools");
                 if (hub != null && hub instanceof ShellTools) {
-                    // Note: In Java, we don't have async init, so this is synchronous
+                    hub.init();
                     log.debug("Shell tools initialized");
                 }
             }
@@ -260,7 +261,7 @@ public class SkillAgent extends ReActAgent {
     private boolean isSkillListQuery(String query) {
         String q = (query == null) ? "" : query.trim().toLowerCase();
         q = q.replaceAll("\\s+", " ").trim();
-        q = q.replaceAll("[\\s\\t\\r\\n\"'`.,;:!?()\\[\\]{}]", "").trim();
+        q = q.replaceAll("^[\\s\\t\\r\\n\"'`.,;:!?()\\[\\]{}]+|[\\s\\t\\r\\n\"'`.,;:!?()\\[\\]{}]+$", "");
 
         // Check exact matches
         for (String exactQuery : SKILL_LIST_QUERIES) {
@@ -696,10 +697,14 @@ public class SkillAgent extends ReActAgent {
         if (oxyRequest != null) {
             // Transfer skill activation info to response
             if (oxyRequest.getArguments().containsKey("_skill_activation")) {
-                oxyResponse.getExtra().put("skill_activation",oxyRequest.getArguments().get("_skill_activation"));
+                if(oxyRequest.getArguments().containsKey("_skill_activation")){
+                    oxyResponse.getExtra().put("skill_activation",oxyRequest.getArguments().get("_skill_activation"));
+                }
             }
             if (oxyRequest.getArguments().containsKey("_skill_selection")) {
-                oxyResponse.getExtra().put("skill_selection",oxyRequest.getArguments().get("_skill_selection"));
+                if(oxyRequest.getArguments().containsKey("_skill_selection")){
+                    oxyResponse.getExtra().put("skill_selection",oxyRequest.getArguments().get("_skill_selection"));
+                }
             }
         }
         return super.afterExecute(oxyResponse);

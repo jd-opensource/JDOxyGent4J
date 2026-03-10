@@ -60,6 +60,8 @@ public class DemoSkillAgent {
     private static String AGENT_ASKILL_DIR;
     // B_Skill directories
     private static String AGENT_BSKILL_DIR;
+    // Public Skill directory
+    private static String PUBLIC_SKILL_DIR="D:\\github\\JDOxyGent4J\\oxygent-core\\src\\main\\java\\com\\jd\\oxygent\\core\\oxygent\\preset_skills";
 
     /*
      * Builds default LLM for skill activation
@@ -140,6 +142,7 @@ public class DemoSkillAgent {
                 ReActAgent.builder()
                         .name("master_agent")
                         .llmModel("default_llm")
+                        .isMaster(true)
                         .subAgents(List.of("agent_a", "agent_b"))
                         .additionalPrompt(
                                 "Delegate skill-specific requests to agent_a or agent_b when appropriate."
@@ -149,7 +152,7 @@ public class DemoSkillAgent {
                         .name("agent_a")
                         .llmModel("default_llm")
                         .enableSelector(selectorEnabled)
-                        .skillDirs(List.of(AGENT_ASKILL_DIR))
+                        .skillDirs(List.of(AGENT_ASKILL_DIR,PUBLIC_SKILL_DIR))
                         .additionalPrompt(
                                 "Skills are NOT tools. Never use a skill name as tool_name. "
                                 + "Only call tools that appear in tools_description. "
@@ -160,7 +163,7 @@ public class DemoSkillAgent {
                         .name("agent_b")
                         .llmModel("default_llm")
                         .enableSelector(selectorEnabled)
-                        .skillDirs(List.of(AGENT_BSKILL_DIR))
+                        .skillDirs(List.of(AGENT_BSKILL_DIR,PUBLIC_SKILL_DIR))
                         .additionalPrompt(
                                 "Skills are NOT tools. Never use a skill name as tool_name. "
                                 + "Only call tools that appear in tools_description."
@@ -313,11 +316,11 @@ public class DemoSkillAgent {
                 traceByCallee.put(callee, resp.getOxyRequest().getCurrentTraceId());
 
                 if (resp.getExtra().containsKey("skill_selection")) {
-                    String sel = (String) resp.getExtra().get("skill_selection");
+                    String sel = resp.getExtra().get("skill_selection").toString();
                     System.out.println("[skill selection] " + sel);
                 }
                 if (resp.getExtra().containsKey("skill_activation")) {
-                    String act = (String) resp.getExtra().get("skill_activation");
+                    String act = resp.getExtra().get("skill_activation").toString();
                     System.out.println("[skill activated] " + act);
                 }
 

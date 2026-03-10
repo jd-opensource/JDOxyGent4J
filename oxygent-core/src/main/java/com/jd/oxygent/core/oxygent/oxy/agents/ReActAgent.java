@@ -590,7 +590,7 @@ public class ReActAgent extends LocalAgent {
             LLMResponse llmResponse = this.getFuncParseLlmResponse().apply(oxyResponse.getOutput().toString(), oxyRequest);
 
             if (llmResponse.getState() == LLMState.ANSWER) {
-                return OxyResponse.builder().state(OxyState.COMPLETED).output(llmResponse.getOutput()).extra(Map.of("react_memory", reactMemory.toDictList())).build();
+                return OxyResponse.builder().state(OxyState.COMPLETED).output(llmResponse.getOutput()).extra(new HashMap<>(Map.of("react_memory", reactMemory.toDictList()))).build();
             } else if (llmResponse.getState() == LLMState.TOOL_CALL) {
                 // Execute tool calls
                 ObservationData observation = executeToolCalls(oxyRequest, llmResponse.getOutput());
@@ -603,7 +603,7 @@ public class ReActAgent extends LocalAgent {
                     return OxyResponse.builder()
                             .state(OxyState.COMPLETED)
                             .output(observation.toStr(true))
-                            .extra(Map.of("react_memory", reactMemory.toDictList()))
+                            .extra(new HashMap<>(Map.of("react_memory", reactMemory.toDictList())))
                             .build();
                 }
 
@@ -640,7 +640,7 @@ public class ReActAgent extends LocalAgent {
 
         return OxyResponse.builder()
                 .state(OxyState.COMPLETED).output(finalLlmResponse.getOutput())
-                .extra(Map.of("react_memory", reactMemory.toDictList())).build();
+                .extra(new HashMap<>(Map.of("react_memory", reactMemory.toDictList()))).build();
     }
 
     private static class MemoryEntry {

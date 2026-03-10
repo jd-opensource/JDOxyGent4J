@@ -231,8 +231,13 @@ public class FunctionTool extends BaseTool {
 
                 String paramName = param.name;
                 Object value = requestArgs.get(paramName);
-                if ((value == null || (value instanceof Map && ((Map) value).size() == 0)) && "OxyRequest".equals(param.nameType)) {
-                    value = oxyRequest;
+                if("OxyRequest".equals(param.nameType)){
+                    if (value == null || (value instanceof Map && ((Map) value).size() == 0)||value instanceof String) {
+                        value = oxyRequest;
+                    }else if(value instanceof Map){
+                        oxyRequest.getArguments().putAll((Map) value);
+                        value = oxyRequest;
+                    }
                 }
                 // Use default value if parameter is missing and default is available
                 if (value == null && param.defaultValue != null) {

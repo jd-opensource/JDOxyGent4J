@@ -351,7 +351,7 @@ public class HttpLlm extends RemoteLlm {
         return OxyResponse.builder()
                 .state(OxyState.COMPLETED)
                 .output(result.toString())
-                .extra(usage != null ? Map.of("usage", usage) : null)
+                .extra(usage != null ? new HashMap<>(Map.of("usage", usage)): null)
                 .oxyRequest(oxyRequest)
                 .build();
     }
@@ -413,7 +413,7 @@ public class HttpLlm extends RemoteLlm {
             return OxyResponse
                     .builder()
                     .output(resultAndUsage[0] != null ? resultAndUsage[0] : "")
-                    .extra(resultAndUsage[1] != null ? Map.of("usage", resultAndUsage[1]) : null)
+                    .extra(resultAndUsage[1] != null ? new HashMap<>(Map.of("usage", resultAndUsage[1])) : null)
                     .state(OxyState.COMPLETED)
                     .oxyRequest(oxyRequest)
                     .build();
