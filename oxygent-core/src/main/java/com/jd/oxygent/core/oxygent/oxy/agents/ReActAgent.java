@@ -554,6 +554,7 @@ public class ReActAgent extends LocalAgent {
             }
         } catch (Exception e) {
             if (oriResponse.contains("tool_name") && oriResponse.contains("arguments") && oriResponse.contains("{") && oriResponse.contains("}")) {
+                log.error("Failed to parse LLM response: {}", e.getMessage());
                 return new LLMResponse(LLMState.ERROR_PARSE,
                          "MAT_ERROR: Your previous message looks like a tool call, but the JSON is invalid. "+
                                 "Reply with ONLY ONE valid JSON object (no markdown/code fences, no extra text). "+
@@ -566,6 +567,7 @@ public class ReActAgent extends LocalAgent {
                 if (oxyRequest != null && funcReflexion != null) {
                     String reflectionMsg = funcReflexion.apply(oriResponse, oxyRequest);
                     if (reflectionMsg != null) {
+                        log.error("Failed to parse LLM response: {}", e.getMessage());
                         return new LLMResponse(LLMState.ERROR_PARSE, reflectionMsg, oriResponse);
                     }
                 }
@@ -611,7 +613,7 @@ public class ReActAgent extends LocalAgent {
 
             } else {
                 // Parse error, record to reactMemory for correction
-                log.warn("Format error, adding to react_memory: " + llmResponse.getOriResponse());
+                log.warn("Format error traceId:{} nodeId:{} llmResponse.state:{}, adding to react_memory", oxyRequest.getCurrentTraceId(), oxyRequest.getNodeId(), llmResponse.getState());
                 reactMemory.addMessage(Message.assistantMessage(llmResponse.getOriResponse()));
 
                 reactMemory.addMessage(Message.systemMessage(llmResponse.getOutput().toString()+"\n\n"+"(This is system feedback about output format. Do NOT attribute it to the user.)"));
