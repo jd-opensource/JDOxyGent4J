@@ -50,11 +50,11 @@ public class McpClientSse {
                     })
                     .build();
 
-            // 3. 初始化连接
+            // 3. Initialize connection
             System.out.println("Initializing connection...");
             client.initialize();
 
-            // 4. 列出可用工具
+            // 4. List available tools
             System.out.println("\nFetching available tools...");
             McpSchema.ListToolsResult listToolsResult = client.listTools();
 
@@ -64,12 +64,12 @@ public class McpClientSse {
                             (tool.description() != null ? " - " + tool.description() : ""))
             );
 
-            // 5. 查找calc_pi工具
+            // 5. Find calc_pi tool
             boolean hasCalcPi = listToolsResult.tools().stream()
                     .anyMatch(tool -> "calc_pi".equals(tool.name()));
 
             if (hasCalcPi) {
-                // 调用calc_pi工具
+                // Call calc_pi tool
                 McpSchema.CallToolResult result = client.callTool(
                         new McpSchema.CallToolRequest("calc_pi", Map.of("prec", 20))
                 );

@@ -58,10 +58,10 @@ public class DemoLlmParams {
         ObjectMapper mapper = new ObjectMapper();
         JsonSchemaGenerator schemaGen = new JsonSchemaGenerator(mapper);
 
-        // 1. 将 Java Bean 转换为 JSON Schema
+        // 1. Convert Java Bean to JSON Schema
         JsonSchema schema = schemaGen.generateSchema(UserProfile.class);
 
-        // 2. 构建 response_format 结构 (以 Structured Outputs 格式为例)
+        // 2. Build response_format structure (using Structured Outputs format as example)
         var responseFormat = mapper.createObjectNode();
         responseFormat.put("type", "json_schema");
 

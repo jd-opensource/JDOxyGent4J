@@ -92,13 +92,13 @@ public class DemoSkillCreator {
      * @return
      */
     private static String offlineProcess(OxyRequest oxyRequest) {
-        //获取请求消息
+        // Get request messages
         Object messagesObj = oxyRequest.getArguments().get("messages");
-        //系统提示词
+        // System prompt
         String systemText = "";
-        //用户提示词
+        // User prompt
         String query = "";
-        //提取提示词
+        // Extract prompts
         if (messagesObj instanceof Memory) {
             Memory memory = (Memory) messagesObj;
             List<Message> messages = memory.getMessages();
@@ -113,11 +113,11 @@ public class DemoSkillCreator {
                 }
             }
         }
-        //系统提示词中获取激活技能
+        // Get active skill from system prompt
         Matcher m = SKILL_ACTIVATED_PATTERN.matcher(systemText);
         String activeSkill = m.find() ? m.group(1).trim() : "";
 
-        //收集历史所有历史记录
+        // Collect all historical records
         StringBuilder historyText = new StringBuilder();
         if (messagesObj instanceof Memory) {
             Memory memory = (Memory) messagesObj;
@@ -131,48 +131,48 @@ public class DemoSkillCreator {
             }
         }
 
-        // 检查是否存在待处理的技能初始化请求
+        // Check if there is a pending skill initialization request
         boolean pending = historyText.toString().contains("[PENDING_SKILL_INIT:");
         if (pending) {
-            // 提取待处理技能的配置信息
+            // Extract pending skill configuration information
             Matcher m2 = PENDING_SKILL_PATTERN.matcher(historyText.toString());
             String payload = m2.find() ? m2.group(1).trim() : "";
             
-            // 将用户查询转换为小写以便匹配
+            // Convert user query to lowercase for matching
             String lowerQ = query.toLowerCase();
             
-            // 处理用户确认创建技能的请求
-            if (lowerQ.matches("[y]|yes|确认|是|好|ok")) {
-                // 解析待处理技能的配置数据
+            // Handle user confirmation to create skill
+            if (lowerQ.matches("[y]|yes|confirm|是|好|ok")) {
+                // Parse pending skill configuration data
                 Map<String, Object> data = JsonUtils.parseObject(payload, Map.class);
 
-                // 构建技能创建脚本的参数
+                // Build parameters for skill creation script
                 Map<String, Object> args = new HashMap<>();
                 args.put("skill_name", "skill-creator");
                 args.put("script_relpath", "init_skill.java");
                 args.put("args", Arrays.asList(data.get("skill_name"), "--path", data.get("path")));
 
-                // 构建调用技能脚本工具的结果
+                // Build result for skill script tool call
                 Map<String, Object> result = new HashMap<>();
                 result.put("tool_name", "run_skill_script");
                 result.put("arguments", args);
 
-                // 返回JSON格式的工具调用结果
+                // Return JSON-formatted tool call result
                 return JsonUtils.toJSONString(result);
             }
             
-            // 处理用户取消创建技能的请求
-            if (lowerQ.matches("[n]|no|取消|否|不")) {
+            // Handle user cancellation of skill creation
+            if (lowerQ.matches("[n]|no|cancel|否|不")) {
                 return "Cancelled.";
             }
             
-            // 提示用户进行确认操作
+            // Prompt user for confirmation
             return "Please confirm: reply 'yes' to create, or 'no' to cancel.";
         }
 
-        // 激活技能为skil-creator指令输入抽取
+        // Activate skill for skill-creator command input extraction
         if ("skill-creator".equals(activeSkill)) {
-            //案例 ： query = "init hello-skill --path .claude/skills"
+            // Example: query = "init hello-skill --path .claude/skills"
             String[] parts = query.split("\\s+");
             if (parts.length >= 2 && "init".equals(parts[0])) {
                 String skillName = parts[1];
@@ -228,7 +228,7 @@ public class DemoSkillCreator {
             }
         }
 
-        // 启动框架 获取 mas 实例
+        // Start framework and get mas instance
         GlobalDefaultOxySpaceMapping.searchCurrentThreadStackAnnotationOxySpaceName(Thread.currentThread().getStackTrace()[1].getClassName());
         Mas mas = MasFactoryRegistry.getFactory().createMas();
 
@@ -238,8 +238,8 @@ public class DemoSkillCreator {
             System.out.println(
                     "\nExamples:\n"
                     + "- /skill-creator init hello-skill --path .claude/skills\n"
-                    + "- 帮我创建一个新的 skill，名字叫 hello-skill\n"
-                    + "- /agent-browser 获取墨迹天气的今日温度\n"
+                    + "- Help me create a new skill named hello-skill\n"
+                    + "- /agent-browser Get today's temperature from Moji Weather\n"
                     + "Type 'exit' to quit.\n"
             );
 

@@ -25,11 +25,11 @@ public class BrowserNavigation {
         LOGIN_DOMAIN_CONFIGS.put("ssa.jd.com", jdConfig);
     }
 
-    @MCPTool(name = "browser_navigate", description = "导航到指定URL并获取页面内容")
+    @MCPTool(name = "browser_navigate", description = "Navigate to specified URL and get page content")
     public Map<String, Object> browserNavigate(
-            @ToolParam(description = "要导航到的网页URL") String url,
-            @ToolParam(description = "等待页面加载的条件，可选值: load, domcontentloaded, networkidle", defaultValue = "load") String waitUntil,
-            @ToolParam(description = "是否提取页面内容", defaultValue = "true") boolean extractContent) {
+            @ToolParam(description = "Web page URL to navigate to") String url,
+            @ToolParam(description = "Condition to wait for page load, options: load, domcontentloaded, networkidle", defaultValue = "load") String waitUntil,
+            @ToolParam(description = "Whether to extract page content", defaultValue = "true") boolean extractContent) {
 
         // Check dependencies
         List<String> missingDeps = BrowserCore.check_dependencies();
@@ -340,7 +340,7 @@ public class BrowserNavigation {
     /**
      * Go back to the previous page in browser history
      */
-    @MCPTool(name = "browser_navigate_back", description = "返回上一页")
+    @MCPTool(name = "browser_navigate_back", description = "Go back to previous page")
     public Map<String, Object> browserNavigateBack() {
         // Check dependencies
         List<String> missingDeps = BrowserCore.check_dependencies();
@@ -368,7 +368,7 @@ public class BrowserNavigation {
         }
     }
 
-    @MCPTool(name = "browser_navigate_forward", description = "前进到下一页")
+    @MCPTool(name = "browser_navigate_forward", description = "Navigate forward to next page")
     public Map<String, Object> browserNavigateForward() {
         // Check dependencies
         List<String> missingDeps = BrowserCore.check_dependencies();

@@ -54,13 +54,13 @@ public class BankClient extends BaseBank {
             String url = buildUrl(serverUrl, "list_banks");
             log.info("BankClient '{}': Discovering bank tools from {}", getName(), url);
 
-            // 构建请求头
+            // Build request headers
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .GET()
                     .timeout(Duration.ofSeconds((long)getTimeout()));
 
-            // 添加headers
+            // Add headers
             if (headers != null && !headers.isEmpty()) {
                 for (Map.Entry<String, String> entry : headers.entrySet()) {
                     requestBuilder.header(entry.getKey(), entry.getValue());
@@ -72,14 +72,14 @@ public class BankClient extends BaseBank {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                // 解析JSON响应
+                // Parse JSON response
                 String json = response.body();
                 List<Map<String, Object>> tools = JsonUtils.readValue(json, List.class);
                 addTools(tools);
             }
 
         } catch (Exception e) {
-            log.error("BankClient初始化失败", e);
+            log.error("BankClient initialization failed", e);
         }
     }
 
@@ -136,7 +136,7 @@ public class BankClient extends BaseBank {
 
             String toolUrl = buildUrl(serverUrl, endpoint);
 
-            // 创建BankTool
+            // Create BankTool
             BankTool bankTool = BankTool.builder()
                     .name(toolName)
                     .desc(description)
@@ -152,7 +152,7 @@ public class BankClient extends BaseBank {
                     .funcInterceptor(this.getFuncInterceptor())
                     .build();
 
-            // 应用参数
+            // Apply parameters
             applyParams(bankTool, params);
 
             bankTool.setMas(mas);
@@ -173,11 +173,11 @@ public class BankClient extends BaseBank {
             Object value = entry.getValue();
 
             try {
-                // 获取字段
+                // Get field
                 Field field = null;
                 Class<?> clazz = target.getClass();
 
-                // 查找字段（包括父类）
+                // Find field (including super classes)
                 while (clazz != null && field == null) {
                     try {
                         field = clazz.getDeclaredField(fieldName);
@@ -217,12 +217,12 @@ public class BankClient extends BaseBank {
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            // 简单JSON解析，实际应该使用Jackson等库
+            // Simple JSON parsing, should use Jackson or similar library in practice
             if (json.startsWith("[") && json.endsWith("]")) {
                 json = json.substring(1, json.length() - 1).trim();
                 if (json.isEmpty()) return result;
 
-                // 这里简化处理，实际应该完整解析
+                // Simplified processing here, should do full parsing in practice
                 String[] items = json.split("\\},\\{");
                 for (String item : items) {
                     Map<String, Object> map = new HashMap<>();
@@ -265,12 +265,12 @@ public class BankClient extends BaseBank {
         try {
             Class<?> clazz = this.getClass();
 
-            // 遍历所有字段（包括继承的）
+            // Iterate through all fields (including inherited ones)
             while (clazz != null && clazz != Object.class) {
                 Field[] fields = clazz.getDeclaredFields();
 
                 for (Field field : fields) {
-                    // 跳过静态字段
+                    // Skip static fields
                     if (Modifier.isStatic(field.getModifiers())) {
                         continue;
                     }
@@ -278,7 +278,7 @@ public class BankClient extends BaseBank {
                     field.setAccessible(true);
                     String fieldName = field.getName();
 
-                    // 跳过排除的字段
+                    // Skip excluded fields
                     if (excludeFields != null && excludeFields.contains(fieldName)) {
                         continue;
                     }

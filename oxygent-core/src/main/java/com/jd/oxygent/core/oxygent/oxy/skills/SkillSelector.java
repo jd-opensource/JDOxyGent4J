@@ -381,7 +381,7 @@ public class SkillSelector {
             }
 
             String q = (query == null) ? "" : query.trim();
-            //用户的问题为创建/生成/初始化等关键含义的词汇 ,而skill工具列表中存在skill-creator技能则直接返回。
+            // If the user's question contains keywords related to creation/generation/initialization, and the skill list includes skill-creator, return it directly.
             if (looksLikeSkillCreationRequest(q)) {
                 Set<String> skillNames = skills.stream()
                         .map(SkillMetadata::getName)
@@ -394,41 +394,41 @@ public class SkillSelector {
             List<SkillMetadata> ranked = rankSkillsByKeywordOverlap(q, skills);
             int candidatesCount = Math.max(1, Math.min(maxCandidates, ranked.size()));
             List<SkillMetadata> candidates = ranked.subList(0, candidatesCount);
-            //提示词+skill工具列表 + 用户需求说明提示词
+            // Prompt + skill tool list + user requirement description prompt
             Memory mem = buildSelectorPrompt(q, candidates);
-            //大模型请求参数
+            // LLM request parameters
             Map<String, Object> llmArgs = new HashMap<>();
             llmArgs.put("messages", mem);
             llmArgs.put("temperature", 0);
-            //大模型请求,skill工具选择结果返回
+            // LLM request, return skill tool selection result
             OxyResponse resp = oxyRequest.call(Map.of(
                     "callee", llmModel,
                     "arguments", llmArgs,
                     "is_send_message", false,
                     "is_save_history", false
             ));
-            //模型选择失败
+            // Model selection failed
             if (resp.getState() != OxyState.COMPLETED) {
                 return SkillSelection.selectorLlmFailed(resp.getState());
             }
-            //解析大模型输出skill选择内容封装为SkillSelection
+            // Parse LLM output skill selection content and encapsulate as SkillSelection
             SkillSelection selection = parseSelectorOutput(resp.getOutputAsString());
             if (selection.getSelectedSkill() == null) {
                 return selection;
             }
-            //所有被大模型候选的skill工具名
+            // All skill tool names candidates by LLM
             Set<String> candidateNames = candidates.stream()
                     .map(SkillMetadata::getName)
                     .collect(Collectors.toSet());
-            //大模型选择工具名必须为候选skill工具名
+            // LLM selected tool name must be a candidate skill tool name
             if (!candidateNames.contains(selection.getSelectedSkill())) {
                 return SkillSelection.outOfSet();
             }
-            //选择的skill工具信任度分数小于配置的阈值
+            // Selected skill tool confidence score is below configured threshold
             if (selection.getConfidence() < minConfidence) {
                 return SkillSelection.belowThreshold(selection.getReason());
             }
-            //返回最终skill元数据
+            // Return final skill metadata
             return selection;
         });
     }

@@ -47,13 +47,13 @@ public class ResourcesTool {
     @MCPTool(name = "resources_list",
             description = "List Kubernetes resources by apiVersion/kind (optional: namespace, labelSelector)")
     public static List<Map<String, Object>> resourcesList(
-            @ToolParam(description = "API version of the resource 例如 'v1','apps/v1','networking.k8s.io/v1'")
+            @ToolParam(description = "API version of the resource e.g. 'v1','apps/v1','networking.k8s.io/v1'")
             String apiVersion,
-            @ToolParam(description = "Kind of the resource 例如 'Pod','Service','Deployment','Ingress'")
+            @ToolParam(description = "Kind of the resource e.g. 'Pod','Service','Deployment','Ingress'")
             String kind,
             @ToolParam(description = "Namespace of the resource (optional for cluster-scoped resources)", required = false)
             String namespace,
-            @ToolParam(description = "Label selector to filter resources （例如 'app=myapp,env=prod'）" , required = false)
+            @ToolParam(description = "Label selector to filter resources e.g. 'app=myapp,env=prod'" , required = false)
             String labelSelector,
             @ToolParam(description = "Kubeconfig context name; defaults to current context" , required = false)
             String context) {
@@ -88,9 +88,9 @@ public class ResourcesTool {
     @MCPTool(name = "resources_get",
             description = "Get a Kubernetes resource by apiVersion/kind/name (optional: namespace)")
     public static Map<String, Object> resourcesGet(
-            @ToolParam(description = "API version of the resource 例如 'apps/v1")
+            @ToolParam(description = "API version of the resource e.g. 'apps/v1")
             String apiVersion,
-            @ToolParam(description = "Kind of the resource 例如 'Deployment")
+            @ToolParam(description = "Kind of the resource e.g. 'Deployment")
             String kind,
             @ToolParam(description = "Name of the resource")
             String name,
@@ -120,9 +120,9 @@ public class ResourcesTool {
     @MCPTool(name = "resources_create_or_update",
             description = "Create or update a Kubernetes resource from YAML/JSON (server-side patch on exists)")
     public static Map<String, Object> resourcesCreateOrUpdate(
-            @ToolParam(description = "YAML/JSON resource string 需包含 apiVersion/kind/metadata 等顶级字段")
+            @ToolParam(description = "YAML/JSON resource string must include top-level fields like apiVersion/kind/metadata")
             String resource,
-            @ToolParam(description = "Default namespace （若 resource.metadata.namespace 未提供时可作为默认值）", required = false)
+            @ToolParam(description = "Default namespace (used if resource.metadata.namespace is not provided)", required = false)
             String namespace,
             @ToolParam(description = "Kubeconfig context", required = false)
             String context) {
@@ -190,9 +190,9 @@ public class ResourcesTool {
     @MCPTool(name = "resources_delete",
             description = "Delete a Kubernetes resource by apiVersion/kind/name (optional: namespace)")
     public static Map<String, Object> resourcesDelete(
-            @ToolParam(description = "API version of the resource 例如 'v1','apps/v1'")
+            @ToolParam(description = "API version of the resource e.g. 'v1','apps/v1'")
             String apiVersion,
-            @ToolParam(description = "Kind of the resource 例如 'Pod','Deployment'")
+            @ToolParam(description = "Kind of the resource e.g. 'Pod','Deployment'")
             String kind,
             @ToolParam(description = "Name of the resource")
             String name,

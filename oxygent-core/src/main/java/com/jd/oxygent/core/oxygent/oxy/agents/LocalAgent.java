@@ -219,7 +219,7 @@ public class LocalAgent extends BaseAgent {
      * Number of recent conversation rounds to retain, used for maintaining conversation context
      */
     @Builder.Default
-    protected int shortMemorySize = 10;
+    protected int shortMemorySize = Config.getAgent().getShortMemorySize();
 
     /**
      * Intent understanding agent

@@ -40,14 +40,15 @@ log
 ### VS Code ###
 .vscode/
 
-
-### VS Code ###
 .joycode/
 .env
 .windsurf
 *.jsonl
 *.log
 cache_dir/
+/.claude
+/.oxygent
+time.txt
 
 ### github ###
 

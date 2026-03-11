@@ -260,4 +260,54 @@ public class FileUtils {
     public static void delete(Path indexPath) throws IOException {
         Files.delete(indexPath);
     }
+
+    /**
+     * Get current project's target directory path
+     * @return Path object of the target directory
+     * @throws IOException If directory cannot be created or accessed
+     */
+    public static Path getTargetDirPath() throws IOException {
+        // 1. Try to get from class loader path (most accurate, compatible with multi-module projects)
+        // Usually points to target/classes
+        var resource = FileUtils.class.getClassLoader().getResource("");
+        Path targetPath;
+
+        if (resource != null) {
+            try {
+                Path classesPath = Paths.get(resource.toURI());
+                // Go up two levels: classes -> target
+                targetPath = classesPath.getParent();
+            } catch (Exception e) {
+                targetPath = fallbackToUserDir();
+            }
+        } else {
+            targetPath = fallbackToUserDir();
+        }
+
+        // 2. Ensure directory exists (can be automatically recreated if mvn clean was executed)
+        if (!Files.exists(targetPath)) {
+            Files.createDirectories(targetPath);
+        }
+
+        return targetPath.toAbsolutePath();
+    }
+
+    private static Path fallbackToUserDir() {
+        return Paths.get(System.getProperty("user.dir")).resolve("target");
+    }
+
+    /**
+     * Safely create a subdirectory under target directory (e.g., for storing Skill-generated files)
+     * @param subDirName Subdirectory name
+     * @return Full path of the subdirectory
+     */
+    public static Path createSubDirInTarget(String subDirName) throws IOException {
+        Path target = getTargetDirPath();
+        Path subDir = target.resolve(subDirName);
+
+        if (!Files.exists(subDir)) {
+            Files.createDirectories(subDir);
+        }
+        return subDir;
+    }
 }

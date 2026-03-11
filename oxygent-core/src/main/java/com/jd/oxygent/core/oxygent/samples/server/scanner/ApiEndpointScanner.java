@@ -476,9 +476,9 @@ public class ApiEndpointScanner {
         List<Map<String, Object>> banks = new ArrayList<>();
 
         try {
-            // 遍历所有注册的端点
+            // Iterate through all registered endpoints
             for (EndpointInfo endpoint : ENDPOINT_REGISTRY.values()) {
-                // 检查是否有 "bank" 标签
+                // Check if there is a "bank" tag
                 boolean hasBankTag = false;
                 String[] tags = endpoint.getTags();
                 if (tags != null) {
@@ -495,7 +495,7 @@ public class ApiEndpointScanner {
                     Map<String, Object> properties = new HashMap<>();
                     List<String> required = new ArrayList<>();
 
-                    // 获取方法参数信息
+                    // Get method parameter information
                     Method method = endpoint.getMethod();
                     java.lang.reflect.Parameter[] parameters = method.getParameters();
 
@@ -504,14 +504,14 @@ public class ApiEndpointScanner {
                             java.lang.annotation.Annotation apiParam = param.getAnnotation(ApiParam.class);
 
                             try {
-                                // 使用反射获取注解属性值
+                                // Use reflection to get annotation property values
                                 Method nameMethod = ApiParam.class.getMethod("name");
                                 Method descriptionMethod = ApiParam.class.getMethod("description");
 
                                 String paramName = (String) nameMethod.invoke(apiParam);
                                 String paramDescription = (String) descriptionMethod.invoke(apiParam);
 
-                                // 确定参数类型
+                                // Determine parameter type
                                 String paramType = getParamType(param.getType());
 
                                 Map<String, Object> paramSchema = new HashMap<>();
@@ -531,7 +531,7 @@ public class ApiEndpointScanner {
                         inputSchema.put("properties", properties);
                         inputSchema.put("required", required);
                     } else {
-                        inputSchema = null; // 如果没有参数，不包含 inputSchema
+                        inputSchema = null; // If no parameters, do not include inputSchema
                     }
 
                     Map<String, Object> bankInfo = new HashMap<>();
@@ -544,7 +544,7 @@ public class ApiEndpointScanner {
                         bankInfo.put("inputSchema", inputSchema);
                     }
 
-                    // 添加类和方法信息
+                    // Add class and method information
                     bankInfo.put("className", endpoint.getServiceInstance().getClass().getName());
                     bankInfo.put("methodName", method.getName());
 
@@ -577,28 +577,28 @@ public class ApiEndpointScanner {
         } else if (Map.class.isAssignableFrom(paramClass)) {
             return "object";
         } else {
-            return "object"; // 复杂对象
+            return "object"; // Complex object
         }
     }
 
     /**
-     * 自动注册内置端点
+     * Automatically register built-in endpoints
      */
     private static void registerBuiltinEndpoints() {
         try {
-            // 创建 ApiEndpointScanner 实例
+            // Create ApiEndpointScanner instance
             ApiEndpointScanner scannerInstance = new ApiEndpointScanner();
 
-            // 获取 listBanks 方法
+            // Get listBanks method
             Method listBanksMethod = ApiEndpointScanner.class.getDeclaredMethod("listBanks");
 
-            // 获取注解
+            // Get annotation
             ApiEndpoint annotation = listBanksMethod.getAnnotation(ApiEndpoint.class);
             if (annotation != null) {
-                // 注册端点
+                // Register endpoint
                 registerEndpoint(annotation, listBanksMethod, scannerInstance);
 
-                // 将实例保存到 SERVICE_INSTANCES
+                // Save instance to SERVICE_INSTANCES
                 String className = ApiEndpointScanner.class.getName();
                 if (!SERVICE_INSTANCES.containsKey(className)) {
                     SERVICE_INSTANCES.put(className, scannerInstance);

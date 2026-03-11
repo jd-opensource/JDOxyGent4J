@@ -21,8 +21,6 @@ import com.jd.oxygent.core.oxygent.oxy.agents.ReActAgent;
 import com.jd.oxygent.core.oxygent.oxy.agents.SkillAgent;
 import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
 import com.jd.oxygent.core.oxygent.oxy.llms.MockLlm;
-import com.jd.oxygent.core.oxygent.oxy.skills.SkillMetadata;
-import com.jd.oxygent.core.oxygent.oxy.skills.SkillRegistry;
 import com.jd.oxygent.core.oxygent.samples.server.ServerApp;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.MasFactoryRegistry;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
@@ -31,19 +29,18 @@ import com.jd.oxygent.core.oxygent.schemas.memory.Memory;
 import com.jd.oxygent.core.oxygent.schemas.memory.Message;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
-import com.jd.oxygent.core.oxygent.utils.CommonUtils;
+import com.jd.oxygent.core.oxygent.tools.PresetTools;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Skill Agent Demo Class
@@ -60,8 +57,8 @@ public class DemoSkillAgent {
     private static String AGENT_ASKILL_DIR;
     // B_Skill directories
     private static String AGENT_BSKILL_DIR;
-    // Public Skill directory
-    private static String PUBLIC_SKILL_DIR="D:\\github\\JDOxyGent4J\\oxygent-core\\src\\main\\java\\com\\jd\\oxygent\\core\\oxygent\\preset_skills";
+    // Public Skill absolute directory
+    private static String PUBLIC_SKILL_DIR = Path.of("").toAbsolutePath().resolve("oxygent-core/src/main/java/com/jd/oxygent/core/oxygent/preset_skills").toString();
 
     /*
      * Builds default LLM for skill activation
@@ -88,6 +85,7 @@ public class DemoSkillAgent {
 
     /**
      * Offline response for skill activation
+     *
      * @param oxyRequest
      * @return
      */
@@ -130,7 +128,12 @@ public class DemoSkillAgent {
                 + "You said: " + query;
     }
 
-    @OxySpaceBean(value = "skillAgentJavaOxySpace", defaultStart = true, query = "Use prefix a: or b: in your query to indicate desired agent scope.\\n Example: a: /skill-creator init hello-skill --path .oxygent/skills")
+    @OxySpaceBean(value = "skillAgentJavaOxySpace", defaultStart = true, query =
+    """
+    Use prefix a: or b: in your query to indicate desired agent scope.
+    Example: a: /skill-creator init hello-skill --path .oxygent/skills
+    """
+    )
     public static List<BaseOxy> getDefaultOxySpace() {
 
         String baseUrl = EnvUtils.getEnv("DEFAULT_LLM_BASE_URL");
@@ -139,42 +142,47 @@ public class DemoSkillAgent {
 
         return Arrays.asList(
                 buildDefaultLlm(),
+                PresetTools.FILE_TOOLS,
+                PresetTools.SHELL_TOOLS,
+                PresetTools.SKILL_TOOLS,
                 ReActAgent.builder()
                         .name("master_agent")
                         .llmModel("default_llm")
                         .isMaster(true)
                         .subAgents(List.of("agent_a", "agent_b"))
+                        .tools(Arrays.asList("file_tools", "shell_tools", "skill_tools"))
                         .additionalPrompt(
                                 "Delegate skill-specific requests to agent_a or agent_b when appropriate."
-                                + "Use agent_a for scope A and agent_b for scope B."
+                                        + "Use agent_a for scope A and agent_b for scope B."
                         ).build(),
                 SkillAgent.builder()
                         .name("agent_a")
                         .llmModel("default_llm")
                         .enableSelector(selectorEnabled)
-                        .skillDirs(List.of(AGENT_ASKILL_DIR,PUBLIC_SKILL_DIR))
+                        .skillDirs(List.of(AGENT_ASKILL_DIR, PUBLIC_SKILL_DIR))
                         .additionalPrompt(
                                 "Skills are NOT tools. Never use a skill name as tool_name. "
-                                + "Only call tools that appear in tools_description. "
-                                + "When a skill is activated, mention its name briefly before answering."
-                                + "You are agent_a and must only use skills from your configured scope."
+                                        + "Only call tools that appear in tools_description. "
+                                        + "When a skill is activated, mention its name briefly before answering."
+                                        + "You are agent_a and must only use skills from your configured scope."
                         ).build(),
                 SkillAgent.builder()
                         .name("agent_b")
                         .llmModel("default_llm")
                         .enableSelector(selectorEnabled)
-                        .skillDirs(List.of(AGENT_BSKILL_DIR,PUBLIC_SKILL_DIR))
+                        .skillDirs(List.of(AGENT_BSKILL_DIR, PUBLIC_SKILL_DIR))
                         .additionalPrompt(
                                 "Skills are NOT tools. Never use a skill name as tool_name. "
-                                + "Only call tools that appear in tools_description."
-                                + "When a skill is activated, mention its name briefly before answering. "
-                                + "You are agent_b and must only use skills from your configured scope."
+                                        + "Only call tools that appear in tools_description."
+                                        + "When a skill is activated, mention its name briefly before answering. "
+                                        + "You are agent_b and must only use skills from your configured scope."
                         ).build()
         );
     }
 
     /**
-     * 确保路径是绝对路径且是存在的目录
+     * Ensure path is absolute and exists as a directory
+     *
      * @param pathValue
      * @param argName
      * @return
@@ -183,19 +191,19 @@ public class DemoSkillAgent {
     private static String ensureAbsDir(String pathValue, String argName) throws IOException {
         java.nio.file.Path path = java.nio.file.Paths.get(pathValue);
         if (!path.isAbsolute()) {
-            throw new IllegalArgumentException(argName + " 必须是绝对路径: " + pathValue);
+            throw new IllegalArgumentException(argName + " must be an absolute path: " + pathValue);
         }
         if (!java.nio.file.Files.isDirectory(path)) {
-            throw new IllegalArgumentException(argName + " 必须是已存在的目录: " + pathValue);
+            throw new IllegalArgumentException(argName + " must be an existing directory: " + pathValue);
         }
         return path.toRealPath().toString();
     }
 
     public static void main(String[] args) throws Exception {
-        // 解析命令行参数
+        // Parse command line arguments
         String agentASkillDir = null;
         String agentBSkillDir = null;
-        boolean webMode = false;
+        boolean webMode = true;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -203,74 +211,77 @@ public class DemoSkillAgent {
                     if (i + 1 < args.length) {
                         agentASkillDir = args[++i];
                     } else {
-                        throw new IllegalArgumentException("--agent-a-skill-dir 需要指定路径");
+                        throw new IllegalArgumentException("--agent-a-skill-dir requires a path");
                     }
                     break;
                 case "--agent-b-skill-dir":
                     if (i + 1 < args.length) {
                         agentBSkillDir = args[++i];
                     } else {
-                        throw new IllegalArgumentException("--agent-b-skill-dir 需要指定路径");
+                        throw new IllegalArgumentException("--agent-b-skill-dir requires a path");
                     }
                     break;
                 case "--web":
                     webMode = true;
                     break;
+                case "--console":
+                    webMode = false;
+                    break;
                 default:
-                    // 忽略其他参数
+                    // Ignore other parameters
             }
         }
 
-        // 验证 agent-a-skill-dir 参数
+        // Validate agent-a-skill-dir parameter
         if (agentASkillDir == null || agentASkillDir.isEmpty()) {
-            throw new IllegalArgumentException("--agent-a-skill-dir 为必填参数");
+            throw new IllegalArgumentException("--agent-a-skill-dir is a required parameter");
         }
         AGENT_ASKILL_DIR = ensureAbsDir(agentASkillDir, "--agent-a-skill-dir");
 
-        // 验证 agent-b-skill-dir 参数
+        // Validate agent-b-skill-dir parameter
         if (agentBSkillDir == null || agentBSkillDir.isEmpty()) {
-            throw new IllegalArgumentException("--agent-b-skill-dir 为必填参数");
+            throw new IllegalArgumentException("--agent-b-skill-dir is a required parameter");
         }
         AGENT_BSKILL_DIR = ensureAbsDir(agentBSkillDir, "--agent-b-skill-dir");
 
-        // 启动框架 获取 mas 实例
+        // Start framework and get mas instance
         GlobalDefaultOxySpaceMapping.searchCurrentThreadStackAnnotationOxySpaceName(Thread.currentThread().getStackTrace()[1].getClassName());
 
         Mas mas = MasFactoryRegistry.getFactory().createMas();
 
-        //输出 agent_a ,agent_b 技能目录
+        // Output agent_a and agent_b skill directories
         System.out.println("\nagent_a skill dir: " + AGENT_ASKILL_DIR);
         System.out.println("agent_b skill dir: " + AGENT_BSKILL_DIR);
 
-        // 输出 agent_a ,agent_b 各自的技能列表
+        // Output agent_a and agent_b skill lists
         for (String callee : Arrays.asList("agent_a", "agent_b")) {
             Map<String, Object> payload = new HashMap<>();
             payload.put("callee", callee);
             payload.put("query", "list skills");
-            
+
             OxyResponse resp = mas.chatWithAgent(payload);
-            
+
             System.out.println("\n[" + callee + "] discovered scoped skills:");
             System.out.println(resp.getOutput());
         }
 
-        //启动网页版本
-        if (webMode){
+        // web mode
+        if (webMode) {
             ServerApp.main(args);
         } else {
-            // 启动中断版本
+            // console mode
             System.out.println(
-                    "\nEnter queries below.\n"+
-                    "Routing prefixes:\n"+
-                    "- a: <query>  (send to agent_a)\n"+
-                    "- b: <query>  (send to agent_b)\n"+
-                    "- m: <query>  (send to master_agent)\n"+
-                    "No prefix -> master_agent.\n"+
-                    "\nExamples:\n"+
-                    "- a: list skills\n"+
-                    "- b: list skills\n"+
-                    "- a: /skill-creator init hello-skill --path .oxygent/skills\n"+
-                    "Type 'exit' to quit.\n"
+                    "\nEnter queries below.\n" +
+                            "Routing prefixes:\n" +
+                            "- a: <query>  (send to agent_a)\n" +
+                            "- b: <query>  (send to agent_b)\n" +
+                            "- m: <query>  (send to master_agent)\n" +
+                            "No prefix -> master_agent.\n" +
+                            "\nExamples:\n" +
+                            "- a: list skills\n" +
+                            "- b: list skills\n" +
+                            "- a: /skill-creator init hello-skill --path .oxygent/skills\n" +
+                            "Type 'exit' to quit.\n"
             );
 
             Map<String, String> traceByCallee = new HashMap<>();

@@ -25,41 +25,41 @@ public class McpClientStdio {
         McpSyncClient client = null;
 
         try {
-            // 1. 创建Stdio传输层
-            // 配置服务器参数，启动node.js MCP服务器
+            // 1. Create Stdio transport layer
+            // Configure server parameters, start node.js MCP server
             ServerParameters params = ServerParameters.builder("D:\\Program Files\\node-v22.20.0-win-x64\\npx.cmd")
                     .args("-y", "@modelcontextprotocol/server-everything", "stdio")
                     .build();
 
-            // 创建Stdio传输
+            // Create Stdio transport
             McpClientTransport transport = new StdioClientTransport(params,new JacksonMcpJsonMapper(new ObjectMapper()));
 
             System.out.println("Stdio transport created, connecting to server...");
 
-            // 2. 创建客户端
+            // 2. Create client
             client = McpClient.sync(transport)
                     .requestTimeout(Duration.ofSeconds(30))
-                    // 根据服务器能力调整
+                    // Adjust according to server capabilities
                     .capabilities(McpSchema.ClientCapabilities.builder()
-                            .roots(false)       // 如果服务器不支持roots则设为false
-                            .sampling()         // 保持启用
-                            .elicitation()      // 保持启用
+                            .roots(false)       // Set to false if server doesn't support roots
+                            .sampling()         // Keep enabled
+                            .elicitation()      // Keep enabled
                             .build())
-                    // 添加日志消费者用于调试
+                    // Add logging consumer for debugging
                     .loggingConsumer((notification) -> {
                         System.out.println("[MCP Log] " + notification.data());
                     })
-                    // 添加进度消费者
+                    // Add progress consumer
                     .progressConsumer((progress) -> {
                         System.out.println("[Progress] " + progress.progress());
                     })
                     .build();
 
-            // 3. 初始化连接
+            // 3. Initialize connection
             System.out.println("Initializing connection...");
             client.initialize();
 
-            // 4. 列出可用工具
+            // 4. List available tools
             System.out.println("\nFetching available tools...");
             McpSchema.ListToolsResult listToolsResult = client.listTools();
 
@@ -69,8 +69,8 @@ public class McpClientStdio {
                             (tool.description() != null ? " - " + tool.description() : ""))
             );
 
-            // 5. 查找特定工具
-            String targetTool = "calc_pi"; // 你可以改为任何你需要的工具名
+            // 5. Find specific tool
+            String targetTool = "calc_pi"; // You can change this to any tool name you need
 
             boolean hasTargetTool = listToolsResult.tools().stream()
                     .anyMatch(tool -> targetTool.equals(tool.name()));
@@ -106,7 +106,7 @@ public class McpClientStdio {
                                 (tool.description() != null ? " - " + tool.description() : ""))
                 );
 
-                // 如果找不到calc_pi，可以尝试调用其他工具
+                // If calc_pi is not found, try calling other tools
                 if (!listToolsResult.tools().isEmpty()) {
                     McpSchema.Tool tool = listToolsResult.tools().get(0);
                     System.out.println("\nTrying to call first available tool: " + tool.name());
@@ -123,7 +123,7 @@ public class McpClientStdio {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            // 6. 优雅关闭客户端
+            // 6. Gracefully close client
             if (client != null) {
                 try {
                     System.out.println("\nClosing client...");

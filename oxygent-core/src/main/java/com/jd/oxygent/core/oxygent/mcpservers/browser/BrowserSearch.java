@@ -18,13 +18,13 @@ import java.util.Map;
  */
 public class BrowserSearch {
 
-    @MCPTool(name = "browser_search", description = "执行网络搜索并返回搜索结果及页面内容")
+    @MCPTool(name = "browser_search", description = "Perform web search and return search results and page content")
     public Object browserSearch(
-            @ToolParam(description = "搜索查询") String query,
-            @ToolParam(description = "搜索引擎，支持google、bing或baidu", defaultValue = "bing") String searchEngine,
-            @ToolParam(description = "返回的搜索结果数量，最大10个", defaultValue = "5") int numResults,
-            @ToolParam(description = "搜索操作的超时时间(秒)", defaultValue = "30") int timeout,
-            @ToolParam(description = "是否提取页面主要内容，用于二次确认", defaultValue = "true") boolean extractPageContent) {
+            @ToolParam(description = "Search query") String query,
+            @ToolParam(description = "Search engine, supports google, bing or baidu", defaultValue = "bing") String searchEngine,
+            @ToolParam(description = "Number of search results to return, maximum 10", defaultValue = "5") int numResults,
+            @ToolParam(description = "Timeout for search operation (seconds)", defaultValue = "30") int timeout,
+            @ToolParam(description = "Whether to extract main page content for secondary confirmation", defaultValue = "true") boolean extractPageContent) {
 
         // Check dependencies
         List<String> missingDeps = BrowserCore.check_dependencies();

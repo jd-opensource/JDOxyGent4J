@@ -169,7 +169,7 @@ public class SkillAgent extends ReActAgent {
             "what skill do you have", "what skill do u have",
             "which skills do you have", "which skills do u have",
             "available skills", "skills available",
-            "你有什么技能", "你有哪些技能", "技能列表"
+            "what skills do you have", "what skills do you have", "skill list"
     };
 
     // ========== Internal State ==========

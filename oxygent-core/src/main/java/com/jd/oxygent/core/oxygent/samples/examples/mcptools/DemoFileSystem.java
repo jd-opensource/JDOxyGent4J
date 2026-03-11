@@ -328,7 +328,7 @@ public class DemoFileSystem {
      */
     @OxySpaceBean(
             value = "demoFileSystem", defaultStart = true,
-            query = "提取D:\\workspace\\JDOxyGent4J-github\\oxygent-core\\src\\main\\java\\com\\jd\\oxygent\\core\\oxygent\\oxy\\agents这个目录下的所有java文件中抛出异常时的字符串,保存到error.txt中"
+            query = "Extract strings when exceptions are thrown in all java files under the directory D:\\workspace\\JDOxyGent4J-github\\oxygent-core\\src\\main\\java\\com\\jd\\oxygent\\core\\oxygent\\oxy\\agents, and save to error.txt"
     )
     public static List<BaseOxy> getDefaultOxySpace() {
         return Arrays.asList(

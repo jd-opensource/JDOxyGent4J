@@ -36,7 +36,7 @@ public class BrowserServer {
             BrowserCore._close_browser();
         }));
 
-        // 启动MCP服务器
+        // Start MCP server
         McpServer.start();
     }
 }

@@ -24,12 +24,11 @@ import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import com.jd.oxygent.core.oxygent.utils.SpringContextHolder;
-import com.networknt.schema.utils.StringUtils;
+import com.jd.oxygent.core.oxygent.utils.StringUtils;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
-import org.apache.commons.collections4.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

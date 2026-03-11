@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -215,27 +216,27 @@ public class PlanAndSolveAgent extends LocalAgent {
      * Call planner agent to generate execution plan
      */
     private OxyResponse callPlanner(OxyRequest oxyRequest, String originalQuery, String pastPlan, List<String> pastSteps) {
-        return oxyRequest.call(Map.of(
+        return oxyRequest.call(new HashMap(Map.of(
                 "callee", this.plannerAgent,
-                "arguments", Map.of(
+                "arguments", new HashMap(Map.of(
                         "query", originalQuery,
                         "past_plan", pastPlan,
                         "past_steps", String.join("\n", pastSteps)
-                )
-        ));
+                ))
+        )));
     }
 
     /**
      * Call executor agent to execute specific task
      */
     private OxyResponse callExecutor(OxyRequest oxyRequest, String task) {
-        return oxyRequest.call(Map.of(
+        return oxyRequest.call(new HashMap(Map.of(
                 "callee", this.executorAgent,
-                "arguments", Map.of(
+                "arguments", new HashMap(Map.of(
                         "query", "The current step to execute is: " + task
-                ),
-                "is_async_storage", false //重点跟踪一下
-        ));
+                )),
+                "is_async_storage", false //Key point to track
+        )));
     }
 
     /**
@@ -251,10 +252,10 @@ public class PlanAndSolveAgent extends LocalAgent {
         tempMemory.addMessages(Message.dictListToMessages(shortMemory));
         tempMemory.addMessage(Message.userMessage("The overall task is: " + originalQuery));
 
-        return oxyRequest.call(Map.of(
+        return oxyRequest.call(new HashMap(Map.of(
                 "callee", this.llmModel,
-                "arguments", Map.of("messages", tempMemory)
-        ));
+                "arguments", new HashMap(Map.of("messages", tempMemory))
+        )));
     }
 
     /**
@@ -270,10 +271,10 @@ public class PlanAndSolveAgent extends LocalAgent {
         tempMemory.addMessages(Message.dictListToMessages(shortMemory));
         tempMemory.addMessage(Message.userMessage("The current overall task is: " + originalQuery));
 
-        OxyResponse finalResponse = oxyRequest.call(Map.of(
+        OxyResponse finalResponse = oxyRequest.call(new HashMap(Map.of(
                 "callee", this.llmModel,
-                "arguments", Map.of("messages", tempMemory)
-        ));
+                "arguments", new HashMap(Map.of("messages", tempMemory))
+        )));
 
         return OxyResponse.builder()
                 .state(OxyState.COMPLETED)

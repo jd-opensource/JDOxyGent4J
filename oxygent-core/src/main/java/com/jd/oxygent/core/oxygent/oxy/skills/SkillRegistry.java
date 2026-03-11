@@ -1,5 +1,6 @@
 package com.jd.oxygent.core.oxygent.oxy.skills;
 
+import com.jd.oxygent.core.oxygent.utils.FileUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.yaml.snakeyaml.Yaml;
 import java.io.BufferedReader;
@@ -29,13 +30,13 @@ public class SkillRegistry {
     private static final Set<String> NON_SKILL_SUBDIRS = Set.of("scripts", "references", "assets");
 
     // Skill directories to search
-    private final List<String> skillDirs;
+    private List<String> skillDirs = new ArrayList<>();
 
     // Metadata index (lightweight, always in memory)
-    private final Map<String, SkillMetadata> metadataIndex = new ConcurrentHashMap<>();
+    private Map<String, SkillMetadata> metadataIndex = new ConcurrentHashMap<>();
 
     // Content cache (loaded on-demand)
-    private final Map<String, SkillContent> contentCache = new ConcurrentHashMap<>();
+    private Map<String, SkillContent> contentCache = new ConcurrentHashMap<>();
 
     private final Yaml yaml = new Yaml();
 
@@ -50,25 +51,30 @@ public class SkillRegistry {
         if (skillDirs != null) {
             this.skillDirs = skillDirs;
         } else {
-            // Discovery precedence: later entries override earlier ones on name collision.
-            String location = SkillRegistry.class.getResource("").getPath();
+            try {
+                // Priority (low -> high): preset < personal < project.
+                // This follows the Codex/Claude Code convention: project-local skills override personal skills.
+                List<String> DEFAULT_SKILL_DIRS = Arrays.asList(
+                        "~/.oxygent/skills/",  // Personal OxyGent skills
+                        "~/.claude/skills/",  // Personal Claude/Codex skills
+                        ".oxygent/skills/",  // Project-local OxyGent skills
+                        ".claude/skills/"  // Project-local Claude/Codex skills (highest priority)
+                );
+                this.skillDirs = new ArrayList<>(DEFAULT_SKILL_DIRS);
+                // Discovery precedence: later entries override earlier ones on name collision.
+                String location = SkillRegistry.class.getResource("").getPath();
 
-            // Handle Windows paths (remove leading slash)
-            if (location.startsWith("/") && location.indexOf(":") == 2) {
-                location = location.substring(1); // 移除开头的"/"
+                // Handle Windows paths (remove leading slash)
+                if (location.startsWith("/") && location.indexOf(":") == 2) {
+                    location = location.substring(1); // Remove leading "/"
+                }
+
+//                Path PACKAGE_OXYGENT_DIR = Paths.get(location).getParent().getParent();
+                Path PACKAGE_OXYGENT_DIR = FileUtils.getTargetDirPath().resolve("classes/com/jd/oxygent/core/oxygent/preset_skills");
+                this.skillDirs.add(PACKAGE_OXYGENT_DIR.toString()); // Built-in preset skills (lowest priority)
+            } catch (Exception e) {
+                log.error("Error initializing SkillRegistry", e);
             }
-
-            Path PACKAGE_OXYGENT_DIR = Paths.get(location).getParent().getParent();
-            // Priority (low -> high): preset < personal < project.
-            // This follows the Codex/Claude Code convention: project-local skills override personal skills.
-            List<String> DEFAULT_SKILL_DIRS = Arrays.asList(
-                PACKAGE_OXYGENT_DIR.resolve("preset_skills").toString(),  // Built-in preset skills (lowest priority)
-                "~/.oxygent/skills/",  // Personal OxyGent skills
-                "~/.claude/skills/",  // Personal Claude/Codex skills
-                ".oxygent/skills/",  // Project-local OxyGent skills
-                ".claude/skills/"  // Project-local Claude/Codex skills (highest priority)
-            );
-            this.skillDirs = new ArrayList<>(DEFAULT_SKILL_DIRS);
         }
         if (autoDiscover) {
             discoverAll();

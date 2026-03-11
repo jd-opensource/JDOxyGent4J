@@ -548,6 +548,7 @@ public class ReActAgent extends LocalAgent {
             } else if (oxyRequest.getRestartNodeOutput() != null && !"".equals(oxyRequest.getRestartNodeOutput())) {
                 return new LLMResponse(LLMState.ANSWER, oriResponse, oriResponse);
             } else {
+                log.error("Failed to parse LLM response, no tool_name and restartNodeOutput");
                 return new LLMResponse(LLMState.ERROR_PARSE,
                         "Please answer strictly according to the format. If you want to call a tool, provide tool_name.",
                         oriResponse);
@@ -613,7 +614,7 @@ public class ReActAgent extends LocalAgent {
 
             } else {
                 // Parse error, record to reactMemory for correction
-                log.warn("Format error traceId:{} nodeId:{} llmResponse.state:{}, adding to react_memory", oxyRequest.getCurrentTraceId(), oxyRequest.getNodeId(), llmResponse.getState());
+                log.error("Format error traceId:{} nodeId:{} llmResponse.state:{}, adding to react_memory", oxyRequest.getCurrentTraceId(), oxyRequest.getNodeId(), llmResponse.getState());
                 reactMemory.addMessage(Message.assistantMessage(llmResponse.getOriResponse()));
 
                 reactMemory.addMessage(Message.systemMessage(llmResponse.getOutput().toString()+"\n\n"+"(This is system feedback about output format. Do NOT attribute it to the user.)"));

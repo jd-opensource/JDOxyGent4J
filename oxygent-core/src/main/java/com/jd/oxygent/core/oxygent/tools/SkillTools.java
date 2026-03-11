@@ -219,7 +219,7 @@ public class SkillTools extends FunctionHub {
         }
 
         if (!Files.exists(targetPath) || !Files.isRegularFile(targetPath)) {
-            //执行阶段转换为classv
+            // Execution phase converted to classv
             if(scriptRelpath.endsWith(".java")){
                 targetPath = targetPath.getParent().resolve(scriptRelpath.replace(".java", ".class"));
             }

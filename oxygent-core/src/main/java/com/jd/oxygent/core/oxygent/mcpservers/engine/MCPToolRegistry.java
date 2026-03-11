@@ -204,7 +204,7 @@ public class MCPToolRegistry {
             if (targetType == Boolean.class || targetType == boolean.class)
                 return Boolean.parseBoolean(stringValue);
         } catch (NumberFormatException e) {
-            // 类型转换失败，返回原始值
+            // Type conversion failed, return original value
         }
 
         return value;

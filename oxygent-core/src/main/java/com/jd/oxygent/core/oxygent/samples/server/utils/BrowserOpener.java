@@ -20,6 +20,7 @@ public class BrowserOpener {
                 Desktop desktop = Desktop.getDesktop();
                 desktop.browse(new URI(url));
                 log.info("Browser successfully opened: {}", url);
+                return true;
             } else {
                 log.warn("Current environment does not support opening browser for: {}", url);
             }

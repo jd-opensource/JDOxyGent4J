@@ -62,11 +62,11 @@ public class BrowserTabs {
     @MCPTool(name = "browser_tab_new", description = "Open new tab")
     public Map<String, Object> browser_tab_new(
             @ToolParam(description = "URL to open in new tab", defaultValue = "about:blank") String url) {
-        // 检查依赖
+        // Check dependencies
         List<String> missing_deps = BrowserCore.check_dependencies();
         if (!missing_deps.isEmpty()) {
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "Missing required libraries:" + String.join(", ", missing_deps) + "。Please install using maven: install " + String.join(" ", missing_deps));
+            result.put("error", "Missing required libraries:" + String.join(", ", missing_deps) + ". Please install using maven: install " + String.join(" ", missing_deps));
             return result;
         }
 
@@ -117,11 +117,11 @@ public class BrowserTabs {
     @MCPTool(name = "browser_tab_close", description = "Close tab")
     public Map<String, Object> browser_tab_close(
             @ToolParam(description = "ID of tab to close, if empty closes current tab", defaultValue = "") String page_id) {
-        // 检查依赖
+        // Check dependencies
         List<String> missing_deps = BrowserCore.check_dependencies();
         if (!missing_deps.isEmpty()) {
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("error", "Missing required libraries: " + String.join(", ", missing_deps) + "。Please install using maven: install " + String.join(" ", missing_deps));
+            result.put("error", "Missing required libraries: " + String.join(", ", missing_deps) + ". Please install using maven: install " + String.join(" ", missing_deps));
             return result;
         }
 
