@@ -31,8 +31,6 @@ import com.jd.oxygent.core.oxygent.oxy.BaseTool;
 import com.jd.oxygent.core.oxygent.oxy.agents.BaseAgent;
 import com.jd.oxygent.core.oxygent.oxy.agents.RemoteAgent;
 import com.jd.oxygent.core.oxygent.oxy.llms.BaseLlM;
-import com.jd.oxygent.core.oxygent.oxy.skills.SkillRegistry;
-import com.jd.oxygent.core.oxygent.oxy.skills.SkillTool;
 import com.jd.oxygent.core.oxygent.schemas.SSEMessage;
 import com.jd.oxygent.core.oxygent.schemas.contextengineer.ContextEngine;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
@@ -147,13 +145,6 @@ public class Mas {
     @Autowired
     private BaseCache redisClient;
 
-    /**
-     * Skills runtime (progressive disclosure registry)
-     * Reference to the skill registry for loading skills.
-     * This is excluded from serialization.
-     */
-    private SkillRegistry skillRegistry;
-
     @Autowired
     private ContextEngine contextEngine;
 
@@ -234,7 +225,6 @@ public class Mas {
             showBanner();
             showMasInfo();
             addOxyList(oxySpace);
-            initSkillRegistry();
             initDb();
             initAllOxy();
             initMasterAgentName();
@@ -590,23 +580,6 @@ public class Mas {
         }
         if (!setting.isEmpty()) {
             mappings.put("settings", setting);
-        }
-    }
-
-    /**
-     *  Skills support: registry + tool wiring
-     */
-    private void initSkillRegistry() {
-        if(this.skillRegistry==null){
-            this.skillRegistry = new SkillRegistry();
-        }
-        if(!this.getAllOxyNames().contains("Skill")){
-            this.addOxy(new SkillTool());
-        }else{
-            BaseOxy skill = this.getOxyByName("Skill");
-            if(skill instanceof SkillTool){
-                ((SkillTool) skill).setSkillRegistry(this.skillRegistry);
-            }
         }
     }
 
