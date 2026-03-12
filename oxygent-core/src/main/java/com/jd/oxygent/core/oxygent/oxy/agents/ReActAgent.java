@@ -548,7 +548,7 @@ public class ReActAgent extends LocalAgent {
             } else if (oxyRequest.getRestartNodeOutput() != null && !"".equals(oxyRequest.getRestartNodeOutput())) {
                 return new LLMResponse(LLMState.ANSWER, oriResponse, oriResponse);
             } else {
-                log.error("Failed to parse LLM response, no tool_name and restartNodeOutput");
+                log.error("Failed to parse LLM response, no tool_name and restartNodeOutput, LLM response:{}", oriResponse);
                 return new LLMResponse(LLMState.ERROR_PARSE,
                         "Please answer strictly according to the format. If you want to call a tool, provide tool_name.",
                         oriResponse);
@@ -587,8 +587,16 @@ public class ReActAgent extends LocalAgent {
             // Build message context and call LLM
             Memory tempMemory = buildMessageContext(oxyRequest, reactMemory);
             OxyResponse oxyResponse = callLlm(oxyRequest, tempMemory);
-            // Use injectable parser to allow dynamic behavior based on Python react_agent design
-            LLMResponse llmResponse = this.getFuncParseLlmResponse().apply(oxyResponse.getOutput().toString(), oxyRequest);
+            LLMResponse llmResponse = null;
+            if (oxyResponse.getState().equals(OxyState.RATE_LIMIT_EXCEEDED)) {
+                oxyResponse.setExtra(Map.of("react_memory", reactMemory.toDictList()));
+                return oxyResponse;
+            } else if (!oxyResponse.getState().equals(OxyState.COMPLETED)) {
+                llmResponse = new LLMResponse(LLMState.ERROR_CALL, oxyResponse.getOutput().toString(), oxyResponse.getOutput().toString());
+            } else {
+                // Use injectable parser to allow dynamic behavior based on Python react_agent design
+                llmResponse = this.getFuncParseLlmResponse().apply(oxyResponse.getOutput().toString(), oxyRequest);
+            }
 
             if (llmResponse.getState() == LLMState.ANSWER) {
                 return OxyResponse.builder().state(OxyState.COMPLETED).output(llmResponse.getOutput()).extra(new HashMap<>(Map.of("react_memory", reactMemory.toDictList()))).build();
@@ -614,7 +622,7 @@ public class ReActAgent extends LocalAgent {
 
             } else {
                 // Parse error, record to reactMemory for correction
-                log.error("Format error traceId:{} nodeId:{} llmResponse.state:{}, adding to react_memory", oxyRequest.getCurrentTraceId(), oxyRequest.getNodeId(), llmResponse.getState());
+                log.error("Format error traceId:{} nodeId:{} llmResponse.state:{}, adding to react_memory: {}", oxyRequest.getCurrentTraceId(), oxyRequest.getNodeId(), llmResponse.getState(), llmResponse.getOutput());
                 reactMemory.addMessage(Message.assistantMessage(llmResponse.getOriResponse()));
 
                 reactMemory.addMessage(Message.systemMessage(llmResponse.getOutput().toString()+"\n\n"+"(This is system feedback about output format. Do NOT attribute it to the user.)"));

@@ -137,7 +137,7 @@ public class HttpLlm extends RemoteLlm {
                 return funcProcessLlmException.apply(e);
             } else {
                 logger.error("LLM request exception", e);
-                OxyResponse oxyResponse = OxyResponse.builder().state(OxyState.FAILED).output("").oxyRequest(oxyRequest).build();
+                OxyResponse oxyResponse = OxyResponse.builder().state(OxyState.FAILED).output(e.getMessage()).oxyRequest(oxyRequest).build();
                 if (aiLogger != null && aiLogger.isEnabled()) {
                     aiLogger.log("llm", oxyResponse, this, Map.of("error", e.getMessage(), "elapsedMillis", String.valueOf(System.currentTimeMillis() - timer)));
                 }
@@ -266,6 +266,17 @@ public class HttpLlm extends RemoteLlm {
             } catch (Exception e) {
                 logger.warn("Failed to read error response body", e);
             }
+            if (response.statusCode() == 429) { // rate limit
+                // get Retry-After header
+                long retryAfter = response.headers().firstValueAsLong("retry-after").orElse(0L);
+                String output = retryAfter > 0 ? " retry-after:" + retryAfter + " ```json" + errorBody + "```" : errorBody;
+                logger.error(output);
+                return OxyResponse.builder()
+                        .state(OxyState.RATE_LIMIT_EXCEEDED)
+                        .output(output)
+                        .oxyRequest(oxyRequest)
+                        .build();
+            }
             throw new RuntimeException("HTTP request failed, status code: " + response.statusCode() + ", response: " + errorBody);
         }
 
@@ -378,6 +389,17 @@ public class HttpLlm extends RemoteLlm {
             HttpResponse<String> response = getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
             logger.debug("HttpLlm executeNonStreamingRequest cost:{}ms request:{}", System.currentTimeMillis() - timer, jsonBody);
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                if (response.statusCode() == 429) { // rate limit
+                    // get Retry-After header
+                    long retryAfter = response.headers().firstValueAsLong("retry-after").orElse(0L);
+                    String output = retryAfter > 0 ? " retry-after:" + retryAfter + " ```json" + response.body() + "```" : response.body();
+                    logger.error(output);
+                    return OxyResponse.builder()
+                            .state(OxyState.RATE_LIMIT_EXCEEDED)
+                            .output(output)
+                            .oxyRequest(oxyRequest)
+                            .build();
+                }
                 String errorMessage = String.format("HTTP request failed, status code: %d, URL: %s, response: %s",
                         response.statusCode(), url, response.body());
                 logger.error(errorMessage);

@@ -73,7 +73,9 @@ public enum OxyState {
     /**
      * Canceled - Task execution has been canceled
      */
-    CANCELED("Canceled", "Task has been canceled");
+    CANCELED("Canceled", "Task has been canceled"),
+
+    RATE_LIMIT_EXCEEDED("Rate Limit Exceeded", "Task execution rate limit exceeded");
 
     private final String displayName;
     private final String description;
