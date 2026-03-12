@@ -84,6 +84,7 @@ public class DemoReactAgent {
                         .llmModel("default_llm")
                         .funcReflexion(MASTER_REFLEXION)
                         .additionalPrompt("Please provide the optimal answer based on my question")
+                        .maxReactRounds(2) // limit retry times
                         .build()
 
 
