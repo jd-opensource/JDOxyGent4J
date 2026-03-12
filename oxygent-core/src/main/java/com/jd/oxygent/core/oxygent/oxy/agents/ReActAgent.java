@@ -192,6 +192,13 @@ public class ReActAgent extends LocalAgent {
     @Builder.Default
     protected boolean trustMode = false;
 
+    /**
+     * Whether to include tool call prefix in tool call
+     * set true to show "Tool [" + execResult.getExecutor() + "] execution result: "
+     */
+    @Builder.Default
+    protected boolean toolCallPrefixIncluded = false;
+
     // ========== Functional Interface Configuration ==========
 
     /**
@@ -611,7 +618,7 @@ public class ReActAgent extends LocalAgent {
                 if (shouldUseTrustMode(llmResponse.getOutput())) {
                     return OxyResponse.builder()
                             .state(OxyState.COMPLETED)
-                            .output(observation.toStr(true))
+                            .output(observation.toStr(toolCallPrefixIncluded))
                             .extra(new HashMap<>(Map.of("react_memory", reactMemory.toDictList())))
                             .build();
                 }
