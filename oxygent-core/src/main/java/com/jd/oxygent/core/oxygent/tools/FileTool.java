@@ -16,11 +16,14 @@
 package com.jd.oxygent.core.oxygent.tools;
 
 import com.jd.oxygent.core.oxygent.oxy.function_tools.FunctionHub;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -66,6 +69,7 @@ import java.util.Objects;
  * @see FunctionHub Tool execution framework base class
  * @since 1.0.0
  */
+@Slf4j
 public class FileTool extends FunctionHub {
 
     /**
@@ -223,57 +227,137 @@ public class FileTool extends FunctionHub {
                     @ParamMetaAuto(name = "path", type = "String", description = "Complete path of the file to delete")
             }
     )
-    public String deleteFile(String path) {
-        Objects.requireNonNull(path, "File path cannot be null");
-
-        if (path.trim().isEmpty()) {
-            return "Error: File path cannot be empty";
+    public static String deleteFile(String path) {
+        Path filePath = Paths.get(path);
+        if (!Files.exists(filePath)) {
+            return "Error: The file or directory at " + path + " does not exist.";
         }
-
-        var file = new File(path);
-        if (!file.exists()) {
-            return "Error: File does not exist - " + path;
-        }
-
-        if (!file.isFile()) {
-            return "Error: Specified path is not a file - " + path;
-        }
-
         try {
-            if (file.delete()) {
-                return "Successfully deleted file: " + path;
+            if (Files.isRegularFile(filePath)) {
+                Files.delete(filePath);
+                return "Successfully deleted the file at " + path;
+            } else if (Files.isDirectory(filePath)) {
+                deleteDirectoryRecursively(filePath);
+                return "Successfully deleted the directory at " + path + " and all its contents";
             } else {
-                return "Failed to delete file: May be insufficient permissions or file is being used by other programs - " + path;
+                return "Error: The path " + path + " is not a file or directory.";
             }
-        } catch (SecurityException e) {
-            return "Failed to delete file: Insufficient permissions - " + e.getMessage();
         } catch (Exception e) {
-            return "Delete operation failed: " + e.getMessage();
+            log.error("Error deleting " + path, e);
+            return "Error: Failed to delete " + path + ". Reason: " + e.getMessage();
         }
     }
 
-    // ========== Test Methods ==========
+    /**
+     * View the content of a text file with optional line range support.
+     * Returns file content with line numbers. Useful for viewing specific sections of large files.
+     */
+    @Tool(
+            name = "view_text_file",
+            description = "View the content of a text file with optional line range support. Returns file content with line numbers. Useful for viewing specific sections of large files.",
+            paramMetas = {
+                    @ParamMetaAuto(name = "path", type = "String", description = "Complete path of the file to read"),
+                    @ParamMetaAuto(name = "ranges", type = "List<Integer>", description = "Optional list of [start, end] line numbers (1-indexed, inclusive). Negative indices count from the end (-1 is the last line).")
+            }
+    )
+    public static String viewTextFile(String filePath, List<Integer> ranges) {
+        Path path = Paths.get(filePath);
+        path = path.toAbsolutePath();
+
+        if (!Files.exists(path)) {
+            return "Error: The file " + filePath + " does not exist.";
+        }
+
+        if (!Files.isRegularFile(path)) {
+            return "Error: The path " + filePath + " is not a file.";
+        }
+
+        try {
+            String content = readFileWithRange(path, ranges);
+            if (ranges == null) {
+                return "The content of " + filePath + ":\n```\n" + content + "\n```";
+            } else {
+                return "The content of " + filePath + " in lines " + ranges.get(0) + "-" + ranges.get(1) + ":\n```\n" + content + "\n```";
+            }
+        } catch (Exception e) {
+            log.error("Error viewing text file " + filePath, e);
+            return "Error: Failed to read file: " + e.getMessage();
+        }
+    }
 
     /**
-     * Test method demonstrating basic functionality of FileTool.
-     * <p>
-     * Tests file write, read, and delete operations in sequence to verify
-     * tool correctness. Test file name is "test.txt" with content "hello world test!".
-     * </p>
-     *
-     * @param args Command line arguments (unused)
+     * Read file content with optional line range.
+     * @param filePath Path to the file.
+     * @param ranges Optional list of [start, end] line numbers (1-indexed, inclusive).
+            *               Negative indices count from the end (-1 is the last line).
+            * @return File content with line numbers.
+     * @throws IOException If an I/O error occurs.
+     * @throws IllegalArgumentException If ranges are invalid.
      */
-    public static void main(String[] args) {
-        var fileTool = new FileTool();
+    private static String readFileWithRange(Path filePath, List<Integer> ranges) throws IOException {
+        List<String> lines = Files.readAllLines(filePath);
+        int totalLines = lines.size();
 
-        System.out.println("=== File Tool Test ===");
-        System.out.println("1. Write file:");
-        System.out.println(fileTool.call("write_file", "test.txt", "hello world test!"));
+        if (ranges == null) {
+            // Return all lines with line numbers
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < totalLines; i++) {
+                sb.append(i + 1).append(" | ").append(lines.get(i)).append("\n");
+            }
+            return sb.toString();
+        }
 
-        System.out.println("\n2. Read file:");
-        System.out.println(fileTool.call("read_file", "test.txt"));
+        if (ranges.size() != 2) {
+            throw new IllegalArgumentException("ranges must be a list of two integers [start, end]");
+        }
 
-        System.out.println("\n3. Delete file:");
-        System.out.println(fileTool.call("delete_file", "test.txt"));
+        int start = ranges.get(0);
+        int end = ranges.get(1);
+
+        // Handle negative indices
+        if (start < 0) {
+            start = totalLines + start + 1;
+        }
+        if (end < 0) {
+            end = totalLines + end + 1;
+        }
+
+        // Validate range
+        if (start < 1) {
+            start = 1;
+        }
+        if (end > totalLines) {
+            end = totalLines;
+        }
+        if (start > end) {
+            throw new IllegalArgumentException("Invalid range: start (" + start + ") > end (" + end + ")");
+        }
+
+        // Convert to 0-indexed
+        int startIdx = start - 1;
+        int endIdx = end;
+
+        // Return lines with line numbers
+        StringBuilder sb = new StringBuilder();
+        for (int i = startIdx; i < endIdx; i++) {
+            sb.append(i + 1).append(" | ").append(lines.get(i)).append("\n");
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Delete directory recursively
+     */
+    private static void deleteDirectoryRecursively(Path directory) throws IOException {
+        Files.walk(directory)
+                .sorted((a, b) -> b.compareTo(a)) // Delete files first, then directories
+                .forEach(path -> {
+                    try {
+                        Files.delete(path);
+                    } catch (IOException e) {
+                        log.error("Error deleting " + path, e);
+                        throw new RuntimeException(e);
+                    }
+                });
     }
 }

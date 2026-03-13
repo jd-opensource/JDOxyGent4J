@@ -16,14 +16,20 @@
 package com.jd.oxygent.core.oxygent.tools;
 
 import com.jd.oxygent.core.oxygent.oxy.function_tools.FunctionHub;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.jd.oxygent.core.oxygent.utils.OSUtil;
+import com.jd.oxygent.core.oxygent.utils.SmartCharsetReader;
+import com.jd.oxygent.core.oxygent.utils.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Shell command execution tool class providing system command execution functionality.
@@ -76,9 +82,8 @@ import java.util.Objects;
  * @see ProcessBuilder Java process management class
  * @since 1.0.0
  */
+@Slf4j
 public class ShellTools extends FunctionHub {
-
-    private static final Logger logger = LoggerFactory.getLogger(ShellTools.class);
 
     /**
      * Constructor to initialize Shell tools.
@@ -92,87 +97,41 @@ public class ShellTools extends FunctionHub {
     }
 
     /**
-     * Execute shell command with full parameter support.
-     * <p>
-     * Executes specified shell command and returns command output or error information.
-     * Supports both command string and argument list specification, working directory setting,
-     * and output line count limitation. Automatically handles cross-platform command format differences
-     * and provides comprehensive error handling.
-     * </p>
-     *
-     * <p><strong>Execution Process:</strong></p>
-     * <ol>
-     *   <li>Validate command parameters (either command or args must be provided)</li>
-     *   <li>Convert args list to command string if needed</li>
-     *   <li>Set working directory if specified</li>
-     *   <li>Execute command and capture output</li>
-     *   <li>Process output according to line count limit</li>
-     *   <li>Return execution result or error information</li>
-     * </ol>
-     *
-     * <p><strong>Platform Compatibility:</strong></p>
-     * <ul>
-     *   <li>Windows: Uses cmd.exe /c for command execution</li>
-     *   <li>Unix/Linux/macOS: Direct command execution</li>
-     *   <li>Automatic platform detection and adaptation</li>
-     * </ul>
-     *
-     * @param command Optional complete command string, can be null if args provided
-     * @param args    Optional command arguments list, can be null if command provided
-     * @param tail    Output line count limit, defaults to 10 lines
-     * @param baseDir Optional working directory, can be null
-     * @return Command execution output or error information
-     * @throws IllegalArgumentException when both command and args are null/empty
+     * Runs a shell command and returns the output or error.
      */
     @Tool(
             name = "run_shell_command",
-            description = "Execute shell command and return output or error information. Supports both command string and argument list, working directory specification, and output line count control. Handles cross-platform compatibility automatically.",
+            description = "Run a shell command and return the output or error.",
             paramMetas = {
-                    @ParamMetaAuto(name = "command", type = "String", description = "Complete command string, e.g.: \"ls -la\" or \"dir\"", defaultValue = "null"),
                     @ParamMetaAuto(name = "args", type = "List<String>", description = "Command arguments list, e.g.: [\"ls\", \"-la\"] or [\"dir\"]", defaultValue = "null"),
                     @ParamMetaAuto(name = "tail", type = "int", description = "Output line count limit, returns last N lines", defaultValue = "10"),
                     @ParamMetaAuto(name = "base_dir", type = "String", description = "Optional working directory path, uses current directory when null", defaultValue = "null")
             }
     )
-    public String runShellCommand(String command, List<String> args, int tail, String baseDir) {
+    public String runShellCommand(List<String> args, Integer tail, String baseDir) {
         // Validate that either command or args is provided
-        if ((command == null || command.trim().isEmpty()) && (args == null || args.isEmpty())) {
-            return "Error: Either command string or args list must be provided";
+        if (args == null || args.isEmpty()) {
+            return "Error: args list must be provided";
         }
-
-        // Convert args to command string if command is not provided
-        String finalCommand;
-        if (command != null && !command.trim().isEmpty()) {
-            finalCommand = command.trim();
-        } else {
-            // Build command from args list
-            StringBuilder commandBuilder = new StringBuilder();
-            for (int i = 0; i < args.size(); i++) {
-                if (i > 0) {
-                    commandBuilder.append(" ");
-                }
-                String arg = args.get(i);
-                // Quote arguments containing spaces (basic shell escaping)
-                if (arg.contains(" ") && !arg.startsWith("\"") && !arg.endsWith("\"")) {
-                    commandBuilder.append("\"").append(arg).append("\"");
-                } else {
-                    commandBuilder.append(arg);
-                }
-            }
-            finalCommand = commandBuilder.toString();
+        if (tail == null) {
+            tail = 10;
         }
-
+        LinkedList<String> commandArgs = new LinkedList<String>(args);
         try {
-            logger.info("Running shell command: {}", finalCommand);
+            log.info("Running shell command: {}", String.join(" ", commandArgs));
 
             // Prepare command based on operating system
             ProcessBuilder processBuilder;
-            if (isWindows()) {
+            if (OSUtil.isWindows()) {
                 // Windows: use cmd.exe /c for command execution
-                processBuilder = new ProcessBuilder("cmd.exe", "/c", finalCommand);
+                commandArgs.addFirst("/c");
+                commandArgs.addFirst("cmd.exe");
+                processBuilder = new ProcessBuilder(commandArgs);
             } else {
                 // Unix-like systems: use shell -c for command execution
-                processBuilder = new ProcessBuilder("/bin/sh", "-c", finalCommand);
+                commandArgs.addFirst("/c");
+                commandArgs.addFirst("/bin/sh");
+                processBuilder = new ProcessBuilder(commandArgs);
             }
 
             // Set working directory
@@ -185,6 +144,17 @@ public class ShellTools extends FunctionHub {
                 }
             }
 
+            // Determine appropriate charset based on OS
+            java.nio.charset.Charset charset = java.nio.charset.StandardCharsets.UTF_8;
+            // Windows systems typically use GBK encoding for command output
+            if (OSUtil.isWindows()) {
+                try {
+                    charset = java.nio.charset.Charset.forName("GBK");
+                } catch (Exception e) {
+                    charset = java.nio.charset.StandardCharsets.UTF_8;
+                }
+            }
+
             // Start process
             Process process = processBuilder.start();
 
@@ -192,21 +162,8 @@ public class ShellTools extends FunctionHub {
             StringBuilder output = new StringBuilder();
             StringBuilder errorOutput = new StringBuilder();
 
-            // Determine appropriate charset based on OS
-            java.nio.charset.Charset charset = java.nio.charset.StandardCharsets.UTF_8;
-            
-            // Windows systems typically use GBK encoding for command output
-            if (isWindows()) {
-                try {
-                    charset = java.nio.charset.Charset.forName("GBK");
-                } catch (Exception e) {
-                    logger.debug("GBK charset not available, falling back to UTF-8");
-                    charset = java.nio.charset.StandardCharsets.UTF_8;
-                }
-            }
-
             // Read stdout with proper encoding
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), charset))) {
+            try (BufferedReader reader = new BufferedReader(new SmartCharsetReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append(System.lineSeparator());
@@ -214,7 +171,7 @@ public class ShellTools extends FunctionHub {
             }
 
             // Read stderr with proper encoding
-            try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), charset))) {
+            try (BufferedReader errorReader = new BufferedReader(new SmartCharsetReader(process.getErrorStream()))) {
                 String errorLine;
                 while ((errorLine = errorReader.readLine()) != null) {
                     errorOutput.append(errorLine).append(System.lineSeparator());
@@ -250,91 +207,97 @@ public class ShellTools extends FunctionHub {
             }
 
         } catch (Exception e) {
-            logger.warn("Failed to run shell command: {}", e.getMessage(), e);
+            log.warn("Failed to run shell command: {}", e.getMessage(), e);
             return "Error: " + e.getMessage();
         }
     }
 
     /**
-     * Check if current system is Windows.
+     * Execute given shell command and return the result.
      * <p>
-     * Detects operating system type for platform-specific command handling.
-     * </p>
-     *
-     * @return true if current system is Windows, false otherwise
+     * Args:
+     * command: The shell command to execute.
+     * timeout: Maximum time (in seconds) allowed for the command to run. Defaults to 300.
+     * <p>
+     * Returns:
+     * A formatted string containing returncode, stdout, and stderr.
      */
-    private boolean isWindows() {
-        return System.getProperty("os.name").toLowerCase().contains("windows");
+    @Tool(
+            name = "execute_shell_command",
+            description = "Execute a shell command asynchronously and return the return code, standard output and standard error. Supports timeout for long-running commands.",
+            paramMetas = {
+                    @ParamMetaAuto(name = "command", type = "String", description = "shell Command", defaultValue = "null"),
+                    @ParamMetaAuto(name = "timeout", type = "Integer", description = "timeout in milliseconds for long-running commands", defaultValue = "300")
+            }
+    )
+    public String executeShellCommand(String command, Integer timeout) {
+        // Validate that args is provided
+        if (StringUtils.isBlank(command)) {
+            return "Error: command must be provided";
+        }
+        if (timeout == null) {
+            timeout = 3 * 1000;
+        }
+        String[] commands = command.split("\\|");
+        LinkedList<String> commandArgs = new LinkedList<String>(List.of(commands));
+        log.info("Running shell command: {}", command);
+        List<ProcessBuilder> pipelineCmd = new ArrayList<ProcessBuilder>();
+        ProcessBuilder processBuilder = null;
+        for (String _command : commandArgs) {
+            // Prepare command based on operating system
+            if (OSUtil.isWindows()) {
+                // Windows: use cmd.exe /c for command execution
+                processBuilder = new ProcessBuilder(List.of("cmd.exe", "/c", _command.trim()));
+            } else {
+                // Unix-like systems: use shell -c for command execution
+                processBuilder = new ProcessBuilder(List.of("/bin/sh", "/c", _command.trim()));
+            }
+            pipelineCmd.add(processBuilder);
+        }
+        ProcessResult result = executePipelineAsync(pipelineCmd, timeout.longValue()).join();
+        if (result.exitCode() == 0) {
+            return result.output();
+        } else {
+            String errorMessage = String.format("execute_shell_command pipline failed with exit code:%d %s: %s", result.exitCode(), result.output(), command);
+            log.error(errorMessage);
+            return errorMessage;
+        }
     }
 
-    // ========== Test Methods ==========
+    private CompletableFuture<ProcessResult> executePipelineAsync(List<ProcessBuilder> pipelineCmd, long timeout) {
+        try {
+            List<Process> pipeline = ProcessBuilder.startPipeline(pipelineCmd);
+            Process lastProcess = pipeline.get(pipeline.size() - 1);
 
-    /**
-     * Test method demonstrating basic functionality of ShellTools.
-     * <p>
-     * Tests shell command execution functionality including directory listing,
-     * system information queries, and error handling to verify tool correctness
-     * and cross-platform compatibility.
-     * </p>
-     *
-     * @param args Command line arguments (unused)
-     */
-    public static void main(String[] args) {
-        ShellTools shellTools = new ShellTools();
+            return lastProcess.onExit().orTimeout(timeout, TimeUnit.MILLISECONDS).thenApply(p -> {
+                // Determine appropriate charset based on OS
+                java.nio.charset.Charset charset = java.nio.charset.StandardCharsets.UTF_8;
+                // Windows systems typically use GBK encoding for command output
+                if (OSUtil.isWindows()) {
+                    try {
+                        charset = java.nio.charset.Charset.forName("GBK");
+                    } catch (Exception e) {
+                        charset = java.nio.charset.StandardCharsets.UTF_8;
+                    }
+                }
 
-        System.out.println("=== Shell Tools Test ===");
-
-        // Test 1: Directory listing using args list (cross-platform)
-        System.out.println("1. Directory listing test (using args list):");
-        List<String> dirArgs = System.getProperty("os.name").toLowerCase().contains("windows") 
-            ? List.of("dir") 
-            : List.of("ls", "-la");
-        String dirResult = (String) shellTools.call("run_shell_command", null, dirArgs, 5, null);
-        System.out.println("   Directory listing result:");
-        System.out.println(dirResult);
-
-        // Test 2: Directory listing using command string (cross-platform)
-        System.out.println("\n2. Directory listing test (using command string):");
-        String dirCommand = System.getProperty("os.name").toLowerCase().contains("windows") 
-            ? "dir" 
-            : "ls -la";
-        String dirResult2 = (String) shellTools.call("run_shell_command", dirCommand, null, 5, null);
-        System.out.println("   Directory listing result:");
-        System.out.println(dirResult2);
-
-        // Test 3: Current directory
-        System.out.println("\n3. Current directory test:");
-        String pwdCommand = System.getProperty("os.name").toLowerCase().contains("windows")
-            ? "cd"
-            : "pwd";
-        String pwdResult = (String) shellTools.call("run_shell_command", pwdCommand, null, 10, null);
-        System.out.println("   Current directory: " + pwdResult);
-
-        // Test 3: System information
-        System.out.println("\n3. System information test:");
-        String sysCommand = System.getProperty("os.name").toLowerCase().contains("windows")
-            ? "systeminfo"
-            : "uname -a";
-        String sysResult = (String) shellTools.call("run_shell_command", sysCommand, null, 3, null);
-        System.out.println("   System info (first 3 lines):");
-        System.out.println(sysResult);
-
-        // Test 5: Error handling
-        System.out.println("\n5. Error handling test:");
-        String errorResult = (String) shellTools.call("run_shell_command", "nonexistent-command", null, 10, null);
-        System.out.println("   Error handling result: " + errorResult);
-
-        // Test 6: Working directory test
-        System.out.println("\n6. Working directory test:");
-        String tempDir = System.getProperty("java.io.tmpdir");
-        String dirTestResult = (String) shellTools.call("run_shell_command", 
-            System.getProperty("os.name").toLowerCase().contains("windows")
-                ? "dir"
-                : "ls -la",
-            null,
-            3, 
-            tempDir);
-        System.out.println("   Temp directory listing:");
-        System.out.println(dirTestResult);
+                StringBuilder output = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new SmartCharsetReader(p.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        output.append(line).append(System.lineSeparator());
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException("execute_shell_command pipline error", e);
+                }
+                return new ProcessResult(p.exitValue(), output.toString().trim());
+            });
+        } catch (Exception e) {
+            log.error("execute_shell_command pipline error", e);
+            return CompletableFuture.failedFuture(e);
+        }
     }
+}
+
+record ProcessResult(int exitCode, String output) {
 }

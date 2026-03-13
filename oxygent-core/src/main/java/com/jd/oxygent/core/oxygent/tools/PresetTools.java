@@ -117,6 +117,10 @@ public final class PresetTools {
      */
     public static final ShellTools SHELL_TOOLS = new ShellTools();
     /**
+     * ssh tool instance.
+     */
+    public static final SshTools SSH_TOOLS = new SshTools();
+    /**
      * String tool instance.
      */
     public static final StringTools STRING_TOOLS = new StringTools();

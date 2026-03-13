@@ -16,6 +16,7 @@
 package com.jd.oxygent.core.oxygent.tools;
 
 import com.jd.oxygent.core.oxygent.oxy.function_tools.FunctionHub;
+import lombok.extern.slf4j.Slf4j;
 import org.python.core.PyException;
 import org.python.core.PySystemState;
 import org.python.util.PythonInterpreter;
@@ -73,9 +74,9 @@ import java.util.Map;
  * @see FunctionHub Tool execution framework base class
  * @since 1.0.0
  */
+@Slf4j
 public class PythonTools extends FunctionHub {
 
-    private static final Logger logger = LoggerFactory.getLogger(PythonTools.class);
     private PythonInterpreter interpreter = null;
 
     /**
@@ -93,11 +94,11 @@ public class PythonTools extends FunctionHub {
         try {
             this.interpreter = new PythonInterpreter(null, new PySystemState());
         } catch (Exception e) {
-            logger.error("Failed to initialize Python engine");
+            log.error("Failed to initialize Python engine");
         }
 
         if (this.interpreter == null) {
-            logger.warn("Python engine not found, some features may be limited");
+            log.warn("Python engine not found, some features may be limited");
         }
     }
 
@@ -154,7 +155,7 @@ public class PythonTools extends FunctionHub {
         }
 
         try {
-            logger.debug("Running Python code:\n\n{}\n\n", code);
+            log.debug("Running Python code:\n\n{}\n\n", code);
 
             // Set up execution context
             if (safeGlobals != null) {
@@ -174,16 +175,16 @@ public class PythonTools extends FunctionHub {
                 if (variableValue == null) {
                     return "Variable " + variableToReturn + " not found";
                 }
-                logger.debug("Variable {} value: {}", variableToReturn, variableValue);
+                log.debug("Variable {} value: {}", variableToReturn, variableValue);
                 return String.valueOf(variableValue);
             } else {
                 return "Successfully executed Python code";
             }
         } catch (PyException e) {
-            logger.error("Error executing Python code: {}", e.getMessage(), e);
+            log.error("Error executing Python code: {}", e.getMessage(), e);
             return "Error executing Python code: " + e.getMessage();
         } catch (Exception e) {
-            logger.error("Unexpected error during Python code execution: {}", e.getMessage(), e);
+            log.error("Unexpected error during Python code execution: {}", e.getMessage(), e);
             return "Unexpected error: " + e.getMessage();
         }
     }

@@ -1154,5 +1154,21 @@ public class CommonUtils {
         }
         return request.getRemoteAddr();
     }
+    
+    /**
+     * Removes ANSI escape codes from the specified string.
+     *
+     * @param text the original string to be processed
+     * @return the cleaned string; returns null if the input is null
+     */
+    public static String cleanAnsiCodes(String text) {
+        if (text == null) {
+            return null;
+        }
+        Pattern ANSI_ESCAPE_PATTERN = Pattern.compile(
+                "\u001B(?:[@-Z\\\\-_]|\\[[0-?]*[ -/]*[@-~])"
+        );
+        return ANSI_ESCAPE_PATTERN.matcher(text).replaceAll("");
+    }
 
 }

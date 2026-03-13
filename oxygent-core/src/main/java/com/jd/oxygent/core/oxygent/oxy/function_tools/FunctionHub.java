@@ -357,8 +357,8 @@ public class FunctionHub extends BaseTool {
                     try {
                         return method.invoke(this, args);
                     } catch (Exception e) {
-                        log.error("Error invoking tool '" + name, e);
-                        return "Error invoking tool '" + name + "': " + e.getMessage();
+                        log.error("Error invoking tool " + name, e);
+                        return "Error invoking tool " + name + "': " + e.getMessage();
                     }
                 }, paramMetas);
             }

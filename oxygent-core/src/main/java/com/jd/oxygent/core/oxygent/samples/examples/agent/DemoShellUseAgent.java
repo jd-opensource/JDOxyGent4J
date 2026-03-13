@@ -1,7 +1,8 @@
 package com.jd.oxygent.core.oxygent.samples.examples.agent;
 
+import com.jd.oxygent.core.oxygent.config.Prompts;
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
-import com.jd.oxygent.core.oxygent.oxy.agents.SkillAgent;
+import com.jd.oxygent.core.oxygent.oxy.agents.ShellUseAgent;
 import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
 import com.jd.oxygent.core.oxygent.samples.server.ServerApp;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
@@ -14,9 +15,9 @@ import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
-public class DemoSkillAgent {
+public class DemoShellUseAgent {
 
-    @OxySpaceBean(value = "skillAgentOxySpace", defaultStart = true, query = "What skills do you have?")
+    @OxySpaceBean(value = "shellUseAgentOxySpace", defaultStart = true, query = "Please run the demo.py from https://github.com/jd-opensource/OxyGent.git")
     public static List<BaseOxy> getDefaultOxySpace() {
         return Arrays.asList(
                 HttpLlm.builder()
@@ -25,14 +26,16 @@ public class DemoSkillAgent {
                         .baseUrl(EnvUtils.getEnv("OXY_LLM_BASE_URL"))
                         .modelName(EnvUtils.getEnv("OXY_LLM_MODEL_NAME"))
                         .build(),
-                PresetTools.FILE_TOOLS,
-                PresetTools.SHELL_TOOLS,
-                SkillAgent.builder()
-                        .name("skill_agent")
+                PresetTools.SSH_TOOLS,
+                ShellUseAgent.builder()
+                        .name("shell_use_agent")
                         .isMaster(true)
+                        .systemPrompt(Prompts.SYSTEM_PROMPT_SHELL_USE) // must be set
                         .desc("An tool for execute shell command")
-                        .tools(List.of("view_text_file", "execute_shell_command"))
-                        .skills(List.of(".oxygent/skills"))
+                        .tools(List.of("ssh_tools"))
+                        .maxReactRounds(64)
+                        .isDiscardReactMemory(false)
+                        .authInfo(new ShellUseAgent.AuthInfo(EnvUtils.getEnv("SSH_HOST"), 22, EnvUtils.getEnv("SSH_USER"), EnvUtils.getEnv("SSH_PASSWORD")))
                         .build()
         );
     }

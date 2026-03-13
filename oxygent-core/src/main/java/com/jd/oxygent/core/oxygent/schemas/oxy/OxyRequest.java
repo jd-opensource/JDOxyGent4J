@@ -419,6 +419,10 @@ public class OxyRequest implements Cloneable {
         getDataMap(masterLevel).put("query", query);
     }
 
+    public void setQuery(String query) {
+        setQuery(query, false);
+    }
+
     /**
      * Get query content (using default level)
      *

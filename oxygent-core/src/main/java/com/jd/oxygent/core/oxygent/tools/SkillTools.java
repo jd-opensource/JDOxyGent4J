@@ -19,6 +19,7 @@ import com.jd.oxygent.core.oxygent.oxy.function_tools.FunctionHub;
 import com.jd.oxygent.core.oxygent.oxy.skills.SkillMetadata;
 import com.jd.oxygent.core.oxygent.oxy.skills.SkillRegistry;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
@@ -77,9 +78,8 @@ import java.util.concurrent.TimeUnit;
  * @see SkillRegistry Skill management registry
  * @since 1.0.0
  */
+@Slf4j
 public class SkillTools extends FunctionHub {
-
-    private static final Logger logger = LoggerFactory.getLogger(SkillTools.class);
 
     private static final Set<String> ALLOWED_SCRIPT_EXTENSIONS = Set.of(".class",".java", ".py", ".sh", ".bash", ".zsh");
 
@@ -133,12 +133,12 @@ public class SkillTools extends FunctionHub {
      * for security reasons.</p>
      *
      * <h3>Supported Script Types:</h3>
- * <ul>
- *   <li><b>.java</b>: Java scripts (compiled and executed with javac + java)</li>
- *   <li><b>.py</b>: Python scripts (uses system Python)</li>
- *   <li><b>.sh/.bash</b>: Bash scripts</li>
- *   <li><b>.zsh</b>: Zsh scripts (falls back to bash if zsh not available)</li>
- * </ul>
+     * <ul>
+     *   <li><b>.java</b>: Java scripts (compiled and executed with javac + java)</li>
+     *   <li><b>.py</b>: Python scripts (uses system Python)</li>
+     *   <li><b>.sh/.bash</b>: Bash scripts</li>
+     *   <li><b>.zsh</b>: Zsh scripts (falls back to bash if zsh not available)</li>
+     * </ul>
      *
      * <h3>Path Handling:</h3>
      * <ul>
@@ -178,35 +178,128 @@ public class SkillTools extends FunctionHub {
             int tail,
             Map<String, String> env) {
 
-        SkillRegistry registry = null;
-        if (oxyRequest != null && oxyRequest.getMas() != null) {
-            registry = oxyRequest.getMas().getSkillRegistry();
-        }
-
+        SkillRegistry registry = getSkillRegistry(oxyRequest);
         if (registry == null) {
             return "Error: Skill registry not initialized";
         }
 
+        String validationResult = validateParameters(skillName, scriptRelpath);
+        if (validationResult != null) {
+            return validationResult;
+        }
+
+        skillName = skillName.trim();
+        scriptRelpath = normalizeScriptPath(scriptRelpath);
+
+        PathResolutionResult pathResult = resolveScriptPath(registry, skillName, scriptRelpath);
+        if (!pathResult.isSuccess()) {
+            return pathResult.getErrorMessage();
+        }
+
+        String ext = getFileExtension(pathResult.getScriptPath().toString()).toLowerCase();
+        if (!ALLOWED_SCRIPT_EXTENSIONS.contains(ext)) {
+            return "Error: unsupported script type '" + ext + "' (allowed: .java/.py/.sh/.bash/.zsh)";
+        }
+
+        List<String> cmd = buildCommand(pathResult, ext, args);
+        List<String> finalArgs = processArguments(args);
+        processPathArgument(finalArgs);
+        cmd.addAll(finalArgs);
+
+        return executeCommand(cmd, pathResult.getBaseDir(), timeout, tail, env);
+    }
+
+    /**
+     * Get skill registry from OxyRequest.
+     *
+     * @param oxyRequest OxyRequest object
+     * @return SkillRegistry instance or null
+     */
+    private SkillRegistry getSkillRegistry(OxyRequest oxyRequest) {
+        if (oxyRequest != null && oxyRequest.getMas() != null) {
+            return oxyRequest.getMas().getSkillRegistry();
+        }
+        return null;
+    }
+
+    /**
+     * Validate input parameters.
+     *
+     * @param skillName Skill name
+     * @param scriptRelpath Script relative path
+     * @return Error message if validation fails, null otherwise
+     */
+    private String validateParameters(String skillName, String scriptRelpath) {
         if (skillName == null || skillName.trim().isEmpty()) {
             return "Error: skill_name is required";
         }
         if (scriptRelpath == null || scriptRelpath.trim().isEmpty()) {
             return "Error: script_relpath is required";
         }
+        return null;
+    }
 
-        skillName = skillName.trim();
-        scriptRelpath = scriptRelpath.trim();
-
+    /**
+     * Normalize script path by removing prefixes.
+     *
+     * @param scriptRelpath Original script path
+     * @return Normalized script path
+     */
+    private String normalizeScriptPath(String scriptRelpath) {
         if (scriptRelpath.startsWith("scripts/") || scriptRelpath.startsWith("scripts\\")) {
             scriptRelpath = scriptRelpath.substring("scripts/".length());
         }
         if (scriptRelpath.startsWith("./")) {
             scriptRelpath = scriptRelpath.substring(2);
         }
+        return scriptRelpath;
+    }
 
+    /**
+     * Result class for path resolution.
+     */
+    private static class PathResolutionResult {
+        private final boolean success;
+        private final String errorMessage;
+        private final Path skillPath;
+        private final Path baseDir;
+        private final Path scriptPath;
+
+        PathResolutionResult(boolean success, String errorMessage, Path skillPath, Path baseDir, Path scriptPath) {
+            this.success = success;
+            this.errorMessage = errorMessage;
+            this.skillPath = skillPath;
+            this.baseDir = baseDir;
+            this.scriptPath = scriptPath;
+        }
+
+        static PathResolutionResult failure(String errorMessage) {
+            return new PathResolutionResult(false, errorMessage, null, null, null);
+        }
+
+        static PathResolutionResult success(Path skillPath, Path baseDir, Path scriptPath) {
+            return new PathResolutionResult(true, null, skillPath, baseDir, scriptPath);
+        }
+
+        boolean isSuccess() { return success; }
+        String getErrorMessage() { return errorMessage; }
+        Path getSkillPath() { return skillPath; }
+        Path getBaseDir() { return baseDir; }
+        Path getScriptPath() { return scriptPath; }
+    }
+
+    /**
+     * Resolve script path and validate security constraints.
+     *
+     * @param registry Skill registry
+     * @param skillName Skill name
+     * @param scriptRelpath Normalized script relative path
+     * @return PathResolutionResult with paths or error
+     */
+    private PathResolutionResult resolveScriptPath(SkillRegistry registry, String skillName, String scriptRelpath) {
         SkillMetadata meta = registry.getSkill(skillName);
         if (meta == null || meta.getSkillPath() == null) {
-            return "Error: skill '" + skillName + "' not found";
+            return PathResolutionResult.failure("Error: skill '" + skillName + "' not found");
         }
 
         Path skillPath = meta.getSkillPath();
@@ -215,53 +308,98 @@ public class SkillTools extends FunctionHub {
         Path targetPath = scriptsDir.resolve(scriptRelpath).toAbsolutePath().normalize();
 
         if (!targetPath.startsWith(scriptsDir)) {
-            return "Error: script_relpath must be inside the skill's scripts/ directory";
+            return PathResolutionResult.failure("Error: script_relpath must be inside the skill's scripts/ directory");
         }
 
         if (!Files.exists(targetPath) || !Files.isRegularFile(targetPath)) {
-            // Execution phase converted to classv
-            if(scriptRelpath.endsWith(".java")){
-                targetPath = targetPath.getParent().resolve(scriptRelpath.replace(".java", ".class"));
+            if (scriptRelpath.endsWith(".java")) {
+                targetPath = scriptsDir.resolve(scriptRelpath.replace(".java", ".class"));
+                if (Files.exists(targetPath) && Files.isRegularFile(targetPath)) {
+                    return PathResolutionResult.success(skillPath, baseDir, targetPath);
+                }
             }
-            if (!Files.exists(targetPath) || !Files.isRegularFile(targetPath)) {
-                return "Error: script not found: " + targetPath;
-            }
+            return PathResolutionResult.failure("Error: script not found: " + targetPath);
         }
 
-        String ext = getFileExtension(targetPath.toString()).toLowerCase();
-        if (!ALLOWED_SCRIPT_EXTENSIONS.contains(ext)) {
-            return "Error: unsupported script type '" + ext + "' (allowed: .java/.py/.sh/.bash/.zsh)";
-        }
+        return PathResolutionResult.success(skillPath, baseDir, targetPath);
+    }
 
+    /**
+     * Build command based on script type.
+     *
+     * @param pathResult Path resolution result
+     * @param ext File extension
+     * @param args Script arguments
+     * @return Command list
+     */
+    private List<String> buildCommand(PathResolutionResult pathResult, String ext, List<String> args) {
         List<String> cmd = new ArrayList<>();
+        Path scriptPath = pathResult.getScriptPath();
+        Path scriptsDir = pathResult.getBaseDir().resolve("scripts").toAbsolutePath().normalize();
 
         if (".py".equals(ext)) {
             cmd.add(getPythonExecutable());
-            cmd.add(targetPath.toString());
+            cmd.add(scriptPath.toString());
         } else if (".sh".equals(ext) || ".bash".equals(ext)) {
             cmd.add("bash");
-            cmd.add(targetPath.toString());
+            cmd.add(scriptPath.toString());
         } else if (".zsh".equals(ext)) {
             String zsh = findExecutable("zsh");
             cmd.add(zsh != null ? zsh : "bash");
-            cmd.add(targetPath.toString());
+            cmd.add(scriptPath.toString());
         } else if (".java".equals(ext)) {
-            cmd.add(getJavaExecutable("javac"));
-            cmd.add(targetPath.toString());
-            cmd.add("&&");
-            cmd.add(getJavaExecutable("java"));
-            cmd.add("-cp");
-            cmd.add(scriptsDir.toString());
-            String className = targetPath.getFileName().toString().replace(".java", "");
-            cmd.add(className);
+            buildJavaCommand(cmd, scriptPath, scriptsDir);
         } else if (".class".equals(ext)) {
-            cmd.add(getJavaExecutable("java"));
-            cmd.add("-cp");
-            cmd.add(scriptsDir.toString().substring(0,scriptsDir.toString().indexOf("classes")+"classes".length()));
-            String className = targetPath.toString().substring(scriptsDir.toString().indexOf("classes")+"classes".length()).replace(".class", "").replace("\\",".").substring(1);
-            cmd.add(className);
+            buildClassCommand(cmd, scriptPath, scriptsDir);
         }
 
+        return cmd;
+    }
+
+    /**
+     * Build Java compilation and execution command.
+     */
+    private void buildJavaCommand(List<String> cmd, Path scriptPath, Path scriptsDir) {
+        cmd.add(getJavaExecutable("javac"));
+        cmd.add(scriptPath.toString());
+        cmd.add("&&");
+        cmd.add(getJavaExecutable("java"));
+        cmd.add("-cp");
+        cmd.add(scriptsDir.toString());
+        String className = scriptPath.getFileName().toString().replace(".java", "");
+        cmd.add(className);
+    }
+
+    /**
+     * Build Java class execution command.
+     */
+    private void buildClassCommand(List<String> cmd, Path scriptPath, Path scriptsDir) {
+        cmd.add(getJavaExecutable("java"));
+        cmd.add("-cp");
+        String classPath = scriptsDir.toString();
+        int classesIndex = classPath.indexOf("classes");
+        if (classesIndex >= 0) {
+            classPath = classPath.substring(0, classesIndex + "classes".length());
+        }
+        cmd.add(classPath);
+
+        String className = scriptPath.toString();
+        if (classesIndex >= 0) {
+            className = className.substring(classesIndex + "classes".length())
+                    .replace(".class", "")
+                    .replace("\\", ".")
+                    .substring(1);
+        }
+        cmd.add(className);
+    }
+
+    /**
+     * Process arguments and filter nulls.
+     *
+     * @param args Original arguments
+     * @return Filtered argument list
+     */
+    private List<String> processArguments(List<String> args) {
         List<String> finalArgs = new ArrayList<>();
         if (args != null) {
             for (Object arg : args) {
@@ -270,11 +408,15 @@ public class SkillTools extends FunctionHub {
                 }
             }
         }
-        cmd.addAll(finalArgs);
+        return finalArgs;
+    }
 
-        // Common case: skill scripts that take an output directory (e.g. init_skill.java --path ...).
-        // If the provided path is relative, interpret it relative to the *process* cwd (project root),
-        // not the skill directory, to avoid creating nested folders under the skill itself.
+    /**
+     * Process --path argument to resolve relative paths.
+     *
+     * @param finalArgs Argument list to modify
+     */
+    private void processPathArgument(List<String> finalArgs) {
         if (finalArgs.contains("--path")) {
             try {
                 int pathIndex = finalArgs.indexOf("--path");
@@ -286,10 +428,22 @@ public class SkillTools extends FunctionHub {
                     }
                 }
             } catch (Exception e) {
-                logger.debug("Failed to process --path argument: {}", e.getMessage());
+                log.debug("Failed to process --path argument: {}", e.getMessage());
             }
         }
+    }
 
+    /**
+     * Execute command and handle output.
+     *
+     * @param cmd Command to execute
+     * @param baseDir Working directory
+     * @param timeout Timeout in seconds
+     * @param tail Max output lines
+     * @param env Environment variables
+     * @return Execution result or error message
+     */
+    private String executeCommand(List<String> cmd, Path baseDir, int timeout, int tail, Map<String, String> env) {
         ProcessBuilder processBuilder = new ProcessBuilder(cmd);
         processBuilder.directory(baseDir.toFile());
 
@@ -303,35 +457,13 @@ public class SkillTools extends FunctionHub {
         }
 
         try {
-            logger.info("Running skill script: {} (skill={}, cwd={})", cmd, skillName, baseDir);
+            log.info("Running skill script: {} (skill={}, cwd={})", cmd, cmd, baseDir);
 
             Process process = processBuilder.start();
+            Charset charset = getCharset();
 
-            Charset charset = StandardCharsets.UTF_8;
-            if (isWindows()) {
-                try {
-                    charset = Charset.forName("GBK");
-                } catch (Exception e) {
-                    charset = StandardCharsets.UTF_8;
-                }
-            }
-
-            StringBuilder output = new StringBuilder();
-            StringBuilder errorOutput = new StringBuilder();
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), charset))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
-
-            try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), charset))) {
-                String errorLine;
-                while ((errorLine = errorReader.readLine()) != null) {
-                    errorOutput.append(errorLine).append("\n");
-                }
-            }
+            StringBuilder output = readStream(process.getInputStream(), charset);
+            StringBuilder errorOutput = readStream(process.getErrorStream(), charset);
 
             boolean finished = process.waitFor(timeout > 0 ? timeout : 60, TimeUnit.SECONDS);
             if (!finished) {
@@ -340,26 +472,74 @@ public class SkillTools extends FunctionHub {
             }
 
             int exitCode = process.exitValue();
-
-            String combined = output.toString().trim();
-            if (errorOutput.length() > 0) {
-                combined = combined + "\n" + errorOutput.toString().trim();
-            }
-
-            combined = combined.trim();
-            combined = tailText(combined, tail);
-
-            if (exitCode != 0) {
-                return combined.isEmpty() 
-                    ? "Error (exit=" + exitCode + ")" 
-                    : "Error (exit=" + exitCode + "): " + combined;
-            }
-            return combined;
+            return formatExecutionResult(output.toString(), errorOutput.toString(), exitCode, tail);
 
         } catch (Exception e) {
-            logger.warn("Failed to run skill script: {}", e.getMessage(), e);
+            log.warn("Failed to run skill script: {}", e.getMessage(), e);
             return "Error: " + e.getMessage();
         }
+    }
+
+    /**
+     * Get charset for output based on OS.
+     *
+     * @return Charset instance
+     */
+    private Charset getCharset() {
+        if (isWindows()) {
+            try {
+                return Charset.forName("GBK");
+            } catch (Exception e) {
+                return StandardCharsets.UTF_8;
+            }
+        }
+        return StandardCharsets.UTF_8;
+    }
+
+    /**
+     * Read stream to string builder.
+     *
+     * @param stream Input stream
+     * @param charset Character encoding
+     * @return StringBuilder with content
+     */
+    private StringBuilder readStream(java.io.InputStream stream, Charset charset) {
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, charset))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append("\n");
+            }
+        } catch (Exception e) {
+            log.debug("Failed to read stream: {}", e.getMessage());
+        }
+        return output;
+    }
+
+    /**
+     * Format execution result with output tailing.
+     *
+     * @param output Standard output
+     * @param errorOutput Error output
+     * @param exitCode Exit code
+     * @param tail Max lines to keep
+     * @return Formatted result string
+     */
+    private String formatExecutionResult(String output, String errorOutput, int exitCode, int tail) {
+        String combined = output.trim();
+        if (errorOutput.trim().length() > 0) {
+            combined = combined + "\n" + errorOutput.trim();
+        }
+
+        combined = combined.trim();
+        combined = tailText(combined, tail);
+
+        if (exitCode != 0) {
+            return combined.isEmpty()
+                    ? "Error (exit=" + exitCode + ")"
+                    : "Error (exit=" + exitCode + "): " + combined;
+        }
+        return combined;
     }
 
     /**

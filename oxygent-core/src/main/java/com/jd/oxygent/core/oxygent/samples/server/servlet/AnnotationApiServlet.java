@@ -38,7 +38,7 @@ public class AnnotationApiServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        log.info("AnnotationApiServlet initialized");
+        log.debug("AnnotationApiServlet initialized");
     }
 
     @Override

@@ -1,713 +1,381 @@
-/*
- * Copyright 2025 JD.com
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this project except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.jd.oxygent.core.oxygent.oxy.agents;
 
-import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.oxy.skills.SkillMetadata;
-import com.jd.oxygent.core.oxygent.oxy.skills.SkillRegistry;
-import com.jd.oxygent.core.oxygent.oxy.skills.SkillSelector;
-import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
-import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
-import com.jd.oxygent.core.oxygent.schemas.oxy.OxyState;
-import com.jd.oxygent.core.oxygent.tools.ShellTools;
-import lombok.*;
+import com.jd.oxygent.core.oxygent.utils.JsonUtils;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * SkillAgent: ReActAgent with first-class skills support.
- *
- * <p>Skill activation sources:</p>
- * <ul>
- *   <li>Manual: user query starts with `/<skill-name> ...`</li>
- *   <li>Selector: optional extra LLM call over metadata only (name + description)</li>
- * </ul>
- *
- * <p>This agent never relies on the LLM to call the Skill tool.</p>
- *
- * <p>Main features:</p>
- * <ul>
- *   <li>Skill catalog injection into prompts</li>
- *   <li>Manual skill activation via slash commands</li>
- *   <li>Automatic skill selection using LLM</li>
- *   <li>Shell tools auto-registration</li>
- *   <li>Skill listing and help functionality</li>
- * </ul>
- *
- * <p>Usage example:</p>
- * <pre>{@code
- * SkillAgent skillAgent = SkillAgent.builder()
- *     .enableSkillCatalog(true)
- *     .skillCatalogMaxEntries(50)
- *     .enableSelector(true)
- *     .selectorMaxCandidates(30)
- *     .selectorMinConfidence(0.6)
- *     .enableShellTools(true)
- *     .build();
- * }</pre>
- *
- * @author OxyGent Team
- * @version 1.0.0
- * @since 1.0.0
+ * Lightweight skill-aware agent with direct path-based skill loading.
+ * <p>
+ * A simplified agent that loads skills directly from specified directory paths
+ * without requiring global registry or SkillSource components.
+ * <p>
+ * This agent does NOT provide:
+ * - Skill activation (manual or automatic)
+ * - Skill selection via LLM
+ * - Runtime skill content loading
+ * <p>
+ * Architecture:
+ * 1. Configuration: skills=["./path/to/skill1", "./path/to/skill2"]
+ * 2. Initialization: Discovers skills from each path
+ * 3. Prompt Enhancement: Injects skill metadata into system prompt
+ * <p>
+ * Attributes:
+ * skills: List of skill directory paths to load skills from.
+ * Each path should point to a directory containing SKILL.md file,
+ * or a parent directory containing multiple skill subdirectories.
+ * skill_prompt_template: Jinja-like template for skill prompt section.
+ * Use {skill_list} placeholder for skill entries.
+ * _skills_metadata: Internal cache of discovered skill metadata.
+ * Maps skill name -> SkillMetadata.
+ * <p>
+ * Example:
+ * >>> agent = SkillAgent(
+ * ...     name="assistant",
+ * ...     skills=["./skills/project", "./skills/code"]
+ * ... )
+ * >>> # Agent will discover skills from both paths
  */
-@Slf4j
-@Data
 @SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@Slf4j
 public class SkillAgent extends ReActAgent {
 
-    // ========== Skill Catalog Configuration ==========
-
     /**
-     * Whether to inject the available skills (metadata only) into the prompt.
+     * List of skill directory paths to load skills from.
+     * Each path can be a skill folder with SKILL.md or a parent directory containing multiple skill subfolders.
      */
     @Builder.Default
-    protected boolean enableSkillCatalog = true;
+    private List<String> skills = new ArrayList<>();
+
+    @Builder.Default
+    private Map<String, SkillMetadata> skillsMetadata = new HashMap<>();
 
     /**
-     * Max number of skill metadata entries injected into the prompt.
+     * Template for generating skill prompt section.
+     * Use {skill_list} as placeholder for skill entries.
      */
     @Builder.Default
-    protected int skillCatalogMaxEntries = 50;
+    private String skillPromptTemplate = """
+            # IMPORTANT
+            - Don't make any assumptions. All your knowledge about available capabilities must come from your equipped skills.
+            - If the current information is sufficient to answer the question, do NOT invoke any tools or skills.
+            - Only use skills when you need specialized knowledge, workflows, or resources that are not in your current context.
+            
+            # Agent Skills
+            The agent skills are a collection of instructions, scripts, and resources that you can load dynamically to improve performance on specialized tasks. Each agent skill has a `SKILL.md` file in its folder that describes how to use the skill. If you want to use a skill, you MUST read its `SKILL.md` file carefully.
+            
+            {skill_list}
+            
+            ---
+            """;
 
-    // ========== Skill Selector Configuration ==========
+    public int getSkillsCount() {
+        return skillsMetadata.size();
+    }
 
-    /**
-     * Whether to run a selector LLM call to auto-activate at most one skill.
-     */
-    @Builder.Default
-    protected boolean enableSelector = true;
-
-    /**
-     * Max candidate skills passed to selector.
-     */
-    @Builder.Default
-    protected int selectorMaxCandidates = 30;
-
-    /**
-     * Min confidence required to auto-activate a selected skill.
-     */
-    @Builder.Default
-    protected double selectorMinConfidence = 0.6;
-
-    /**
-     * Optional LLM model to use for selection. Defaults to llm_model.
-     */
-    protected String selectorLlmModel;
-
-    // ========== Shell Tools Configuration ==========
+    public List<String> getSkillNames() {
+        return skillsMetadata.keySet().stream().sorted().collect(Collectors.toList());
+    }
 
     /**
-     * Whether to auto-register and enable preset shell_tools (run_shell_command).
-     * This makes Codex-style skills (e.g. agent-browser) practical by default.
+     * Initialize the agent with skill discovery.
+     * <p>
+     * Initialization sequence:
+     * 1. Discover skills from each specified path
+     * 2. Load skill metadata (name, description, argument_hint)
+     * 3. Build skill prompt section
+     * 4. Inject skill prompt into additional_prompt
+     * 5. Call parent init
+     * <p>
+     * Logs:
+     * - INFO: Initialization start and completion
+     * - DEBUG: Per-path skill discovery
+     * - WARNING: Invalid paths or missing skills
+     * - ERROR: Failed path initializations
      */
-    @Builder.Default
-    protected boolean enableShellTools = true;
-
-    // ========== Scoped Registry Configuration ==========
-
-    /**
-     * Optional absolute skill directories for this agent only.
-     * When set, this agent uses only these directories instead of the MAS global registry.
-     */
-    protected List<String> skillDirs;
-
-    // ========== Internal State ==========
-
-    /**
-     * Per-agent scoped registry cache (built lazily/at init when skill_dirs is provided).
-     */
-    private transient SkillRegistry scopedSkillRegistry;
-    
-    /**
-     * Normalized skill directories for scoped registry.
-     */
-    private transient List<String> normalizedSkillDirs;
-
-    // ========== Constants ==========
-
-    /**
-     * Regular expression pattern for manual skill invocation.
-     * Matches: /skill-name [optional arguments]
-     */
-    private static final Pattern MANUAL_SKILL_PATTERN = Pattern.compile(
-            "^/([a-zA-Z0-9][a-zA-Z0-9_\\-]{0,127})(?:\\s+(.*))?$"
-    );
-
-    /**
-     * Exact skill list query phrases (English and Chinese).
-     */
-    private static final String[] SKILL_LIST_QUERIES = {
-            "list skills", "show skills", "skill list", "skills list",
-            "what skills do you have", "what skills do u have",
-            "what skill do you have", "what skill do u have",
-            "which skills do you have", "which skills do u have",
-            "available skills", "skills available",
-            "what skills do you have", "what skills do you have", "skill list"
-    };
-
-    // ========== Internal State ==========
-
-    /**
-     * Cache for skill selection results during request processing.
-     */
-    private final Map<String, Object> skillCache = new ConcurrentHashMap<>();
-
     @Override
     public void init() {
-        // Validate/build scoped registry early so invalid config fails fast at startup.
-        ensureScopedRegistry();
-        ensureShellTools();
+        log.info("[SkillAgent] Initializing agent '{}' with {} skill path(s)",
+                getName(), skills != null ? skills.size() : 0);
+
+        discoverSkills();
+        buildSkillPrompt();
         super.init();
+
+        log.info("[SkillAgent] Agent '{}' initialized: {} skills discovered and ready",
+                getName(), getSkillsCount());
     }
 
     /**
-     * Ensure shell tools are registered and enabled.
-     * Auto-registers shell_tools if enabled and not already present.
+     * Discover and load skill metadata directly from paths.
+     * <p>
+     * This method scans each path for SKILL.md files and loads
+     * skill metadata directly, without using global registry.
+     * <p>
+     * Process:
+     * 1. For each path, resolve to absolute path
+     * 2. If path contains SKILL.md, load it as single skill
+     * 3. If path is directory, search for SKILL.md files (recursive)
+     * 4. Collect metadata into _skills_metadata
+     * <p>
+     * Raises:
+     * No exceptions raised; errors are logged and skipped.
+     * <p>
+     * Note:
+     * Skills with duplicate names from different paths will be
+     * overwritten by the last path's version.
      */
-    private void ensureShellTools() {
-        if (!enableShellTools) {
+    private void discoverSkills() {
+        if (skills == null || skills.isEmpty()) {
+            log.debug("[SkillAgent] Agent '{}': No skill paths configured", getName());
             return;
         }
 
-        if (getExceptTools() != null && getExceptTools().contains("shell_tools")) {
-            return;
-        }
+        log.debug("[SkillAgent] Agent '{}': Discovering skills from {} path(s)",
+                getName(), skills.size());
 
-        if (getMas() == null || getMas().getOxyNameToOxy() == null|| getMas().getOxyNameToOxy().isEmpty()) {
-            return;
-        }
+        int successfulPaths = 0;
+        int failedPaths = 0;
 
-        // Add shell_tools to tools list if not present
-        if (!this.getTools().contains("shell_tools")) {
-            this.getTools().add("shell_tools");
-        }
+        for (String skillPathStr : skills) {
+            try {
+                Path skillPath = Paths.get(skillPathStr).toAbsolutePath();
 
-        try {
-            // Register shell_tools if not already registered
-            if (!getMas().getOxyNameToOxy().containsKey("shell_tools")) {
-                ShellTools shellTools = new ShellTools();
-                shellTools.setMas(getMas());
-                getMas().addOxy(shellTools);
-            }
-
-            // Initialize shell_tools if needed
-            if (!getMas().getOxyNameToOxy().containsKey("run_shell_command")) {
-                BaseOxy hub = getMas().getOxyNameToOxy().get("shell_tools");
-                if (hub != null && hub instanceof ShellTools) {
-                    hub.init();
-                    log.debug("Shell tools initialized");
+                if (!Files.exists(skillPath)) {
+                    log.warn("[SkillAgent] Agent '{}': Path does not exist: {}",
+                            getName(), skillPath);
+                    failedPaths++;
+                    continue;
                 }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to auto-enable shell_tools: {}", e.getMessage(), e);
-        }
-    }
 
-    /**
-     * Parse manual skill invocation from user query.
-     *
-     * @param query User query string
-     * @return Tuple of (skill_name, arguments) or null if not a manual invocation
-     */
-    private String[] parseManualInvocation(String query) {
-        String q = (query == null) ? "" : query.trim();
-        if (!q.startsWith("/") || q.startsWith("//")) {
-            return null;
-        }
+                Set<String> nonSkillSubdirs = Set.of("scripts", "references", "assets");
 
-        Matcher matcher = MANUAL_SKILL_PATTERN.matcher(q);
-        if (!matcher.matches()) {
-            return null;
-        }
+                if (Files.exists(skillPath.resolve("SKILL.md"))) {
+                    Path skillFile = skillPath.resolve("SKILL.md");
+                    SkillMetadata metadata = loadMetadataFromFile(skillFile);
+                    if (metadata != null && metadata.getName() != null) {
+                        skillsMetadata.put(metadata.getName(), metadata);
+                        successfulPaths++;
+                        log.debug("[SkillAgent] Agent '{}': Loaded skill '{}' from '{}'",
+                                getName(), metadata.getName(), skillPath);
+                    } else {
+                        failedPaths++;
+                        log.warn("[SkillAgent] Agent '{}': Failed to load skill from '{}'",
+                                getName(), skillPath);
+                    }
+                } else {
+                    List<Path> skillFiles = new ArrayList<>();
+                    try {
+                        Files.walk(skillPath)
+                                .filter(Files::isRegularFile)
+                                .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                                .forEach(skillFiles::add);
+                    } catch (IOException e) {
+                        log.error("Error walking skill path", e);
+                    }
 
-        String skillName = matcher.group(1);
-        String args = (matcher.group(2) == null) ? "" : matcher.group(2).trim();
-        return new String[]{skillName, args};
-    }
-
-    /**
-     * Check if query is a skill list/help request.
-     *
-     * @param query User query string
-     * @return true if this is a skill listing query
-     */
-    private boolean isSkillListQuery(String query) {
-        String q = (query == null) ? "" : query.trim().toLowerCase();
-        q = q.replaceAll("\\s+", " ").trim();
-        q = q.replaceAll("^[\\s\\t\\r\\n\"'`.,;:!?()\\[\\]{}]+|[\\s\\t\\r\\n\"'`.,;:!?()\\[\\]{}]+$", "");
-
-        // Check exact matches
-        for (String exactQuery : SKILL_LIST_QUERIES) {
-            if (q.equals(exactQuery)) {
-                return true;
-            }
-        }
-
-        // Lightweight pattern matching for short questions
-        if (q.length() <= 64) {
-            if (q.matches("^(what|which)\\s+skills?\\b.*(do\\s+)?(you|u)\\s+have\\b.*")) {
-                return true;
-            }
-            if (q.matches("^what\\s+skills?\\b.*\\bavailable\\b.*")) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Build skill catalog prompt section.
-     *
-     * @param oxyRequest Current request context
-     * @return Formatted skill catalog prompt text
-     */
-    private String buildSkillCatalogPrompt(OxyRequest oxyRequest) {
-        SkillRegistry registry = getEffectiveRegistry(oxyRequest);
-        if (registry == null) {
-            return "";
-        }
-        
-        // Ensure metadata is loaded
-        if (registry.listSkills().isEmpty()) {
-            try {
-                registry.discoverAll();
-            } catch (Exception e) {
-                log.warn("Failed to discover skills: {}", e.getMessage());
-                return "";
-            }
-        }
-
-        List<SkillMetadata> skills = registry.listSkills();
-        if (skills.isEmpty()) {
-            return "";
-        }
-        
-        // Sort skills by name
-        skills.sort(Comparator.comparing(SkillMetadata::getName));
-
-        int maxN = Math.max(0, skillCatalogMaxEntries);
-        List<SkillMetadata> shown = (maxN == 0) ? skills : skills.subList(0, Math.min(maxN, skills.size()));
-        int hiddenCount = Math.max(0, skills.size() - shown.size());
-
-        List<String> lines = new ArrayList<>();
-        lines.add("## Available Skills (metadata only)");
-        lines.add("");
-        lines.add("Invoke manually with: /<skill-name> [task-or-arguments]");
-        lines.add("(Skill activation is system-driven; do not call the Skill tool directly.)");
-        lines.add("");
-
-        // Add tip about script runner if available
-        try {
-            if (getPermittedToolNameList() != null && getPermittedToolNameList().contains("run_skill_script")) {
-                lines.add("Tip: If an activated skill asks you to run a bundled script under its scripts/ directory,");
-                lines.add("use the tool `run_skill_script` (skill_name + script_relpath + args) instead of manual path guessing.");
-                lines.add("");
-            }
-        } catch (Exception e) {
-            // Ignore errors in tip generation
-        }
-
-        // Add skill listings
-        for (SkillMetadata skill : shown) {
-            List<String> flags = new ArrayList<>();
-            if (skill.isDisableModelInvocation()) {
-                flags.add("manual-only");
-            }
-            if (!skill.isUserInvocable()) {
-                flags.add("not-user-invocable");
-            }
-            
-            String suffix = flags.isEmpty() ? "" : " (" + String.join(", ", flags) + ")";
-            lines.add("- " + skill.getName() + ": " + skill.getDescription() + suffix);
-            
-            String argHint = skill.getArgumentHint();
-            if (argHint != null && !argHint.trim().isEmpty()) {
-                lines.add("  args: " + argHint.trim());
-            }
-        }
-
-        if (hiddenCount > 0) {
-            lines.add("- ... (" + hiddenCount + " more)");
-        }
-
-        return String.join("\n", lines);
-    }
-
-    /**
-     * Activate a skill by calling the Skill tool.
-     *
-     * @param oxyRequest       Current request context
-     * @param skillName        Name of skill to activate
-     * @param skillArgs        Arguments for the skill
-     * @param invocationSource Source of invocation ("user" or "selector")
-     */
-    private void activateSkill(OxyRequest oxyRequest, String skillName, String skillArgs, String invocationSource) {
-        if (!oxyRequest.hasOxy("Skill")) {
-            log.warn("Skill tool not registered; cannot activate skills");
-            return;
-        }
-        
-        List<String> skillDirs = getEffectiveSkillDirs();
-
-        try {
-            Map<String, Object> toolArgs = new HashMap<>();
-            toolArgs.put("name", skillName);
-            toolArgs.put("arguments", skillArgs != null ? skillArgs : "");
-            toolArgs.put("invocation_source", invocationSource);
-            toolArgs.put("skill_dirs", skillDirs);
-
-            OxyResponse toolResp = oxyRequest.call(
-                    Map.of(
-                            "callee", "Skill",
-                            "arguments", toolArgs,
-                            "is_send_message", false,
-                            "is_save_history", false
-                    )
-            );
-
-            if (toolResp.getState() != OxyState.COMPLETED) {
-                return;
-            }
-
-            Object injection = toolResp.getOutput();
-            if (injection instanceof String && !((String) injection).trim().isEmpty()) {
-                // Append to additional_prompt
-                String currentPrompt = (String) oxyRequest.getArguments().getOrDefault("additional_prompt", "");
-                String newPrompt = appendPrompt(currentPrompt, (String) injection);
-                oxyRequest.getArguments().put("additional_prompt", newPrompt);
-                
-                // Store activation info
-                oxyRequest.getArguments().put("_skill_activation", toolResp.getExtra());
-            }
-        } catch (Exception e) {
-            log.error("Failed to activate skill {}: {}", skillName, e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Append prompt text with proper formatting.
-     *
-     * @param base  Base prompt text
-     * @param extra Additional text to append
-     * @return Combined prompt text
-     */
-    private String appendPrompt(String base, String extra) {
-        String baseTrimmed = (base == null) ? "" : base.trim();
-        String extraTrimmed = (extra == null) ? "" : extra.trim();
-
-        if (extraTrimmed.isEmpty()) {
-            return baseTrimmed;
-        }
-        if (baseTrimmed.isEmpty()) {
-            return extraTrimmed;
-        }
-        return baseTrimmed + "\n\n" + extraTrimmed;
-    }
-
-    /**
-     * Select skill automatically using LLM-based selection.
-     *
-     * @param oxyRequest Current request context
-     * @param query      User query
-     * @param selectorSkills List of candidate skills
-     * @return SkillSelection result
-     */
-    private SkillSelector.SkillSelection selectSkillWithSelector(OxyRequest oxyRequest,String query,List<SkillMetadata> selectorSkills) {
-        
-        String modelToUse = (selectorLlmModel != null && !selectorLlmModel.isEmpty()) ? selectorLlmModel : getLlmModel();
-        
-        try {
-            CompletableFuture<SkillSelector.SkillSelection> future = SkillSelector.selectSkill(
-                oxyRequest,
-                modelToUse,
-                selectorSkills,
-                query,
-                selectorMaxCandidates,
-                selectorMinConfidence
-            );
-            
-            // In Java, we need to handle the CompletableFuture synchronously
-            // In production, you might want to make this properly async
-            return future.get(); // This blocks - consider using async processing
-            
-        } catch (Exception e) {
-            log.warn("Failed to perform skill selection with LLM: {}", e.getMessage());
-            return SkillSelector.SkillSelection.selectorLlmFailed(OxyState.FAILED);
-        }
-    }
-
-    /**
-     * Normalize skill directories configuration.
-     * 
-     * @return Normalized directory list or null if not configured
-     */
-    private List<String> normalizeSkillDirs() {
-        List<String> rawDirs = this.skillDirs;
-        if (rawDirs == null || rawDirs.isEmpty()) {
-            return null;
-        }
-        
-        List<String> normalized = new ArrayList<>();
-        for (String raw : rawDirs) {
-            if (raw == null || raw.trim().isEmpty()) {
-                throw new IllegalArgumentException(
-                    String.format("SkillAgent[%s] skillDirs contains an empty path", getName())
-                );
-            }
-            
-            Path path = Paths.get(raw.trim());
-            if (!path.isAbsolute()) {
-                throw new IllegalArgumentException(
-                    String.format("SkillAgent[%s] skillDirs path must be absolute: %s", getName(), raw)
-                );
-            }
-            
-            if (!Files.exists(path)) {
-                throw new IllegalArgumentException(
-                    String.format("SkillAgent[%s] skillDirs path does not exist: %s", getName(), raw)
-                );
-            }
-            
-            if (!Files.isDirectory(path)) {
-                throw new IllegalArgumentException(
-                    String.format("SkillAgent[%s] skillDirs path is not a directory: %s", getName(), raw)
-                );
-            }
-            
-            String resolved = path.toAbsolutePath().normalize().toString();
-            if (!normalized.contains(resolved)) {
-                normalized.add(resolved);
-            }
-        }
-        
-        return normalized.isEmpty() ? null : normalized;
-    }
-
-    /**
-     * Ensure scoped registry is built and cached.
-     */
-    private void ensureScopedRegistry() {
-        List<String> normalized = normalizeSkillDirs();
-        if (normalized == null) {
-            this.scopedSkillRegistry = null;
-            this.normalizedSkillDirs = null;
-            return;
-        }
-
-        if (this.scopedSkillRegistry != null && 
-            this.normalizedSkillDirs != null && 
-            this.normalizedSkillDirs.containsAll(normalized)) {
-            return;
-        }
-
-        // Build new scoped registry
-        this.scopedSkillRegistry = new SkillRegistry(normalized, true);
-        this.normalizedSkillDirs = new ArrayList<>(normalized);
-    }
-
-    /**
-     * Get effective registry for this agent.
-     * 
-     * @param oxyRequest Current request context
-     * @return Effective skill registry
-     */
-    private SkillRegistry getEffectiveRegistry(OxyRequest oxyRequest) {
-        // Use scoped registry if configured
-        this.ensureScopedRegistry();
-        if (this.scopedSkillRegistry != null) {
-            return this.scopedSkillRegistry;
-        }
-        
-        // Fall back to request MAS registry
-        if (oxyRequest != null && oxyRequest.getMas() != null) {
-            SkillRegistry registry = oxyRequest.getMas().getSkillRegistry();
-            if (registry != null) {
-                return registry;
-            }
-        }
-
-        // Fall back to agent MAS registry
-        if (getMas() != null) {
-            return getMas().getSkillRegistry();
-        }
-        
-        return null;
-    }
-
-    /**
-     * Get effective skill directories for this agent.
-     * 
-     * @return List of skill directories or null
-     */
-    private List<String> getEffectiveSkillDirs() {
-        if (this.scopedSkillRegistry == null) {
-            return null;
-        }
-        return this.normalizedSkillDirs != null ? new ArrayList<>(this.normalizedSkillDirs) : null;
-    }
-
-    @Override
-    protected OxyRequest beforeExecute(OxyRequest oxyRequest) {
-        oxyRequest = super.beforeExecute(oxyRequest);
-
-        SkillRegistry registry = getEffectiveRegistry(oxyRequest);
-        if (registry == null) {
-            return oxyRequest;
-        }
-
-        // Inject skill catalog if enabled
-        if (enableSkillCatalog) {
-            String catalogPrompt = buildSkillCatalogPrompt(oxyRequest);
-            String currentPrompt = (String) oxyRequest.getArguments().getOrDefault("additional_prompt", "");
-            String newPrompt = appendPrompt(currentPrompt, catalogPrompt);
-            oxyRequest.getArguments().put("additional_prompt", newPrompt);
-        }
-
-        String rawQuery = (String) oxyRequest.getArguments().getOrDefault("query", "");
-
-        // 0) Skill list/help queries: answer deterministically from metadata.
-        if (isSkillListQuery(rawQuery)) {
-            if (registry.listSkills().isEmpty()) {
-                try {
-                    registry.discoverAll();
-                } catch (Exception e) {
-                    log.warn("Failed to discover skills for help: {}", e.getMessage());
-                }
-            }
-            
-            String helpText = "";
-            try {
-                helpText = registry.generateUserHelpSection();
-            } catch (Exception e) {
-                log.warn("Failed to generate skill help: {}", e.getMessage());
-                helpText = "";
-            }
-            
-            if (helpText != null && !helpText.trim().isEmpty()) {
-                oxyRequest.getArguments().put("_skill_help_output", helpText);
-                return oxyRequest;
-            }
-        }
-
-        // 1) Manual activation overrides selector.
-        String[] manualInvocation = parseManualInvocation(rawQuery);
-        if (manualInvocation != null) {
-            String skillName = manualInvocation[0];
-            String args = manualInvocation[1];
-            
-            if (!registry.hasSkill(skillName)) {
-                List<String> available = registry.listSkills().stream()
-                        .map(SkillMetadata::getName)
-                        .sorted()
-                        .collect(Collectors.toList());
-                String availableStr = available.isEmpty() ? "(none)" : String.join(", ", available);
-                
-                String errorMsg = String.format(
-                    "Skill '%s' not found in this agent scope. Available skills: %s",
-                    skillName, availableStr
-                );
-                oxyRequest.getArguments().put("_skill_help_output", errorMsg);
-                return oxyRequest;
-            }
-            
-            activateSkill(oxyRequest, skillName, args, "user");
-            
-            // Update query to reflect skill activation
-            String newQuery = args.isEmpty() ?  String.format("Use the activated skill '%s'.", skillName) : args;
-            oxyRequest.getArguments().put("query", newQuery);
-
-            return oxyRequest;
-        }
-
-        // 2) Selector activation (metadata only).
-        if (enableSelector) {
-            try {
-                List<SkillMetadata> skills = registry.listSkills();
-                if (!skills.isEmpty()) {
-                    List<SkillMetadata> selectorSkills = skills.stream()
-                            .filter(skill -> !skill.isDisableModelInvocation())
-                            .collect(Collectors.toList());
-                    
-                    if (!selectorSkills.isEmpty()) {
-                        SkillSelector.SkillSelection selectedSkillObj = selectSkillWithSelector(oxyRequest, rawQuery,selectorSkills);
-                        String selectedSkill = selectedSkillObj.getSelectedSkill();
-                        if (selectedSkill != null) {
-                            oxyRequest.getArguments().put("_skill_selection", Map.of(
-                                    "selected_skill", selectedSkill,
-                                    "confidence", selectedSkillObj.getConfidence(), // confidence
-                                        "reason", selectedSkillObj.getReason()
-                            ));
-                            activateSkill(oxyRequest, selectedSkill, "", "selector");
+                    int pathSkillCount = 0;
+                    for (Path skillFile : skillFiles) {
+                        try {
+                            Path relativePath = skillPath.relativize(skillFile);
+                            boolean skip = false;
+                            for (int i = 0; i < relativePath.getNameCount() - 1; i++) {
+                                if (nonSkillSubdirs.contains(relativePath.getName(i).toString())) {
+                                    skip = true;
+                                    break;
+                                }
+                            }
+                            if (skip) continue;
+                        } catch (Exception e) {
+                            log.error("Error processing relative path", e);
                         }
+
+                        SkillMetadata metadata = loadMetadataFromFile(skillFile);
+                        if (metadata != null && metadata.getName() != null) {
+                            skillsMetadata.put(metadata.getName(), metadata);
+                            pathSkillCount++;
+                        }
+                    }
+
+                    if (pathSkillCount > 0) {
+                        successfulPaths++;
+                        log.debug("[SkillAgent] Agent '{}': Loaded {} skills from '{}'",
+                                getName(), pathSkillCount, skillPath);
+                    } else {
+                        failedPaths++;
+                        log.warn("[SkillAgent] Agent '{}': No skills discovered from '{}'",
+                                getName(), skillPath);
                     }
                 }
             } catch (Exception e) {
-                log.warn("Failed to perform skill selection: {}", e.getMessage());
+                failedPaths++;
+                log.error("[SkillAgent] Agent '{}': Failed to load skills from '{}'",
+                        getName(), skillPathStr, e);
             }
         }
 
-        return oxyRequest;
+        log.info("[SkillAgent] Agent '{}': Discovery complete - {}, {} unique skills from {}/{}} path(s) ({} failed)",
+                getName(), JsonUtils.toJSONString(getSkillNames()), getSkillsCount(), successfulPaths, skills.size(), failedPaths);
     }
 
-    @Override
-    public OxyResponse _execute(OxyRequest oxyRequest) {
-        // Handle skill help output
-        Object helpText = oxyRequest.getArguments().get("_skill_help_output");
-        if (helpText instanceof String && !((String) helpText).trim().isEmpty()) {
-            return OxyResponse.builder()
-                    .state(OxyState.COMPLETED)
-                    .output(helpText)
-                    .build();
+    /**
+     * Build skill prompt section from discovered skill metadata.
+     * <p>
+     * Creates a formatted markdown skill list and injects it into the
+     * agent's additional_prompt, providing the LLM with awareness of
+     * available skills.
+     * <p>
+     * Process:
+     * 1. Return early if no skills discovered
+     * 2. Build sorted skill entries with name, description, args, and path
+     * 3. Format using skill_prompt_template
+     * 4. Append to additional_prompt (or replace if empty)
+     * <p>
+     * Log:
+     * - DEBUG: Prompt size and skill count
+     */
+    private void buildSkillPrompt() {
+        if (skillsMetadata.isEmpty()) {
+            log.debug("[SkillAgent] Agent '{}': No skills to add to prompt", getName());
+            return;
         }
-        
-        return super._execute(oxyRequest);
+
+        List<String> skillEntries = new ArrayList<>();
+        for (Map.Entry<String, SkillMetadata> entry : skillsMetadata.entrySet()) {
+            String name = entry.getKey();
+            SkillMetadata meta = entry.getValue();
+            String entryText = "## " + name + "\n" + meta.getDescription();
+            if (meta.getSkillPath() != null) {
+                entryText += "\nCheck \"" + meta.getSkillPath() + "\" for how to use this skill";
+            }
+            skillEntries.add(entryText);
+        }
+
+        String skillList = String.join("\n\n", skillEntries);
+        String skillPrompt = skillPromptTemplate.replace("{skill_list}", skillList);
+
+        if (getAdditionalPrompt() != null && !getAdditionalPrompt().isEmpty()) {
+            setAdditionalPrompt(getAdditionalPrompt() + "\n\n" + skillPrompt);
+        } else {
+            setAdditionalPrompt(skillPrompt);
+        }
+
+        log.debug("[SkillAgent] Agent '{}': Injected skill prompt ({} chars) for {} skills",
+                getName(), skillPrompt.length(), skillEntries.size());
     }
 
-    @Override
-    protected OxyResponse afterExecute(OxyResponse oxyResponse) {
-        OxyRequest oxyRequest = oxyResponse.getOxyRequest();
-        if (oxyRequest != null) {
-            // Transfer skill activation info to response
-            if (oxyRequest.getArguments().containsKey("_skill_activation")) {
-                if(oxyRequest.getArguments().containsKey("_skill_activation")){
-                    oxyResponse.getExtra().put("skill_activation",oxyRequest.getArguments().get("_skill_activation"));
+    /**
+     * Get metadata for a specific skill.
+     * <p>
+     * Example:
+     * >>> meta = agent.get_skill_metadata("code-review")
+     * >>> if meta:
+     * ...     print(f"Description: {meta.description}")
+     *
+     * @param skillName Name of the skill to retrieve.
+     * @return SkillMetadata if found, None otherwise.
+     */
+    public SkillMetadata getSkillMetadata(String skillName) {
+        return skillsMetadata.get(skillName);
+    }
+
+    /**
+     * List all available skill names.
+     * <p>
+     * Note:
+     * This is an alias for the skill_names property.
+     *
+     * @return Sorted list of skill names.
+     */
+    public List<String> listSkills() {
+        return getSkillNames();
+    }
+
+    /**
+     * Load metadata from a SKILL.md file.
+     * <p>
+     * Parses the frontmatter to extract name and description.
+     * Does not read the full markdown body to minimize I/O.
+     *
+     * @param skillPath Path to the SKILL.md file.
+     * @return SkillMetadata if successful, None otherwise.
+     */
+    private static SkillMetadata loadMetadataFromFile(Path skillPath) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(skillPath.toFile()))) {
+            String firstLine = reader.readLine();
+            if (firstLine == null || !firstLine.strip().equals("---")) {
+                log.warn("SKILL.md missing frontmatter: {}", skillPath);
+                return null;
+            }
+
+            List<String> frontmatterLines = new ArrayList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.strip().equals("---")) {
+                    break;
                 }
+                frontmatterLines.add(line);
             }
-            if (oxyRequest.getArguments().containsKey("_skill_selection")) {
-                if(oxyRequest.getArguments().containsKey("_skill_selection")){
-                    oxyResponse.getExtra().put("skill_selection",oxyRequest.getArguments().get("_skill_selection"));
-                }
+
+            if (line == null) {
+                log.warn("Invalid SKILL.md frontmatter format: {}", skillPath);
+                return null;
             }
+
+            Map frontmatter = parseSimpleFormatter(frontmatterLines);
+            if (frontmatter.isEmpty()) {
+                log.warn("Empty frontmatter in: {}", skillPath);
+                return null;
+            }
+
+            return SkillMetadata.fromFrontmatter(frontmatter, skillPath);
+        } catch (Exception e) {
+            log.warn("Failed to load skill metadata from {}", skillPath, e);
+            return null;
         }
-        return super.afterExecute(oxyResponse);
     }
 
+    /**
+     * Parse simple key-value frontmatter (no nested structures).
+     * <p>
+     * Supports basic 'key: value' format only.
+     *
+     * @param lines List of frontmatter lines.
+     * @return Dictionary of key-value pairs.
+     */
+    private static Map<String, String> parseSimpleFormatter(List<String> lines) {
+        Map<String, String> result = new HashMap<>();
+        for (String line : lines) {
+            line = line.strip();
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+            if (line.contains(":")) {
+                int colonIndex = line.indexOf(":");
+                String key = line.substring(0, colonIndex).strip();
+                String value = line.substring(colonIndex + 1).strip();
+                if ((value.startsWith("\"") && value.endsWith("\"")) ||
+                        (value.startsWith("'") && value.endsWith("'"))) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                result.put(key, value);
+            }
+        }
+        return result;
+    }
 }
