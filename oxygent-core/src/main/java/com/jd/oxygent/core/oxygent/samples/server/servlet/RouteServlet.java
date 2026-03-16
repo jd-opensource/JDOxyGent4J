@@ -764,7 +764,7 @@ public class RouteServlet extends HttpServlet {
                                 tree.put(k, "${" + envValueToKey.get(v) + "}");
                             }
 
-                            if ((v instanceof Integer || v instanceof Double || v instanceof Double)
+                            if ((v instanceof Integer || v instanceof Float || v instanceof Double)
                                     && !(v instanceof Boolean)) {
                                 double numValue = Double.parseDouble(v.toString());
                                 double maxValue = numValue <= 1 ? 1 : numValue * 10;

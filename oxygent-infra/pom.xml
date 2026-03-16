@@ -50,29 +50,6 @@
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
         </dependency>
-
-        <!-- Apache Commons -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.30</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- HTTP Client -->
-        <dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>okhttp</artifactId>
-            <exclusions>
-                <exclusion>
-                    <artifactId>kotlin-stdlib-jdk8</artifactId>
-                    <groupId>org.jetbrains.kotlin</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
         <!-- Test Dependencies -->
         <dependency>
             <groupId>junit</groupId>

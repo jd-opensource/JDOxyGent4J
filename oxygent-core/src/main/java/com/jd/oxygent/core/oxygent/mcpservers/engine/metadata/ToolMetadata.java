@@ -89,7 +89,7 @@ public class ToolMetadata {
         if (type == Integer.class || type == int.class ||
                 type == Long.class || type == long.class ||
                 type == Double.class || type == double.class ||
-                type == Double.class || type == float.class) return "number";
+                type == Float.class || type == float.class) return "number";
         if (type == Boolean.class || type == boolean.class) return "boolean";
         return "string";
     }
