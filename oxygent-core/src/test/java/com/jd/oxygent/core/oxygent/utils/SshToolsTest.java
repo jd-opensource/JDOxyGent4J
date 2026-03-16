@@ -4,17 +4,32 @@ import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Logger;
 import com.jcraft.jsch.Session;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 
+@Slf4j
 public class SshToolsTest {
 
     @Test
     void test() {
         String command = "ls -la";
+        connect(EnvUtils.getEnv("SSH_USER"), EnvUtils.getEnv("SSH_HOST"), EnvUtils.getEnv("SSH_PASSWORD"), command);
+    }
+
+//    @Test
+//    void testLongRunningCommand() {
+//        String command = "for i in {1..10}; do echo \"Step $i: Processing...\"; sleep 1; done";
+//        connect(EnvUtils.getEnv("SSH_USER"), EnvUtils.getEnv("SSH_HOST"), EnvUtils.getEnv("SSH_PASSWORD"), command);
+//    }
+
+    @Test
+    void testGitCommand() {
+        String command = "git clone https://github.com/jd-opensource/OxyGent.git\n";
         connect(EnvUtils.getEnv("SSH_USER"), EnvUtils.getEnv("SSH_HOST"), EnvUtils.getEnv("SSH_PASSWORD"), command);
     }
 
@@ -35,27 +50,48 @@ public class SshToolsTest {
             session.setPassword(password);
             session.setConfig("kex", "curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256"); // Prioritize modern algorithms in JSch
             session.setConfig("StrictHostKeyChecking", "no"); // to mute error com.jcraft.jsch.JSchUnknownHostKeyException: UnknownHostKey:
+            session.setConfig("compression.s2c", "none");
             session.connect(15000);
 
             ChannelExec channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand(command);
-
-            ((ChannelExec) channel).setErrStream(System.err);
-            channel.connect();
-            try (SmartCharsetReader reader = new SmartCharsetReader(channel.getInputStream())) {
-                BufferedReader br = new BufferedReader(reader);
-
+            channel.setPty(true);
+            long timer = System.currentTimeMillis();
+            try {
+                channel.setCommand(command);
+                log.info("Executing SSH command: {}", command);
+                StringBuilder stringBuilder = new StringBuilder();
+                java.nio.charset.Charset charset = java.nio.charset.StandardCharsets.UTF_8;
                 String line;
-                while ((line = br.readLine()) != null) {
-                    System.out.println("[WSL Output]: " + line);
+                try (InputStream in = channel.getInputStream();
+                     InputStream err = channel.getErrStream()) {
+                    channel.connect();
+                    byte[] buffer = new byte[1024];
+                    while (true) {
+                        while (in.available() > 0) {
+                            int i = in.read(buffer, 0, 1024);
+                            if (i < 0) break;
+                            // Output to the console in real-time without waiting for a newline character.
+                            line = new String(buffer, 0, i, charset);
+                            System.out.print(line);
+                            stringBuilder.append(line);
+                            System.out.flush();
+                        }
+                        if (channel.isClosed()) {
+                            if (in.available() > 0) continue;
+                            break;
+                        }
+                        Thread.sleep(50); // to low cpu usage
+                    }
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-
+            log.info("Executed SSH command: {} cost: {}ms", command, System.currentTimeMillis() - timer);
             channel.disconnect();
             session.disconnect();
 
         } catch (Exception e) {
-            System.err.println("Error connecting to WSL: " + e.getMessage());
+            System.err.println("Error connecting: " + e.getMessage());
             e.printStackTrace();
         }
     }

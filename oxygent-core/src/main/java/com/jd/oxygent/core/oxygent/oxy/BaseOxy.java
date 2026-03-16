@@ -747,7 +747,7 @@ public class BaseOxy {
             try {
                 oxyRequest.setInputMd5(CommonUtils.getMD5(snakeCaseMapper.writeValueAsString(keyToMd5)));
             } catch (Exception e) {
-                log.warn("MD5 calculation failed", e);
+                log.warn("MD5 calculation skipped: {}", e.getMessage());
                 oxyRequest.setInputMd5(CommonUtils.getMD5("{}"));
             }
 

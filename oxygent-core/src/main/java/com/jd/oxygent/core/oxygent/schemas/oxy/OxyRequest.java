@@ -555,6 +555,10 @@ public class OxyRequest implements Cloneable {
         return (List<Map<String, Object>>) arguments.get(getShortMemoryKey(masterLevel));
     }
 
+    public List<Map<String, Object>> getShortMemory() {
+        return getShortMemory(false);
+    }
+
     /**
      * Get data mapping based on level
      *
@@ -941,6 +945,25 @@ public class OxyRequest implements Cloneable {
         }
 
         this.mas.getGlobalData().put(key, value);
+    }
+
+    /**
+     * Set arguments
+     *
+     * @param key   key to set
+     * @param value value to set
+     */
+    public void setArguments(String key, Object value) {
+        if (this.arguments == null) {
+            arguments = new ConcurrentHashMap<>();
+        }
+
+        if (key == null) {
+            logger.warning("Cannot set arguments: key is null");
+            return;
+        }
+
+        this.arguments.put(key, value);
     }
 
     /**

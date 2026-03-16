@@ -128,9 +128,5 @@ public final class PresetTools {
      * System tool instance.
      */
     public static final SystemTools SYSTEM_TOOLS = new SystemTools();
-    /**
-     * Skill tool instance.
-     */
-    public static final SkillTools SKILL_TOOLS = new SkillTools();
 
 }

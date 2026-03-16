@@ -551,7 +551,7 @@ public class JsonUtils {
         try {
             return OBJECT_MAPPER.readValue(json, valueType);
         } catch (JsonProcessingException e) {
-            log.warn("JSON deserialization failed: {}", json, e.getMessage());
+            log.warn("JSON deserialization failed: {} {}", json, e.getMessage());
             return defaultValue;
         }
     }

@@ -1,13 +1,18 @@
 package com.jd.oxygent.core.oxygent.oxy.agents;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+import com.jd.oxygent.core.oxygent.schemas.LLM.LLMResponse;
+import com.jd.oxygent.core.oxygent.schemas.LLM.LLMState;
+import com.jd.oxygent.core.oxygent.schemas.memory.Memory;
+import com.jd.oxygent.core.oxygent.schemas.memory.Message;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyState;
-import com.jd.oxygent.core.oxygent.tools.SshTools;
 import com.jd.oxygent.core.oxygent.utils.SmartCharsetReader;
+import lombok.Data;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,29 +23,36 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import static com.jd.oxygent.core.oxygent.utils.CommonUtils.cleanAnsiCodes;
 
 @Slf4j
 @SuperBuilder
+@Data
 public class ShellUseAgent extends ReActAgent {
 
     private AuthInfo authInfo;
+    @JsonIgnore
+    private Session session;
+    @JsonIgnore
+    private ChannelExec channel;
 
     @Override
     public void init() {
         super.init();
-
         try {
             JSch jsch = new JSch();
-            Session session = jsch.getSession(authInfo.username, authInfo.hostname, authInfo.port);
+            session = jsch.getSession(authInfo.username, authInfo.hostname, authInfo.port);
             session.setPassword(authInfo.password);
             session.setConfig("kex", "curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256"); // Prioritize modern algorithms in JSch
             session.setConfig("StrictHostKeyChecking", "no"); // to mute error com.jcraft.jsch.JSchUnknownHostKeyException: UnknownHostKey:
-            session.connect(15000);
+            session.connect(15000); // timeout in milliseconds
 
-            ChannelExec channel = (ChannelExec) session.openChannel("exec");
+            channel = (ChannelExec) session.openChannel("exec");
             channel.setCommand("ls -la");
 
-            ((ChannelExec) channel).setErrStream(System.err);
+            channel.setErrStream(System.err);
             channel.connect();
             StringBuilder output = new StringBuilder();
             try (SmartCharsetReader reader = new SmartCharsetReader(channel.getInputStream())) {
@@ -51,8 +63,9 @@ public class ShellUseAgent extends ReActAgent {
                     output.append(line);
                 }
             }
-            channel.disconnect();
-            session.disconnect();
+            this.mas.getGlobalData().put("hello_terminal", cleanAnsiCodes(output.toString()));
+//            channel.disconnect();
+//            session.disconnect();
             if (output.toString().length() > 0) {
                 log.info("SSH channel initialized");
             } else {
@@ -63,7 +76,7 @@ public class ShellUseAgent extends ReActAgent {
         }
     }
 
-    public LLMResponse parseLLMResponse(String oriResponse, OxyRequest oxyRequest) {
+    public static LLMResponse parseLLMResponse(String oriResponse, OxyRequest oxyRequest) {
         try {
             // Handle think model format
             if (oriResponse.contains("</think>")) {
@@ -105,142 +118,86 @@ public class ShellUseAgent extends ReActAgent {
     @Override
     public OxyResponse execute(OxyRequest oxyRequest) {
          oxyRequest.setQuery(ShellUseAgent.mockReceiveEmail(oxyRequest.getQuery()));
-         oxyRequest.getArguments().put("hello_terminal", oxyRequest.getGlobalData("hello_terminal"));
+         oxyRequest.setArguments("hello_terminal", oxyRequest.getGlobalData("hello_terminal"));
 
         Memory reactMemory = new Memory();
         for (int currentRound = 0; currentRound <= getMaxReactRounds(); currentRound++) {
             // Build complete message context
-            String terminalHistory = "";
-            // FIXME: Implement memory handling
-            // terminalHistory += "".join(
-            //     [message["content"] for message in oxyRequest.getShortMemory() 
-            //      if not message["content"].startsWith("cmd: ")]
-            // );
-            // terminalHistory += oxyRequest.getQuery();
-            // terminalHistory += "".join(
-            //     [message.content for message in reactMemory.messages 
-            //      if message.role == "user"]
-            // );
-            // oxyRequest.setArguments("terminal_history", terminalHistory);
+            StringBuilder terminalHistory = new StringBuilder();
+            // Implement memory handling
+            for (Map<String, Object> memory : oxyRequest.getShortMemory()) {
+                if (!memory.get("content").toString().startsWith("cmd: ")) {
+                    terminalHistory.append(memory.get("content").toString());
+                }
+            }
+             terminalHistory.append(oxyRequest.getQuery());
+            for (Message message : reactMemory.getMessages()) {
+                if ("role".equals(message.getRole())) {
+                    terminalHistory.append(message.getContent());
+                }
+            }
+             oxyRequest.setArguments("terminal_history", terminalHistory);
 
             Memory tempMemory = new Memory();
-            // FIXME: Implement message handling
-            // tempMemory.addMessage(Message.systemMessage(buildInstruction(oxyRequest.arguments)));
-            // tempMemory.addMessage(Message.userMessage("Please continue working on the Ubuntu terminal to complete the boss's task."));
+             tempMemory.addMessage(Message.systemMessage(buildInstruction(oxyRequest.getArguments())));
+             tempMemory.addMessage(Message.userMessage("Please continue working on the Ubuntu terminal to complete the boss's task."));
 
-            // FIXME: Implement LLM call
-            // List<Map<String, Object>> fullMemory = tempMemory.toDictList();
-            // Object oxyResponse = oxyRequest.call(
-            //     callee = getLlmModel(),
-            //     arguments = Map.of("messages", fullMemory)
-            // );
-            // oxyRequest.arguments.put("full_memory", fullMemory);
-            // LLMResponse llmResponse = parseLLMResponse(oxyResponse.output, oxyRequest);
+            OxyResponse oxyResponse = oxyRequest.call(Map.of(
+                    "arguments", Map.of("messages", tempMemory),
+                    "callee", llmModel));
+             oxyRequest.setArguments("full_memory", tempMemory);
+            LLMResponse llmResponse = getFuncParseLlmResponse().apply(oxyResponse.getOutput().toString(), oxyRequest);
 
-            // Execute based on LLM decision
-            // if (llmResponse.state == LLMState.ANSWER) {
-            //     return new OxyResponse(
-            //         state = OxyState.COMPLETED,
-            //         output = llmResponse.output + "\nvboxuser@ubuntu:~$",
-            //         extra = Map.of("react_memory", reactMemory.toDictList())
-            //     );
-            // } else if (llmResponse.state == LLMState.TOOL_CALL) {
-            //     Object toolResponse = oxyRequest.call(
-            //         callee = "ssh_tool",
-            //         arguments = Map.of("shell_command", llmResponse.output)
-            //     );
-            //     reactMemory.addMessage(Message.assistantMessage("cmd: " + llmResponse.output));
-            //     reactMemory.addMessage(Message.userMessage(toolResponse.output));
-            // } else {
-            //     log.info("Format error, adding to react_memory: {}", llmResponse.oriResponse);
-            //     reactMemory.addMessage(Message.assistantMessage(llmResponse.oriResponse));
-            //     reactMemory.addMessage(Message.userMessage(llmResponse.output));
-            // }
+             if (LLMState.ANSWER.equals(llmResponse.getState())) {
+                 return OxyResponse.builder()
+                         .state(OxyState.COMPLETED)
+                         .output(llmResponse.getOutput().toString() + "\nvboxuser@ubuntu:~$")
+                         .extra(new HashMap<>(Map.of("react_memory", reactMemory.toDictList())))
+                         .build();
+             } else if (LLMState.TOOL_CALL.equals(llmResponse.getState())) {
+                 OxyResponse toolResponse = oxyRequest.call(Map.of(
+                         "callee", "ssh_tool",
+                         "arguments", Map.of(
+                                 "shell_command", llmResponse.getOutput().toString(),
+                                 "channel", channel)
+
+                 ));
+                 reactMemory.addMessage(Message.assistantMessage("cmd: " + llmResponse.getOutput()));
+                 reactMemory.addMessage(Message.userMessage(toolResponse.getOutput()));
+             } else {
+                 log.info("Format error, adding to react_memory: {}", llmResponse.getOriResponse());
+                 reactMemory.addMessage(Message.assistantMessage(llmResponse.getOriResponse()));
+                 reactMemory.addMessage(Message.userMessage(llmResponse.getOutput()));
+             }
         }
 
         // Fallback mechanism when max rounds reached
+        // Extract tool call results for final summary
         int tid = 1;
         List<String> toolCallResults = new ArrayList<>();
-        // FIXME: Implement memory processing
-        // for (Map<String, Object> message : reactMemory.toDictList()) {
-        //     if (!"user".equals(message.get("role"))) {
-        //         continue;
-        //     }
-        //     toolCallResults.add(tid + ". " + message.get("content"));
-        //     tid++;
-        // }
+         for (Message message : reactMemory.getMessages()) {
+             if (!"user".equals(message.getRole())) {
+                 continue;
+             }
+             toolCallResults.add(tid + ". " + message.getContentAsString());
+             tid++;
+         }
         String toolCallResultsStr = String.join("\n\n", toolCallResults);
 
         // Generate final answer based on accumulated results
-        // String query = oxyRequest.getQuery();
-        // List<Message> tempMessages = new ArrayList<>();
-        // tempMessages.add(Message.systemMessage("Please answer the user's question based on the given tool execution results."));
-        // tempMessages.add(Message.userMessage("User question: " + query + "\n---\nTool execution results: " + toolCallResultsStr));
-        // Object finalResponse = oxyRequest.call(
-        //     callee = getLlmModel(),
-        //     arguments = Map.of("messages", tempMessages.stream().map(Message::toDict).collect(Collectors.toList()))
-        // );
+         String query = oxyRequest.getQuery();
+        Memory finalAnswerMemory = new Memory();
+        finalAnswerMemory.addMessage(Message.systemMessage("Please answer the user's question based on the given tool execution results."));
+        finalAnswerMemory.addMessage(Message.userMessage("User question: " + query + "\n---\nTool execution results: " + toolCallResultsStr));
+
+        OxyResponse finalResponse = oxyRequest.call(Map.of(
+                 "callee", getLlmModel(),
+                 "arguments", Map.of("messages", finalAnswerMemory)));
         return OxyResponse.builder()
-                .state(OxyState.COMPLETED).output("Task completed")
-                .extra(new HashMap<>(Map.of("react_memory", new ArrayList<>()))).build();
-    }
-
-    // Inner classes for LLM response handling
-    public static class LLMResponse {
-        private LLMState state;
-        private String output;
-        private String oriResponse;
-
-        public LLMResponse(LLMState state, String output, String oriResponse) {
-            this.state = state;
-            this.output = output;
-            this.oriResponse = oriResponse;
-        }
-
-        public LLMState getState() { return state; }
-        public String getOutput() { return output; }
-        public String getOriResponse() { return oriResponse; }
-    }
-
-    public enum LLMState {
-        ANSWER,
-        TOOL_CALL,
-        ERROR_PARSE
-    }
-
-    public static class Memory {
-        private List<Message> messages = new ArrayList<>();
-
-        public void addMessage(Message message) {
-            messages.add(message);
-        }
-
-        public List<Message> getMessages() { return messages; }
-    }
-
-    public static class Message {
-        private String role;
-        private String content;
-
-        public Message(String role, String content) {
-            this.role = role;
-            this.content = content;
-        }
-
-        public static Message systemMessage(String content) {
-            return new Message("system", content);
-        }
-
-        public static Message userMessage(String content) {
-            return new Message("user", content);
-        }
-
-        public static Message assistantMessage(String content) {
-            return new Message("assistant", content);
-        }
-
-        public String getRole() { return role; }
-        public String getContent() { return content; }
+                .state(OxyState.COMPLETED)
+                .output(finalResponse.getOutput())
+                .extra(new HashMap<>(Map.of("react_memory", reactMemory.toDictList())))
+                .build();
     }
 
     public record AuthInfo(String hostname, int port, String username, String password){}

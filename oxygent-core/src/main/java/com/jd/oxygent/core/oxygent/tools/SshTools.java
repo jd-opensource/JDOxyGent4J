@@ -23,50 +23,56 @@ public class SshTools extends FunctionHub {
      * A tool for control the ubuntu terminal
      *
      * @param shellCommand The shell command to execute
-     * @param oxyRequest SSH channel to use
+     * @param channel SSH channel to use
      * @return Command output
      */
     @Tool(
             name = "ssh_tool",
             description = "A tool for control the ubuntu terminal",
             paramMetas = {
-                    @ParamMetaAuto(name = "shell_command", type = "String", description = "The shell command to execute")
+                    @ParamMetaAuto(name = "shell_command", type = "String", description = "The shell command to execute"),
+                    @ParamMetaAuto(name = "channel", type = "com.jcraft.jsch.ChannelExec", description = "ssh channel object")
             }
     )
-    public static String sshTool(String shellCommand, OxyRequest oxyRequest) {
+    public static String sshTool(String shellCommand, ChannelExec channel) {
         if (shellCommand == null) {
             return "Error: shellCommand is required";
         }
-        if (oxyRequest == null) {
+        if (channel == null) {
             return "Error: SSH channel not initialized";
         }
         StringBuilder stringBuilder = new StringBuilder();
+        long timer = System.currentTimeMillis();
         try {
-            ChannelExec channel = (ChannelExec) oxyRequest.getGlobalData("ssh_channel");
             channel.setCommand(shellCommand);
             log.info("Executing SSH command: {}", shellCommand);
             java.nio.charset.Charset charset = java.nio.charset.StandardCharsets.UTF_8;
+            String line;
             try (InputStream in = channel.getInputStream();
                  InputStream err = channel.getErrStream()) {
                 channel.connect();
-                byte[] tmp = new byte[1024];
+                byte[] buffer = new byte[1024];
                 while (true) {
                     while (in.available() > 0) {
-                        int i = in.read(tmp, 0, 1024);
+                        int i = in.read(buffer, 0, 1024);
                         if (i < 0) break;
-                        stringBuilder.append(new String(tmp, 0, i, charset));
+                        // Output to the console in real-time without waiting for a newline character.
+                        line = new String(buffer, 0, i, charset);
+                        System.out.print(line);
+                        stringBuilder.append(line);
+                        System.out.flush();
                     }
                     if (channel.isClosed()) {
                         if (in.available() > 0) continue;
-                        stringBuilder.append("\nExit status: " + channel.getExitStatus());
                         break;
                     }
-                    Thread.sleep(100);
+                    Thread.sleep(50); // to low cpu usage
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return  stringBuilder.toString();
+        log.info("Executed SSH command: {} cost: {}ms", shellCommand, System.currentTimeMillis() - timer);
+        return stringBuilder.toString();
     }
 }
