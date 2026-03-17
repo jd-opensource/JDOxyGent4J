@@ -200,7 +200,7 @@ public class AnnotationApiServlet extends HttpServlet {
                 type == Integer.class || type == int.class ||
                 type == Long.class || type == long.class ||
                 type == Double.class || type == double.class ||
-                type == Double.class || type == float.class ||
+                type == Float.class || type == float.class ||
                 type == Boolean.class || type == boolean.class ||
                 type == Byte.class || type == byte.class ||
                 type == Short.class || type == short.class ||
@@ -220,7 +220,7 @@ public class AnnotationApiServlet extends HttpServlet {
             return 0L;
         } else if (type == Double.class || type == double.class) {
             return 0.0;
-        } else if (type == Double.class || type == float.class) {
+        } else if (type == Float.class || type == float.class) {
             return 0.0f;
         } else if (type == Boolean.class || type == boolean.class) {
             return false;

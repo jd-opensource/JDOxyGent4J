@@ -47,7 +47,6 @@ log
 *.log
 cache_dir/
 /.claude
-/.oxygent
 time.txt
 
 ### github ###

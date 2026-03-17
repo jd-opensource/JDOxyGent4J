@@ -26,6 +26,7 @@ import com.jd.oxygent.core.oxygent.samples.server.ServerApp;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.samples.server.utils.GlobalDefaultOxySpaceMapping;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.OSUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
@@ -72,12 +73,20 @@ public class DemoPlanAndSolve {
                         .llmModel("default_llm")
                         .build(),
                 fh,
-                new StdioMCPClient("time_tools", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai")),
-                // Mac or Linux syntax
-                new StdioMCPClient("file_tools", "npx", Arrays.asList("-y", "@modelcontextprotocol/server-filesystem", "./local_file")),
-                // Windows syntax
-//                new StdioMCPClient("file_tools", "cmd", Arrays.asList("/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "local_file")),
-//                new StdioMCPClient("math_tools", "uv", Arrays.asList("--directory", "D:\\ProjectsCode\\PythonProjects\\GitHub\\OxyGent\\mcp_servers", "run", "math_tools.py")),
+                OSUtil.isWindows() ?
+                        // windows version
+                        new StdioMCPClient("time_tools", "cmd", Arrays.asList("/c", "uvx", "-y", "mcp-server-time", "--local-timezone=Asia/Shanghai"))
+                :
+                        // mac or linux version
+                        new StdioMCPClient("time_tools", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai"))
+                ,
+                OSUtil.isWindows() ?
+                        // windows version
+                        new StdioMCPClient("file_tools", "cmd", Arrays.asList("/c", "uvx", "-y", "@modelcontextprotocol/server-filesystem", "./local_file"))
+                        :
+                        // Mac or Linux version
+                        new StdioMCPClient("file_tools", "npx", Arrays.asList("-y", "@modelcontextprotocol/server-filesystem", "./local_file"))
+                ,
                 ChatAgent.builder()
                         .name("planner_agent")
                         .desc("An agent capable of making plans")

@@ -92,7 +92,7 @@ public class DemoPlanAndSolveAgent {
                         .name("executor_agent")
                         .llmModel("default_llm")
                         .additionalPrompt("You should only execute the current step, and do not execute other steps in our plan. Do not execute more than one step continuously or skip any step.")
-                        .tools(Arrays.asList("get_current_time", "get_current_date", "write_file", "read_file"))
+                        .tools(Arrays.asList("get_current_time", "write_file", "read_file"))
                         .build(),
 
                 // 6. Master Agent - Coordinates the entire planning and solving process

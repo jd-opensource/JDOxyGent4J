@@ -255,9 +255,9 @@ public class StdioMCPClient extends BaseMCPClient {
 
             logger.info("MCP Server started via stdio.");
         } catch (Exception e) {
+            logger.error("Failed to start MCP server", e);
             throw new RuntimeException("Failed to start MCP server", e);
         }
-
     }
 
     @Override

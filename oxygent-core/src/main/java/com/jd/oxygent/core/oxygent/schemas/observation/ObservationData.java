@@ -115,54 +115,6 @@ public class ObservationData {
     }
 
     /**
-     * Convert to content format
-     * <p>Converts execution results to content format supporting multimodal; return structure depends on multimodal support</p>
-     *
-     * <h4>Processing Logic:</h4>
-     * <ul>
-     *   <li>Extract text content from all execution results</li>
-     *   <li>Collect all attachment data (images, files, etc.)</li>
-     *   <li>Organize return data based on multimodal support</li>
-     * </ul>
-     *
-     * <h4>Return Format:</h4>
-     * <ul>
-     *   <li><strong>Multimodal Mode</strong>: Returns a List structure with attachments and text</li>
-     *   <li><strong>Plain Text Mode</strong>: Returns concatenated string</li>
-     * </ul>
-     *
-     * @param isMultimodalSupported Whether multimodal content is supported
-     * @return Formatted content object, type depends on multimodal support
-     */
-    public Object toContent(boolean isMultimodalSupported) {
-        List<Object> queryAttachments = new ArrayList<>();
-        List<String> outs = new ArrayList<>();
-
-        for (ExecResult execResult : execResults) {
-            String prefix = "Tool [" + execResult.getExecutor() + "] execution result: ";
-            Object output = execResult.getOxyResponse().getOutput();
-            if (output instanceof OxyOutput oxyOutput) {
-                // Process attachments (simplified)
-                queryAttachments.addAll(oxyOutput.getAttachments());
-                outs.add(prefix + toJson(oxyOutput.getResult()));
-            } else {
-                outs.add(prefix + toJson(output));
-            }
-        }
-
-        if (isMultimodalSupported && !queryAttachments.isEmpty()) {
-            List<Object> result = new ArrayList<>(queryAttachments);
-            Map<String, Object> textContent = new HashMap<>();
-            textContent.put("type", "text");
-            textContent.put("text", String.join("\n\n", outs));
-            result.add(textContent);
-            return result;
-        } else {
-            return String.join("\n\n", outs);
-        }
-    }
-
-    /**
      * Object to JSON string
      * <p>Converts object to JSON-formatted string for unified data serialization</p>
      * <p>Note: Simplified implementation; for production use Jackson or Gson</p>

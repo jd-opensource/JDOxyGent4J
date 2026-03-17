@@ -568,7 +568,7 @@ public class ApiEndpointScanner {
                 paramClass == Long.class || paramClass == long.class) {
             return "integer";
         } else if (paramClass == Double.class || paramClass == double.class ||
-                paramClass == Double.class || paramClass == float.class) {
+                paramClass == Float.class || paramClass == float.class) {
             return "number";
         } else if (paramClass == Boolean.class || paramClass == boolean.class) {
             return "boolean";

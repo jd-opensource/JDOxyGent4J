@@ -36,7 +36,7 @@ public class DemoShellUseAgent {
                         .maxReactRounds(64)
                         .isDiscardReactMemory(false)
                         .funcParseLlmResponse(ShellUseAgent::parseLLMResponse)
-                        .authInfo(new ShellUseAgent.AuthInfo(EnvUtils.getEnv("SSH_HOST"), 22, EnvUtils.getEnv("SSH_USER"), EnvUtils.getEnv("SSH_PASSWORD")))
+                        .authInfo(new ShellUseAgent.AuthInfo(EnvUtils.getEnv("SSH_HOST"), 22, EnvUtils.getEnv("SSH_USER"), EnvUtils.getEnv("SSH_PASSWORD"), null))
                         .build()
         );
     }
