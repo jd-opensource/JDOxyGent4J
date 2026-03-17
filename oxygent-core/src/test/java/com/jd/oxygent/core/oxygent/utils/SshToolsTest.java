@@ -2,98 +2,80 @@ package com.jd.oxygent.core.oxygent.utils;
 
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Logger;
+import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import com.jd.oxygent.core.oxygent.tools.SshTools;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.util.Properties;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SshToolsTest {
 
+    private static Session session;
+
+    @BeforeAll
+    public static void setUp() throws JSchException {
+        String host = EnvUtils.getEnv("SSH_HOST");
+        String user = EnvUtils.getEnv("SSH_USER");
+        String password = EnvUtils.getEnv("SSH_PASSWORD");
+        String keyPath = null;
+        JSch jsch = new JSch();
+        session = jsch.getSession(user, host, 22);
+        session.setPassword(password);
+        if (keyPath != null) {
+            jsch.addIdentity(keyPath);
+        }
+        Properties config = new Properties();
+        config.put("StrictHostKeyChecking", "no"); // 跳过指纹确认
+        config.put("kex", "curve25519-sha256,diffie-hellman-group-exchange-sha256"); // 优先现代算法
+        session.setConfig(config);
+
+        // 设置心跳防止长耗时命令（如 oxybank 迁移）断开
+        session.setServerAliveInterval(30000);
+        session.connect();
+    }
+
     @Test
+    @Order(1)
     void test() {
         String command = "ls -la";
-        connect(EnvUtils.getEnv("SSH_USER"), EnvUtils.getEnv("SSH_HOST"), EnvUtils.getEnv("SSH_PASSWORD"), command);
+        SshTools.sshTool(command, session);
     }
-
-//    @Test
-//    void testLongRunningCommand() {
-//        String command = "for i in {1..10}; do echo \"Step $i: Processing...\"; sleep 1; done";
-//        connect(EnvUtils.getEnv("SSH_USER"), EnvUtils.getEnv("SSH_HOST"), EnvUtils.getEnv("SSH_PASSWORD"), command);
-//    }
 
     @Test
-    void testGitCommand() {
-        String command = "git clone https://github.com/jd-opensource/OxyGent.git\n";
-        connect(EnvUtils.getEnv("SSH_USER"), EnvUtils.getEnv("SSH_HOST"), EnvUtils.getEnv("SSH_PASSWORD"), command);
+    @Order(2)
+    void testLongRunningCommand() {
+        String command = "for i in {1..10}; do echo \"Step $i: Processing...\"; sleep 1; done";
+        SshTools.sshTool(command, session);
     }
 
-    public void connect(String user, String ip, String password, String command) {
-        try {
-            if (ip == null) {
-                ip = getWslIpAddress();
-                System.out.println("Detected WSL IP: " + ip);
-            }
-            JSch.setLogger(new Logger() {
-                @Override public boolean isEnabled(int level) { return true; }
-                @Override public void log(int level, String message) {
-                    System.out.println("[JSch Log] " + message);
-                }
-            });
-            JSch jsch = new JSch();
-            Session session = jsch.getSession(user, ip, 22);
-            session.setPassword(password);
-            session.setConfig("kex", "curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256"); // Prioritize modern algorithms in JSch
-            session.setConfig("StrictHostKeyChecking", "no"); // to mute error com.jcraft.jsch.JSchUnknownHostKeyException: UnknownHostKey:
-            session.setConfig("compression.s2c", "none");
-            session.connect(15000);
+    @Test
+    @Order(3)
+    void testWget() {
+        String command = "wget https://github.com/jd-opensource/JDOxyGent4J/blob/main/CHANGELOG_zh.md";
+        SshTools.sshTool(command, session);
+    }
 
-            ChannelExec channel = (ChannelExec) session.openChannel("exec");
-            channel.setPty(true);
-            long timer = System.currentTimeMillis();
-            try {
-                channel.setCommand(command);
-                log.info("Executing SSH command: {}", command);
-                StringBuilder stringBuilder = new StringBuilder();
-                java.nio.charset.Charset charset = java.nio.charset.StandardCharsets.UTF_8;
-                String line;
-                try (InputStream in = channel.getInputStream();
-                     InputStream err = channel.getErrStream()) {
-                    channel.connect();
-                    byte[] buffer = new byte[1024];
-                    while (true) {
-                        while (in.available() > 0) {
-                            int i = in.read(buffer, 0, 1024);
-                            if (i < 0) break;
-                            // Output to the console in real-time without waiting for a newline character.
-                            line = new String(buffer, 0, i, charset);
-                            System.out.print(line);
-                            stringBuilder.append(line);
-                            System.out.flush();
-                        }
-                        if (channel.isClosed()) {
-                            if (in.available() > 0) continue;
-                            break;
-                        }
-                        Thread.sleep(50); // to low cpu usage
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            log.info("Executed SSH command: {} cost: {}ms", command, System.currentTimeMillis() - timer);
-            channel.disconnect();
-            session.disconnect();
+    @Test
+    @Order(4)
+    void testGitCommand() {
+        String command = "git clone --progress git@github.com:jd-opensource/JDOxyGent4J.git";
+        SshTools.sshTool(command, session);
+    }
 
-        } catch (Exception e) {
-            System.err.println("Error connecting: " + e.getMessage());
-            e.printStackTrace();
-        }
+    @Test
+    void testWslIp() throws InterruptedException, IOException {
+        String ip = getWslIpAddress();
+        log.info("WSL IP: {}", ip);
     }
 
     public static String getWslIpAddress() throws InterruptedException, IOException {
