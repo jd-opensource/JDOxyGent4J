@@ -31,8 +31,6 @@ import com.jd.oxygent.core.oxygent.oxy.BaseTool;
 import com.jd.oxygent.core.oxygent.oxy.agents.BaseAgent;
 import com.jd.oxygent.core.oxygent.oxy.agents.RemoteAgent;
 import com.jd.oxygent.core.oxygent.oxy.llms.BaseLlM;
-import com.jd.oxygent.core.oxygent.oxy.skills.SkillRegistry;
-import com.jd.oxygent.core.oxygent.oxy.skills.SkillTool;
 import com.jd.oxygent.core.oxygent.schemas.SSEMessage;
 import com.jd.oxygent.core.oxygent.schemas.contextengineer.ContextEngine;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
@@ -147,13 +145,6 @@ public class Mas {
     @Autowired
     private BaseCache redisClient;
 
-    /**
-     * Skills runtime (progressive disclosure registry)
-     * Reference to the skill registry for loading skills.
-     * This is excluded from serialization.
-     */
-    private SkillRegistry skillRegistry;
-
     @Autowired
     private ContextEngine contextEngine;
 
@@ -231,10 +222,8 @@ public class Mas {
      */
     public void init() {
         try {
-            showBanner();
             showMasInfo();
             addOxyList(oxySpace);
-            initSkillRegistry();
             initDb();
             initAllOxy();
             initMasterAgentName();
@@ -244,14 +233,12 @@ public class Mas {
             initAgentOrganization();
             showOrg();
             log.info("📋 OxyGent MAS Management Initialization completed: {}", this.name);
-            log.info("================================");
             try {
                 DynamicAgentManager.setupDynamicAgents(this);
                 log.debug("Dynamic agent management initialized");
             } catch (Exception e) {
                 log.warn("Failed to setup dynamic agents", e);
             }
-            log.info("================================");
         } catch (Exception e) {
             log.error("MAS initialization failed: {}", e.getMessage());
             throw new RuntimeException("MAS initialization failed", e);
@@ -271,7 +258,7 @@ public class Mas {
                     throw new IllegalArgumentException("oxy [{}] already exists." + oxy.getName());
                 }
                 oxyNameToOxy.put(oxy.getName(), oxy);
-                log.debug("Added oxy [{}]. Current registry: {}", oxy.getName(), oxyNameToOxy);
+                log.debug("Added oxy [{}]", oxy.getName());
             }
         }
     }
@@ -334,27 +321,6 @@ public class Mas {
      */
     public List<String> getAllOxyNames() {
         return oxyNameToOxy != null ? new ArrayList<>(oxyNameToOxy.keySet()) : new ArrayList<>();
-    }
-
-    /**
-     * Display startup banner
-     */
-    private void showBanner() {
-        String banner =
-                "\n" +
-                        "  ____                ____            _   \n" +
-                        " / __ \\__  ____  ____/ __ \\___  ____  (_)_ \n" +
-                        "/ / / / / / / / / / __/ /_/ / _ \\/ __ \\/ __/\n" +
-                        "\\/ /_/ / /_/ / /_/ /_/ /_/ /  __/ / / / /_  \n" +
-                        " \\____/\\__, /\\__, /\\____/_/\\___/_/ /_/\\__/  \n" +
-                        "       /____//____/                        \n" +
-                        "\n" +
-                        "OxyGent Multi-Agent System (Java Version)\n" +
-                        "Initialization Time: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\n" +
-                        "========================================\n";
-
-        System.out.println(banner);
-        log.info("OxyGent MAS starting...");
     }
 
     Map<String, Object> createTraceMapping() {
@@ -593,23 +559,6 @@ public class Mas {
         }
     }
 
-    /**
-     *  Skills support: registry + tool wiring
-     */
-    private void initSkillRegistry() {
-        if(this.skillRegistry==null){
-            this.skillRegistry = new SkillRegistry();
-        }
-        if(!this.getAllOxyNames().contains("Skill")){
-            this.addOxy(new SkillTool());
-        }else{
-            BaseOxy skill = this.getOxyByName("Skill");
-            if(skill instanceof SkillTool){
-                ((SkillTool) skill).setSkillRegistry(this.skillRegistry);
-            }
-        }
-    }
-
     private void initDb() {
         try {
             if (this.esClient == null) {
@@ -749,22 +698,25 @@ public class Mas {
      * Display organization structure
      */
     public void showOrg() {
-        log.info("🌐 OxyGent MAS Organization Structure Overview");
-        log.info("================================================================");
-        printTree(agentOrganization, 0); // 0 indicates initial indentation level
-        log.info("================================================================");
+        log.info("""
+
+🌐 OxyGent MAS Organization Structure Overview
+%s
+""".formatted(printTree(agentOrganization, 0)));
     }
 
     // Recursively print tree structure
-    private void printTree(AgentNode node, int level) {
+    private String printTree(AgentNode node, int level) {
+        StringBuilder stringBuilder = new StringBuilder();
         if (node == null) {
-            return;
+            return "";
         }
         String indent = "  ".repeat(level);
-        log.info(indent + "- " + node.getName() + " (" + node.getType() + ")");
+        stringBuilder.append(indent + "- " + node.getName() + " (" + node.getType() + ")\n");
         for (AgentNode child : node.getChildren()) {
-            printTree(child, level + 1);
+            stringBuilder.append(printTree(child, level + 1));
         }
+        return stringBuilder.toString();
     }
 
     /**
@@ -1442,19 +1394,32 @@ public class Mas {
      * Display MAS application startup information (refer to show_mas_info method in mas.py)
      */
     public void showMasInfo() {
-        log.info("========================================");
-        log.info("🚀 OxyGent MAS Application Startup Information");
-        log.info("========================================");
-        log.info("App Name     : " + Config.getAppName());
-        log.info("Version      : " + Config.getApp().getVersion());
-        log.info("Environment  : " + Config.getConfigFileEnv());
-        if (serverProperties != null) {
-            log.info("Port         : " + serverProperties.getPort());
-        }
-        log.info("Java Ver     : " + System.getProperty("java.version"));
-        log.info("Cache Dir    : " + Config.getXfile().getSaveDir());
-        log.info("Start Time   : " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        log.info("========================================");
+        String template = """
+
+  ____                ____            _  \s
+ / __ \\__  ____  ____/ __ \\___  ____  (_)_ \s
+/ / / / / / / / / / __/ /_/ / _ \\/ __ \\/ __/
+\\/ /_/ / /_/ / /_/ /_/ /_/ /  __/ / / / /_ \s
+ \\____/\\__, /\\__, /\\____/_/\\___/_/ /_/\\__/ \s
+       /____//____/                        \s
+
+🚀 OxyGent Multi-Agent System (Java Version)
+App Name     : %s
+Version      : %s
+Environment  : %s
+Java Ver     : %s
+Cache Dir    : %s
+Start Time   : %s
+    """;
+        String result = template.formatted(
+                Config.getAppName(),
+                Config.getApp().getVersion(),
+                Config.getConfigFileEnv(),
+                System.getProperty("java.version"),
+                Config.getXfile().getSaveDir(),
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+        );
+        log.info("\n" + result);
     }
 
     /**

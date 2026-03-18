@@ -49,7 +49,6 @@ public class McpTomcat implements LauncherLifecycle {
             // Start server
             tomcat.start();
 
-            log.info("Embedded Tomcat started successfully!");
             switch (args[0]) {
                 case "sse":
                     log.info("Send requests to: POST http://{}:{}/mcp/message", addresses,port);

@@ -59,8 +59,6 @@ public class DynamicAgentManager {
                     agentPromptMapping.put(agentName, promptKey);
                     registeredCount++;
                     log.info("Registered live prompt agent: {} with key: {}", agentName, promptKey);
-                } else {
-                    log.debug("Skipping agent without live prompts: {}", agentName);
                 }
             }
 
@@ -230,8 +228,6 @@ public class DynamicAgentManager {
 
             // Auto-save existing agent prompts to database
             autoSaveAgentPromptsToDatabase(mas);
-        } else {
-            log.info("Dynamic agent manager setup failed");
         }
     }
 

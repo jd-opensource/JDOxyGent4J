@@ -21,6 +21,7 @@ import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyState;
 import com.jd.oxygent.core.oxygent.tools.ParamMetaAuto;
 import com.jd.oxygent.core.oxygent.tools.Tool;
+import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -357,8 +358,9 @@ public class FunctionHub extends BaseTool {
                     try {
                         return method.invoke(this, args);
                     } catch (Exception e) {
-                        log.error("Error invoking tool " + name, e);
-                        return "Error invoking tool " + name + "': " + e.getMessage();
+                        String error = String.format("Error invoking tool name:%s args:%s", name, JsonUtils.toJSONStringSafe(args));
+                        log.error(error, e);
+                        return error + " " + e.getMessage();
                     }
                 }, paramMetas);
             }

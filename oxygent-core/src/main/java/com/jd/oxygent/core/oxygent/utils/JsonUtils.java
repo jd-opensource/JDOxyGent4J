@@ -660,6 +660,14 @@ public class JsonUtils {
         return writeValueAsString(object);
     }
 
+    public static String toJSONStringSafe(Object object) {
+        try {
+            return writeValueAsString(object);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     /**
      * Convert object to formatted JSON string
      * Compatible with fastjson's toJSONString(object, SerializerFeature.PrettyFormat) method, implemented with Jackson

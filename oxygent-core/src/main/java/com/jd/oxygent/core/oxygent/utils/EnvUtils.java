@@ -92,7 +92,9 @@ public class EnvUtils {
 
     public static String getEnv(String key) {
         String value = System.getenv(key);
-        log.info("system get env key:{}, env value:{}", key, value);
+        if (key.indexOf("API_KEY") < 0 && key.indexOf("PASSWORD") < 0) {
+            log.debug("system get env key:{}, env value:{}", key, value);
+        }
         return value;
     }
 

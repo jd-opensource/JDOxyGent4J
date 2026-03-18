@@ -184,7 +184,7 @@ public final class OxySpaceBeanCollector {
 
     private void findClassesInJarWithOxySpaceBean(URL jarUrl, String packageName, Set<Class<?>> result) {
         // Not implemented yet
-        log.warn("JAR scanning not fully implemented for: " + jarUrl);
+//        log.warn("JAR scanning not fully implemented for: " + jarUrl);
     }
 
     /**************************************************************************

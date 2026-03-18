@@ -60,7 +60,6 @@ public class EmbeddedTomcatLauncher implements LauncherLifecycle {
             // Start server
             tomcat.start();
 
-            log.info("Embedded Tomcat started successfully!");
             log.info("Application access URL: http://localhost:{}{}/index.html", port, contextPath);
 
             // Keep server running
