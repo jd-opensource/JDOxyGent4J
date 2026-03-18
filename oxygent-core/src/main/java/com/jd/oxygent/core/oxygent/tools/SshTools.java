@@ -47,14 +47,14 @@ public class SshTools extends FunctionHub {
             ChannelExec channel = (ChannelExec) session.openChannel("exec");
             channel.setCommand(command);
 
-            // 核心修复：合并 stderr 到 stdout，防止缓冲区满导致 git clone 等命令卡死
+            // Core fix: Merge stderr to stdout to prevent buffer overflow causing commands like git clone to hang
             channel.setErrStream(System.out, true);
 
             log.info("Executing SSH command: {}", command);
             InputStream in = channel.getInputStream();
             channel.connect();
 
-            // 实时、非阻塞式字节读取，实现实时日志打印
+            // Real-time, non-blocking byte reading for real-time log printing
             byte[] buffer = new byte[1024];
             while (true) {
                 while (in.available() > 0) {

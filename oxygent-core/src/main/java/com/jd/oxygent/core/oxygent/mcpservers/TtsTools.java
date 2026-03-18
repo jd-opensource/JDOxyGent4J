@@ -175,7 +175,7 @@ public class TtsTools {
             String fileId = UUID.randomUUID().toString();
             String textHash = generateTextHash(text, voice);
 
-            // 复制文件到缓存目录
+            // Copy file to cache directory
             String cachedFilePath = FIXED_AUDIO_DIR + "/" + fileId + ".mp3";
             try {
                 Files.copy(Paths.get(filePath), Paths.get(cachedFilePath));
@@ -330,7 +330,7 @@ public class TtsTools {
             return chunks;
         }
 
-        // 使用正则表达式分割句子
+        // Split sentences using regular expression
         Pattern sentencePattern = Pattern.compile("([。！？.!\\?])");
         String[] parts = sentencePattern.split(text);
         String[] punctuations = text.split("[^。！？.!\\?]+");
@@ -343,7 +343,7 @@ public class TtsTools {
             if ((currentChunk.length() + sentence.length()) <= FIXED_CHUNK_SIZE) {
                 currentChunk.append(sentence);
             } else {
-                // 当前块已满，保存它
+                // Current chunk is full, save it
                 if (currentChunk.length() > 0) {
                     chunks.add(currentChunk.toString());
                     currentChunk = new StringBuilder();
@@ -361,7 +361,7 @@ public class TtsTools {
             }
         }
 
-        // 添加最后一个块
+        // Add last chunk
         if (currentChunk.length() > 0) {
             chunks.add(currentChunk.toString());
         }
@@ -383,9 +383,9 @@ public class TtsTools {
             if (!part.isEmpty()) {
                 String sentence = part;
 
-                // 尝试添加下一个标点符号
+                // Try to add next punctuation
                 if (punctIdx < punctuations.length - 1) {
-                    punctIdx++; // 移动到下一个标点（第一个是空字符串）
+                    punctIdx++; // Move to next punctuation (first one is empty string)
                     if (punctIdx < punctuations.length) {
                         sentence += punctuations[punctIdx];
                     }
@@ -532,20 +532,20 @@ public class TtsTools {
             log.info("Split into {} chunks for processing (fixed chunk size: {})", chunks.size(), FIXED_CHUNK_SIZE);
 
             if (chunks.size() == 1) {
-                // 如果只有一个块，直接处理
+                // If only one chunk, process directly
                 return synthesizeChunkWithRetry(voice, chunks.get(0), outputFile, 1);
             }
 
-            // 创建临时目录存储块文件
+            // Create temporary directory to store chunk files
             String tempDir = FIXED_AUDIO_DIR + "/temp_" + System.currentTimeMillis();
             new File(tempDir).mkdirs();
 
             List<String> tempFiles = new ArrayList<>();
             List<CompletableFuture<Boolean>> futures = new ArrayList<>();
-            ExecutorService executor = Executors.newFixedThreadPool(Math.min(chunks.size(), 4)); // 最多4个并发
+            ExecutorService executor = Executors.newFixedThreadPool(Math.min(chunks.size(), 4)); // Maximum 4 concurrent
 
             try {
-                // 并行处理每个块
+                // Process each chunk in parallel
                 for (int i = 0; i < chunks.size(); i++) {
                     final int index = i;
                     String chunk = chunks.get(i);
@@ -558,13 +558,13 @@ public class TtsTools {
                     futures.add(future);
                 }
 
-                // 等待所有任务完成并收集结果
+                // Wait for all tasks to complete and collect results
                 List<Boolean> results = new ArrayList<>();
                 for (CompletableFuture<Boolean> f : futures) {
                     results.add(f.join());
                 }
 
-                // 收集成功的文件
+                // Collect successful files
                 for (int i = 0; i < results.size(); i++) {
                     if (results.get(i)) {
                         String tempFile = tempDir + "/chunk_" + String.format("%03d", i + 1) + ".mp3";
@@ -574,18 +574,18 @@ public class TtsTools {
                     }
                 }
 
-                // 检查是否有失败的任务
+                // Check if there are failed tasks
                 if (tempFiles.size() != chunks.size()) {
                     log.error("Some chunks failed to process. Success: {}, Expected: {}", tempFiles.size(), chunks.size());
                     return false;
                 }
 
-                // 合并音频文件
+                // Merge audio files
                 return mergeAudioFiles(tempFiles, outputFile);
 
             } finally {
                 executor.shutdown();
-                // 清理临时文件
+                // Clean up temporary files
                 cleanupTempFiles(tempDir);
             }
         } catch (Exception e) {

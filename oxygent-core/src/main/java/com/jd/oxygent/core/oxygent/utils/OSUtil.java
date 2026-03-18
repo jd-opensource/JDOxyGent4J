@@ -31,7 +31,7 @@ public class OSUtil {
         return OS_NAME.contains("nix") || OS_NAME.contains("nux") || OS_NAME.contains("aix");
     }
 
-    // 可选：提供一个枚举方式统一判断
+    // Optional: Provide an enum method for unified judgment
     public enum OSType {
         WINDOWS, MAC, LINUX, UNKNOWN
     }
@@ -48,7 +48,7 @@ public class OSUtil {
         }
     }
 
-    // 示例用法
+    // Example usage
     public static void main(String[] args) {
         System.out.println("Operating System: " + getOSType());
     }

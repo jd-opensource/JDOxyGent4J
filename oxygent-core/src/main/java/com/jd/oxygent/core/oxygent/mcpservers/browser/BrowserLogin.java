@@ -32,15 +32,15 @@ public class BrowserLogin {
     }
 
     /**
-     *  Use configuration for automatic login
+     * Use configuration for automatic login
      *
-     *  Parameters:
+     * Parameters:
      *     - page: Page object
      *     - domain: Domain name, used to get configuration
-     *     - username: Username, get from environment variable if None
-     *     - password: Password, get from environment variable if None
-     *     - env_username_key: Key name of username in environment variable
-     *     - env_password_key: Key name of password in environment variable
+     *     - username: Username, get from environment variable if null
+     *     - password: Password, get from environment variable if null
+     *     - envUsernameKey: Key name of username in environment variable
+     *     - envPasswordKey: Key name of password in environment variable
      */
     public static boolean autoLoginWithConfig(
             Page page,
@@ -358,13 +358,13 @@ public class BrowserLogin {
         }
     }
 
-    @MCPTool(name = "browser_auto_login", description = "自动填充账号密码并登录")
+    @MCPTool(name = "browser_auto_login", description = "Automatically fill in username and password to login")
     public Map<String, Object> browserAutoLogin(
-            @ToolParam(description = "要登录的网站URL") String url,
-            @ToolParam(description = "用户名，如果为空则从环境变量获取", defaultValue = "") String username,
-            @ToolParam(description = "密码，如果为空则从环境变量获取", defaultValue = "") String password,
-            @ToolParam(description = "登录后等待的时间(秒)", defaultValue = "3") int waitAfterLogin,
-            @ToolParam(description = "是否等待用户完成二次认证", defaultValue = "true") boolean waitFor2fa) {
+            @ToolParam(description = "Website URL to login") String url,
+            @ToolParam(description = "Username, get from environment variable if empty", defaultValue = "") String username,
+            @ToolParam(description = "Password, get from environment variable if empty", defaultValue = "") String password,
+            @ToolParam(description = "Wait time after login (seconds)", defaultValue = "3") int waitAfterLogin,
+            @ToolParam(description = "Whether to wait for user to complete two-factor authentication", defaultValue = "true") boolean waitFor2fa) {
 
         BrowserCore.setOperationStatus(true);
 
@@ -653,7 +653,7 @@ public class BrowserLogin {
 
                             Map<String, Object> result = new LinkedHashMap<>();
                             result.put("status", "success");
-                            result.put("message", "登录成功");
+                            result.put("message", "Login successful");
                             result.put("url", page.url());
                             result.put("title", page.title());
                             result.put("pattern_used", pattern);

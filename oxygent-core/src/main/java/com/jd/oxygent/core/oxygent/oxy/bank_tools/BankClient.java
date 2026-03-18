@@ -291,7 +291,7 @@ public class BankClient extends BaseBank {
                     }
                 }
 
-                // 处理父类
+                // Process parent class
                 clazz = clazz.getSuperclass();
             }
 

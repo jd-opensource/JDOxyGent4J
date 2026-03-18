@@ -12,7 +12,7 @@ import java.util.Map;
  */
 public class BrowserCheckStatus {
 
-    @MCPTool(name = "browser_check_status", description = "检查浏览器操作状态")
+    @MCPTool(name = "browser_check_status", description = "Check browser operation status")
     public Object browser_check_status() {
         /**
          * Check browser operation status and confirm if data is ready

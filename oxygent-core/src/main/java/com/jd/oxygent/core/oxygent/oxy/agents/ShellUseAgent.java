@@ -49,11 +49,11 @@ public class ShellUseAgent extends ReActAgent {
             session = jsch.getSession(authInfo.username, authInfo.hostname, authInfo.port);
             session.setPassword(authInfo.password);
             Properties config = new Properties();
-            config.put("StrictHostKeyChecking", "no"); // 跳过指纹确认
-            config.put("kex", "curve25519-sha256,diffie-hellman-group-exchange-sha256"); // 优先现代算法
+            config.put("StrictHostKeyChecking", "no"); // Skip fingerprint confirmation
+            config.put("kex", "curve25519-sha256,diffie-hellman-group-exchange-sha256"); // Prioritize modern algorithms
             session.setConfig(config);
 
-            // 设置心跳防止长耗时命令（如 oxybank 迁移）断开
+            // Set heartbeat to prevent disconnection during long-running commands (e.g., oxybank migration)
             session.setServerAliveInterval(30000);
             session.connect();
             ChannelExec channel = (ChannelExec) session.openChannel("exec");
@@ -63,7 +63,7 @@ public class ShellUseAgent extends ReActAgent {
             channel.connect();
             StringBuilder stringBuilder = new StringBuilder();
             String line;
-            // 实时、非阻塞式字节读取，实现实时日志打印
+            // Real-time, non-blocking byte reading for real-time log printing
             byte[] buffer = new byte[1024];
             while (true) {
                 while (in.available() > 0) {

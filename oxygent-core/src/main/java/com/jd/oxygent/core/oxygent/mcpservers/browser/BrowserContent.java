@@ -23,7 +23,7 @@ import java.util.UUID;
  */
 public class BrowserContent {
 
-    @MCPTool(name = "browser_snapshot", description = "捕获页面的可访问性快照")
+    @MCPTool(name = "browser_snapshot", description = "Capture page accessibility snapshot")
     public String browser_snapshot() {
         // Check dependencies
         java.util.List<String> missing_deps = BrowserCore.check_dependencies();
@@ -65,10 +65,10 @@ public class BrowserContent {
         }
     }
 
-    @MCPTool(name = "browser_take_screenshot", description = "截取页面截图")
+    @MCPTool(name = "browser_take_screenshot", description = "Take page screenshot")
     public Object browser_take_screenshot(
-            @ToolParam(description = "保存截图的路径，如果为空则保存到cache_dir目录", defaultValue = "") String path,
-            @ToolParam(description = "是否截取整个页面，而不仅仅是可见区域", defaultValue = "false") boolean full_page) {
+            @ToolParam(description = "Path to save screenshot, save to cache_dir if empty", defaultValue = "") String path,
+            @ToolParam(description = "Whether to capture entire page, not just visible area", defaultValue = "false") boolean full_page) {
         // Check dependencies
         List<String> missing_deps = BrowserCore.check_dependencies();
         if (!missing_deps.isEmpty()) {

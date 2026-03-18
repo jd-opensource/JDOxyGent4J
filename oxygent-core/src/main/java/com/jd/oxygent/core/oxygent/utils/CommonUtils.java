@@ -108,7 +108,7 @@ public class CommonUtils {
         @Override
         public Thread newThread(Runnable r) {
             Thread t = new Thread(r, "commonutil-pool-" + index.getAndIncrement());
-            t.setDaemon(true); // ← 关键修改
+            t.setDaemon(true); // ← Key modification
             t.setUncaughtExceptionHandler((thread, ex) ->
                     System.err.println("Uncaught exception in thread " + thread.getName() + ": " + ex)
             );

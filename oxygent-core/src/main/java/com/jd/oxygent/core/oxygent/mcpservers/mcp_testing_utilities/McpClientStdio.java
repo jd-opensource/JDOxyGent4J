@@ -76,7 +76,7 @@ public class McpClientStdio {
                     .anyMatch(tool -> targetTool.equals(tool.name()));
 
             if (hasTargetTool) {
-                // 调用工具
+                // Call tool
                 McpSchema.CallToolResult result = client.callTool(
                         new McpSchema.CallToolRequest(targetTool, Map.of("prec", 20))
                 );

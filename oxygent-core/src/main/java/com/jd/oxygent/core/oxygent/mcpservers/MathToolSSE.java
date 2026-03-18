@@ -90,7 +90,7 @@ public class MathToolSSE {
             BigDecimal progressStep = BigDecimal.valueOf(100).divide(BigDecimal.valueOf(maxK + 1), mc);
             BigDecimal progress = BigDecimal.ZERO;
 
-            // 如果是SSE模式，可以在这里发送进度更新
+            // If in SSE mode, progress updates can be sent here
             System.err.println("[MathTool] Calculating pi with precision: " + prec + " digits");
 
             for (int k = 0; k <= maxK; k++) {
@@ -117,7 +117,7 @@ public class MathToolSSE {
                 progress = progress.add(progressStep);
                 int percent = progress.intValue();
 
-                // 模拟SSE进度更新（实际SSE需要WebSocket或HTTP流）
+                // Simulate SSE progress updates (actual SSE requires WebSocket or HTTP stream)
                 if (k % 10 == 0 || k == maxK) {
                     System.err.println(String.format("[MathTool] Pi calculation progress: %d%% (k=%d/%d)",
                             Math.min(percent, 100), k, maxK));
@@ -165,15 +165,15 @@ public class MathToolSSE {
         result.put("streaming", stream);
         result.put("status", "started");
 
-        // 在实际的SSE/WebSocket实现中，这里会建立流式连接
-        // 这个示例返回立即结果，但标记为支持流式
+        // In actual SSE/WebSocket implementation, a streaming connection would be established here
+        // This example returns immediate result but is marked as supporting streaming
         if (stream) {
             result.put("message", "Streaming mode requested - in a real SSE implementation, " +
                     "this would establish a streaming connection");
             result.put("stream_url", "/api/pi/stream/" + prec);
         }
 
-        // 计算pi（非流式版本）
+        // Calculate pi (non-streaming version)
         Map<String, Object> piResult = calcPi(prec);
         result.putAll(piResult);
         result.put("status", "completed");
@@ -398,7 +398,7 @@ public class MathToolSSE {
             a = temp;
             sequence.add(b.toString());
 
-            // 模拟流式输出
+            // Simulate streaming output
             if (stream && i % 10 == 0) {
                 System.err.println(String.format("[MathTool] Generated Fibonacci number %d/%d", i, n));
             }
@@ -460,7 +460,7 @@ public class MathToolSSE {
 
                 if (isPrime) primeCount++;
 
-                // 模拟批处理进度
+                // Simulate batch processing progress
                 if (batchSize > 0 && (i + 1) % batchSize == 0) {
                     System.err.println(String.format("[MathTool] Processed %d/%d numbers",
                             i + 1, numberStrs.length));
@@ -512,7 +512,7 @@ public class MathToolSSE {
      *
      * @param args Command line arguments
      */
-    @EnableMcpServer(mode = "web",port = "8000")  // 使用web模式，支持SSE
+    @EnableMcpServer(mode = "web",port = "8000")  // Use web mode, support SSE
     public static void main(String[] args) {
         McpServer.start();
     }

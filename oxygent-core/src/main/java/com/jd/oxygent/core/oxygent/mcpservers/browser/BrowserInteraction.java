@@ -12,10 +12,10 @@ public class BrowserInteraction {
     /**
      * Click element on the page
      */
-    @MCPTool(name = "browser_click", description = "点击元素")
+    @MCPTool(name = "browser_click", description = "Click element")
     public Map<String, Object> browserClick(
-            @ToolParam(description = "要点击的元素的CSS选择器") String selector,
-            @ToolParam(description = "等待元素出现的超时时间(毫秒)", defaultValue = "5000") int timeout) {
+            @ToolParam(description = "CSS selector of the element to click") String selector,
+            @ToolParam(description = "Timeout to wait for element to appear (milliseconds)", defaultValue = "5000") int timeout) {
 
         BrowserCore.setOperationStatus(true);
         try {
@@ -36,10 +36,10 @@ public class BrowserInteraction {
         }
     }
 
-    @MCPTool(name = "browser_hover", description = "悬停在元素上")
+    @MCPTool(name = "browser_hover", description = "Hover over element")
     public Map<String, Object> browserHover(
-            @ToolParam(description = "要悬停的元素的CSS选择器") String selector,
-            @ToolParam(description = "等待元素出现的超时时间(毫秒)", defaultValue = "5000") int timeout) {
+            @ToolParam(description = "CSS selector of the element to hover over") String selector,
+            @ToolParam(description = "Timeout to wait for element to appear (milliseconds)", defaultValue = "5000") int timeout) {
 
         BrowserCore.setOperationStatus(true);
         try {
@@ -60,11 +60,11 @@ public class BrowserInteraction {
         }
     }
 
-    @MCPTool(name = "browser_type", description = "在元素中输入文本")
+    @MCPTool(name = "browser_type", description = "Type text in element")
     public Map<String, Object> browserType(
-            @ToolParam(description = "要输入文本的元素的CSS选择器") String selector,
-            @ToolParam(description = "要输入的文本") String text,
-            @ToolParam(description = "等待元素出现的超时时间(毫秒)", defaultValue = "5000") int timeout) {
+            @ToolParam(description = "CSS selector of the element to type text in") String selector,
+            @ToolParam(description = "Text to type") String text,
+            @ToolParam(description = "Timeout to wait for element to appear (milliseconds)", defaultValue = "5000") int timeout) {
 
         BrowserCore.setOperationStatus(true);
         try {
