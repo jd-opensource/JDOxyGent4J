@@ -22,8 +22,9 @@ import com.jd.oxygent.core.oxygent.schemas.oxy.OxyState;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+
 
 import java.util.*;
 
@@ -62,10 +63,10 @@ import java.util.*;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
+@Slf4j
 public class MCPTool extends BaseTool {
     private BaseMCPClient mcpClient;
     private String serverName;
-    private static final Logger logger = LoggerFactory.getLogger(MCPTool.class);
 
     /**
      * Construct MCP tool proxy instance
@@ -90,7 +91,7 @@ public class MCPTool extends BaseTool {
         inputSchema.put("required", tool.inputSchema().required());
         this.setInputSchema(inputSchema);
         super.setDescForLlm();
-        logger.info("tool.inputSchema={}", tool.inputSchema().properties());
+        log.info("tool.inputSchema={}", tool.inputSchema().properties());
     }
 
     /**

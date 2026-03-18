@@ -19,13 +19,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -97,8 +94,6 @@ import java.util.function.Function;
 @SuperBuilder
 public abstract class RemoteAgent extends BaseAgent {
 
-    private static final Logger logger = LoggerFactory.getLogger(RemoteAgent.class);
-
     /**
      * Remote server URL
      *
@@ -114,7 +109,6 @@ public abstract class RemoteAgent extends BaseAgent {
     private String serverUrl = "";
     @Builder.Default
     private boolean isOxyAgent = false;
-
 
     /**
      * Organizational structure information
@@ -161,12 +155,9 @@ public abstract class RemoteAgent extends BaseAgent {
         if (serverUrl == null || serverUrl.trim().isEmpty()) {
             throw new IllegalArgumentException("Server URL cannot be null or empty");
         }
-
         if (!serverUrl.startsWith("http://") && !serverUrl.startsWith("https://")) {
             throw new IllegalArgumentException("Server URL must start with http:// or https://");
         }
-
-        logger.info("RemoteAgent '{}' initialization completed, server: {}", getName(), serverUrl);
     }
 
 

@@ -9,8 +9,9 @@ import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import com.jd.oxygent.core.oxygent.tools.PresetTools;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,12 +26,11 @@ import java.util.*;
  */
 @RestController
 @RequestMapping("/react")
+@Slf4j
 public class ReactAgentController {
 
     @Autowired
     private MasFactoryBean masFactoryBean;
-
-    private static final Logger logger = LoggerFactory.getLogger(ReactAgentController.class);
 
     @RequestMapping(value = "/chatWithAgent", method = {RequestMethod.GET, RequestMethod.POST})
     @ResponseBody
@@ -56,7 +56,7 @@ public class ReactAgentController {
         groupData.put("app_id", Config.getAppName());
         info.put("group_data", groupData);
 
-        logger.info("Starting request to chatWithAgent");
+        log.info("Starting request to chatWithAgent");
         OxyResponse oxyResponse = mas.chatWithAgent(info);
 
         return oxyResponse;

@@ -26,6 +26,7 @@ import com.jd.oxygent.core.oxygent.utils.CommonUtils;
 import com.jd.oxygent.core.oxygent.utils.StringUtils;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
@@ -68,9 +69,8 @@ import java.util.logging.Logger;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
+@Slf4j
 public abstract class BaseAgent extends BaseFlow {
-
-    private static final Logger logger = Logger.getLogger(BaseAgent.class.getName());
 
     /**
      * Agent category identifier, used to distinguish different types of agents
@@ -171,7 +171,7 @@ public abstract class BaseAgent extends BaseFlow {
                 traceData.put("create_time", CommonUtils.getFormatTime());
                 this.getMas().getEsClient().index(Config.getAppName() + "_trace", oxyRequest.getCurrentTraceId(), traceData);
             } else {
-                logger.warning("Save " + oxyRequest.getCallee() + " pre trace data error");
+                log.warn("Save " + oxyRequest.getCallee() + " pre trace data error");
             }
         }
     }
@@ -213,7 +213,7 @@ public abstract class BaseAgent extends BaseFlow {
                 traceData.put("create_time", CommonUtils.getFormatTime());
                 this.getMas().getEsClient().index(Config.getAppName() + "_trace", oxyRequest.getCurrentTraceId(), traceData);
             } else {
-                logger.warning("Save " + oxyRequest.getCallee() + " post trace data error");
+                log.warn("Save " + oxyRequest.getCallee() + " post trace data error");
             }
         }
         if (oxyRequest.isSaveHistory()) {
@@ -234,7 +234,7 @@ public abstract class BaseAgent extends BaseFlow {
 
                 this.getMas().getEsClient().index(Config.getAppName() + "_history", currentSubSessionId, historyData);
             } else {
-                logger.warning("Save " + oxyRequest.getCallee() + " history data error");
+                log.warn("Save " + oxyRequest.getCallee() + " history data error");
             }
         }
     }

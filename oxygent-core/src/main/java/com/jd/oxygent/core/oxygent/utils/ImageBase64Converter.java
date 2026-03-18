@@ -15,8 +15,9 @@
  */
 package com.jd.oxygent.core.oxygent.utils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -123,9 +124,8 @@ import java.util.Base64;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class ImageBase64Converter {
-    private static final Logger logger = LoggerFactory.getLogger(ImageBase64Converter.class);
-
     /**
      * Convert image file to Base64 Data URL format
      *
@@ -137,7 +137,7 @@ public class ImageBase64Converter {
             // Read image file
             File file = new File(filePath);
             if (!file.exists() || !file.isFile()) {
-                logger.warn("Image file does not exist: {}", filePath);
+                log.warn("Image file does not exist: {}", filePath);
                 return filePath; // If file doesn't exist, return original path
             }
 
@@ -154,7 +154,7 @@ public class ImageBase64Converter {
             return "data:" + mimeType + ";base64," + base64Data;
 
         } catch (Exception e) {
-            logger.error("Failed to convert image to Base64: {}", filePath, e);
+            log.error("Failed to convert image to Base64: {}", filePath, e);
             return filePath; // Return original path on error
         }
     }
@@ -219,7 +219,7 @@ public class ImageBase64Converter {
                     file.getName(), mimeType, fileSize, fileSize / 1024.0);
 
         } catch (Exception e) {
-            logger.error("Failed to get image information: {}", filePath, e);
+            log.error("Failed to get image information: {}", filePath, e);
             return "Failed to get image information: " + e.getMessage();
         }
     }
@@ -237,13 +237,13 @@ public class ImageBase64Converter {
             // Read image file
             File file = new File(filePath);
             if (!file.exists() || !file.isFile()) {
-                logger.warn("Image file does not exist: {}", filePath);
+                log.warn("Image file does not exist: {}", filePath);
                 return filePath;
             }
 
             // Check original file size
             long originalSize = file.length();
-            logger.info("Original image size: {} bytes ({})", originalSize, formatFileSize(originalSize));
+            log.info("Original image size: {} bytes ({})", originalSize, formatFileSize(originalSize));
 
             // First try direct conversion, check Base64 size
             // Base64 encoding increases size by approximately 33%, so need to check actual encoded size
@@ -254,23 +254,23 @@ public class ImageBase64Converter {
                 long base64Size = base64Data.length() * 3 / 4; // Size after Base64 decoding
                 long encodedSize = directConversion.getBytes().length; // Actual transmission size
 
-                logger.info("Base64 encoded size: {} bytes ({})", encodedSize, formatFileSize(encodedSize));
+                log.info("Base64 encoded size: {} bytes ({})", encodedSize, formatFileSize(encodedSize));
 
                 if (encodedSize <= maxSizeBytes) {
-                    logger.info("Base64 encoded size within limit, using directly");
+                    log.info("Base64 encoded size within limit, using directly");
                     return directConversion;
                 } else {
-                    logger.info("Base64 encoded size exceeds limit, need to compress original image");
+                    log.info("Base64 encoded size exceeds limit, need to compress original image");
                 }
             }
 
             // Need compression
-            logger.info("Image size exceeds limit {} bytes, starting compression", maxSizeBytes);
+            log.info("Image size exceeds limit {} bytes, starting compression", maxSizeBytes);
 
             // Read image
             BufferedImage originalImage = ImageIO.read(file);
             if (originalImage == null) {
-                logger.error("Cannot read image file: {}", filePath);
+                log.error("Cannot read image file: {}", filePath);
                 throw new RuntimeException("Cannot read image file, may not be a valid image format");
             }
 
@@ -282,28 +282,28 @@ public class ImageBase64Converter {
             byte[] compressedBytes = compressImage(originalImage, format, maxSizeBytes);
 
             if (compressedBytes == null) {
-                logger.error("Image compression failed: {}", filePath);
+                log.error("Image compression failed: {}", filePath);
                 throw new RuntimeException("Image compression failed, cannot compress image below specified size");
             }
 
-            logger.info("Compressed image size: {} bytes ({})", compressedBytes.length, formatFileSize(compressedBytes.length));
+            log.info("Compressed image size: {} bytes ({})", compressedBytes.length, formatFileSize(compressedBytes.length));
 
             // Convert to Base64 and check final size
             String base64Data = Base64.getEncoder().encodeToString(compressedBytes);
             String result = "data:" + mimeType + ";base64," + base64Data;
             long finalSize = result.getBytes().length;
 
-            logger.info("Final Base64 encoded size: {} bytes ({})", finalSize, formatFileSize(finalSize));
+            log.info("Final Base64 encoded size: {} bytes ({})", finalSize, formatFileSize(finalSize));
 
             if (finalSize > maxSizeBytes) {
-                logger.warn("Compressed Base64 encoding still exceeds limit: {} > {}", finalSize, maxSizeBytes);
+                log.warn("Compressed Base64 encoding still exceeds limit: {} > {}", finalSize, maxSizeBytes);
                 throw new RuntimeException("Image still exceeds size limit after compression, cannot process this image");
             }
 
             return result;
 
         } catch (Exception e) {
-            logger.error("Failed to compress and convert image to Base64: {}", filePath, e);
+            log.error("Failed to compress and convert image to Base64: {}", filePath, e);
             throw new RuntimeException("Image compression processing failed: " + e.getMessage(), e);
         }
     }
@@ -324,7 +324,7 @@ public class ImageBase64Converter {
         int originalWidth = originalImage.getWidth();
         int originalHeight = originalImage.getHeight();
 
-        logger.info("Starting image compression: {}x{}, target Base64 size: {} bytes, target image size: {} bytes",
+        log.info("Starting image compression: {}x{}, target Base64 size: {} bytes, target image size: {} bytes",
                 originalWidth, originalHeight, maxSizeBytes, targetImageSize);
 
         // Try different compression strategies
@@ -333,7 +333,7 @@ public class ImageBase64Converter {
             for (float quality = 0.9f; quality >= 0.1f; quality -= 0.1f) {
                 byte[] compressed = compressWithQuality(originalImage, quality);
                 if (compressed != null && compressed.length <= targetImageSize) {
-                    logger.info("Quality compression successful, quality: {}, compressed size: {} bytes", quality, compressed.length);
+                    log.info("Quality compression successful, quality: {}, compressed size: {} bytes", quality, compressed.length);
                     return compressed;
                 }
             }
@@ -357,7 +357,7 @@ public class ImageBase64Converter {
                 for (float quality = 0.9f; quality >= 0.3f; quality -= 0.1f) {
                     byte[] compressed = compressWithQuality(scaledImage, quality);
                     if (compressed != null && compressed.length <= targetImageSize) {
-                        logger.info("Dimension scaling ({}) and quality compression ({}) successful, compressed size: {} bytes", scaleFactor, quality, compressed.length);
+                        log.info("Dimension scaling ({}) and quality compression ({}) successful, compressed size: {} bytes", scaleFactor, quality, compressed.length);
                         return compressed;
                     }
                 }
@@ -367,7 +367,7 @@ public class ImageBase64Converter {
                 ImageIO.write(scaledImage, format, baos);
                 byte[] compressed = baos.toByteArray();
                 if (compressed.length <= targetImageSize) {
-                    logger.info("Dimension scaling ({}) successful, compressed size: {} bytes", scaleFactor, compressed.length);
+                    log.info("Dimension scaling ({}) successful, compressed size: {} bytes", scaleFactor, compressed.length);
                     return compressed;
                 }
             }
@@ -407,7 +407,7 @@ public class ImageBase64Converter {
 
             return baos.toByteArray();
         } catch (Exception e) {
-            logger.error("JPEG quality compression failed", e);
+            log.error("JPEG quality compression failed", e);
             return null;
         }
     }

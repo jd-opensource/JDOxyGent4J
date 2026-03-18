@@ -2,8 +2,9 @@ package com.jd.oxygent.core.oxygent.infra.impl.multimodal;
 
 import com.jd.oxygent.core.oxygent.infra.multimodal.DocumentExtractor;
 import com.jd.oxygent.core.oxygent.infra.multimodal.ExtractorType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -31,8 +32,8 @@ import java.util.Set;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class CsvDocumentExtractor implements DocumentExtractor {
-    private static final Logger logger = LoggerFactory.getLogger(CsvDocumentExtractor.class);
 
     // Number formatter to avoid scientific notation
     private static final DecimalFormat NUMBER_FORMAT = new DecimalFormat("#.##########");
@@ -81,7 +82,7 @@ public class CsvDocumentExtractor implements DocumentExtractor {
             int maxColumnsToProcess = getMaxColumns(tableData);
             maxColumnsToProcess = Math.min(maxColumnsToProcess, MAX_COLUMNS);
 
-            logger.info("CSV file will process {} rows {} columns", maxRowsToProcess, maxColumnsToProcess);
+            log.info("CSV file will process {} rows {} columns", maxRowsToProcess, maxColumnsToProcess);
 
             // Truncate data
             List<List<String>> processedData = new ArrayList<>();
@@ -111,7 +112,7 @@ public class CsvDocumentExtractor implements DocumentExtractor {
             return result.toString();
 
         } catch (Exception e) {
-            logger.error("Failed to extract CSV document text", e);
+            log.error("Failed to extract CSV document text", e);
             throw new IOException("Failed to extract CSV document text: " + e.getMessage(), e);
         }
     }
@@ -139,11 +140,11 @@ public class CsvDocumentExtractor implements DocumentExtractor {
                     String content = new String(bytes, encoding);
                     // Simple validation of whether content is reasonable (doesn't contain too many garbled characters)
                     if (isValidContent(content)) {
-                        logger.info("Successfully read CSV content using encoding {}", encoding);
+                        log.info("Successfully read CSV content using encoding {}", encoding);
                         return content;
                     }
                 } catch (Exception e) {
-                    logger.info("Failed to read using encoding {}: {}", encoding, e.getMessage());
+                    log.info("Failed to read using encoding {}: {}", encoding, e.getMessage());
                 }
             }
 
@@ -151,7 +152,7 @@ public class CsvDocumentExtractor implements DocumentExtractor {
             return new String(bytes, StandardCharsets.UTF_8);
 
         } catch (IOException e) {
-            logger.error("Failed to read input stream", e);
+            log.error("Failed to read input stream", e);
             throw e;
         }
     }
@@ -186,7 +187,7 @@ public class CsvDocumentExtractor implements DocumentExtractor {
 
         // Detect delimiter
         char delimiter = detectDelimiter(csvContent);
-        logger.info("Detected CSV delimiter: '{}'", delimiter);
+        log.info("Detected CSV delimiter: '{}'", delimiter);
 
         String[] lines = csvContent.split("\r?\n");
 

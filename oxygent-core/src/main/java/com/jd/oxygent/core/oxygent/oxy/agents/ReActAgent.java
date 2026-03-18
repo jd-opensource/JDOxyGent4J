@@ -113,8 +113,6 @@ import java.util.logging.Logger;
 @NoArgsConstructor
 public class ReActAgent extends LocalAgent {
 
-    private static final Logger logger = Logger.getLogger(ReActAgent.class.getName());
-
     /**
      * Default system prompt
      * Used for system-level instructions in normal ReAct mode

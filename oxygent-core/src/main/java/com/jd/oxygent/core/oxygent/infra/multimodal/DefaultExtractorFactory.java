@@ -15,8 +15,9 @@
  */
 package com.jd.oxygent.core.oxygent.infra.multimodal;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+
 
 import java.io.File;
 import java.util.*;
@@ -67,9 +68,8 @@ import java.util.stream.Collectors;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class DefaultExtractorFactory implements ExtractorFactory {
-
-    private static final Logger logger = LoggerFactory.getLogger(DefaultExtractorFactory.class);
 
     /**
      * Extension to extractor mapping cache
@@ -128,7 +128,7 @@ public class DefaultExtractorFactory implements ExtractorFactory {
      * Load all available document extractors
      */
     private void loadExtractors() {
-        logger.info("Starting to load document extractors...");
+        log.info("Starting to load document extractors...");
 
         List<DocumentExtractor> extractors = new ArrayList<>();
         int loadedCount = 0;
@@ -146,7 +146,7 @@ public class DefaultExtractorFactory implements ExtractorFactory {
                     extractors.add(extractor);
                     loadedCount++;
 
-                    logger.debug("Successfully loaded extractor: {} (type: {}, version: {}, priority: {})",
+                    log.debug("Successfully loaded extractor: {} (type: {}, version: {}, priority: {})",
                             extractor.getClass().getSimpleName(),
                             extractor.getType(),
                             extractor.getVersion(),
@@ -154,19 +154,19 @@ public class DefaultExtractorFactory implements ExtractorFactory {
 
                 } catch (Exception e) {
                     failedCount++;
-                    logger.warn("Failed to load extractor: {}, error: {}",
+                    log.warn("Failed to load extractor: {}, error: {}",
                             extractor.getClass().getSimpleName(), e.getMessage());
                 }
             }
 
         } catch (Exception e) {
-            logger.error("Exception occurred while loading document extractors", e);
+            log.error("Exception occurred while loading document extractors", e);
         }
 
         // Build cache mappings
         buildCacheMaps(extractors);
 
-        logger.info("Document extractor loading completed, successful: {}, failed: {}, supported file types: {}",
+        log.info("Document extractor loading completed, successful: {}, failed: {}, supported file types: {}",
                 loadedCount, failedCount, extensionToExtractorMap.size());
     }
 
@@ -313,7 +313,7 @@ public class DefaultExtractorFactory implements ExtractorFactory {
 
     @Override
     public void refresh() {
-        logger.info("Refreshing document extractor cache...");
+        log.info("Refreshing document extractor cache...");
 
         synchronized (initLock) {
             initialized = false;
@@ -325,7 +325,7 @@ public class DefaultExtractorFactory implements ExtractorFactory {
         // Re-initialize
         ensureInitialized();
 
-        logger.info("Document extractor cache refresh completed");
+        log.info("Document extractor cache refresh completed");
     }
 
     @Override

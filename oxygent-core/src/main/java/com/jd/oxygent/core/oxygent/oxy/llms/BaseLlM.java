@@ -33,6 +33,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -106,8 +107,8 @@ import static com.jd.oxygent.core.oxygent.utils.ResourceUrlDetectorUtil.extractP
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@Slf4j
 public abstract class BaseLlM extends BaseOxy {
-    private static final Logger logger = Logger.getLogger(BaseLlM.class.getName());
 
     /**
      * LLM category identifier
@@ -329,7 +330,7 @@ public abstract class BaseLlM extends BaseOxy {
                                 if (result instanceof String) {
                                     contentItems.add(new HashMap<>(Map.of("type", "text", "text", result)));
                                 } else if (result instanceof List) {
-                                    logger.info(JsonUtils.toJSONString(result));
+                                    log.info(JsonUtils.toJSONString(result));
                                     contentItems.addAll((List<Map<String, Object>>) result);
                                 }
                             } else if ("file".equals(tmp.get("type")) && tmp.containsKey("file_path")) {
@@ -384,7 +385,7 @@ public abstract class BaseLlM extends BaseOxy {
                         } else if ("video_url".equals(itemType)) {
                             item.put("url", CommonUtils.videoToBase64(item.get("url").toString(), maxVideoSize, base64VideoPrefix));
                         } else {
-                            logger.warning(String.format("Unexpected content type: %s %s %s", itemType,
+                            log.warn(String.format("Unexpected content type: %s %s %s", itemType,
                                     oxyRequest.getCurrentTraceId(),
                                     oxyRequest.getNodeId()));
                         }
@@ -393,7 +394,7 @@ public abstract class BaseLlM extends BaseOxy {
                 return messagesTemp;
             }
         } catch (Exception e) {
-            logger.warning("Error processing messages: " + e.getMessage());
+            log.warn("Error processing messages: " + e.getMessage());
             throw new CompletionException(e);
         }
     }
@@ -443,7 +444,7 @@ public abstract class BaseLlM extends BaseOxy {
                             "content", "The content of the `" + item.get("desc") + "` is: " + docContent + " --- "
                     ));
                 } catch (IOException e) {
-                    logger.warning("Failed to read file: " + itemLink);
+                    log.warn("Failed to read file: " + itemLink);
                     items.set(i, Map.of(
                             "type", "text",
                             "content", item.get("content")
@@ -576,7 +577,7 @@ public abstract class BaseLlM extends BaseOxy {
                     oxyRequest.sendMessage(message);
                 }
             } catch (Exception e) {
-                logger.info("Error in postSendMessage: " + e.getMessage() +
+                log.info("Error in postSendMessage: " + e.getMessage() +
                         " trace_id=" + oxyRequest.getCurrentTraceId() +
                         " node_id=" + oxyRequest.getNodeId());
             }

@@ -17,6 +17,7 @@ package com.jd.oxygent.core.oxygent.utils;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -420,7 +421,7 @@ public class JsonUtils {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warn("Error converting bean to map", e);
         }
         return map;
     }
@@ -460,7 +461,7 @@ public class JsonUtils {
                     targetField.set(target, value); // Set value to target object's property with same name
                 }
             } catch (IllegalAccessException | NoSuchFieldException e) {
-                e.printStackTrace();
+                log.warn(field.getName(), e);
             }
         }
         return target;

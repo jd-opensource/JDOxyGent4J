@@ -2,11 +2,12 @@ package com.jd.oxygent.core.oxygent.infra.impl.multimodal;
 
 import com.jd.oxygent.core.oxygent.infra.multimodal.DocumentExtractor;
 import com.jd.oxygent.core.oxygent.infra.multimodal.ExtractorType;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,8 +25,8 @@ import java.util.Set;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class ExcelDocumentExtractor implements DocumentExtractor {
-    private static final Logger logger = LoggerFactory.getLogger(ExcelDocumentExtractor.class);
 
     // Number formatter to avoid scientific notation
     private static final DecimalFormat NUMBER_FORMAT = new DecimalFormat("#.##########");
@@ -64,7 +65,7 @@ public class ExcelDocumentExtractor implements DocumentExtractor {
             StringBuilder result = new StringBuilder();
             int sheetCount = Math.min(workbook.getNumberOfSheets(), MAX_SHEETS);
 
-            logger.info("Starting to process Excel file with {} worksheets", sheetCount);
+            log.info("Starting to process Excel file with {} worksheets", sheetCount);
 
             for (int sheetIndex = 0; sheetIndex < sheetCount; sheetIndex++) {
                 Sheet sheet = workbook.getSheetAt(sheetIndex);
@@ -97,7 +98,7 @@ public class ExcelDocumentExtractor implements DocumentExtractor {
             return result.toString();
 
         } catch (Exception e) {
-            logger.error("Error occurred while extracting Excel text", e);
+            log.error("Error occurred while extracting Excel text", e);
             throw new IOException("Failed to extract Excel text: " + e.getMessage(), e);
         }
     }
@@ -110,17 +111,17 @@ public class ExcelDocumentExtractor implements DocumentExtractor {
             // First try to create XLSX workbook
             return new XSSFWorkbook(inputStream);
         } catch (Exception e) {
-            logger.info("Failed to try XLSX format, trying XLS format: {}", e.getMessage());
+            log.info("Failed to try XLSX format, trying XLS format: {}", e.getMessage());
             try {
                 // Reset stream and try XLS format
                 if (inputStream.markSupported()) {
                     inputStream.reset();
                 } else {
-                    logger.warn("Input stream does not support reset, may cause XLS format parsing failure");
+                    log.warn("Input stream does not support reset, may cause XLS format parsing failure");
                 }
                 return new HSSFWorkbook(inputStream);
             } catch (Exception e2) {
-                logger.error("Unable to recognize Excel file format, XLSX error: {}, XLS error: {}",
+                log.error("Unable to recognize Excel file format, XLSX error: {}, XLS error: {}",
                         e.getMessage(), e2.getMessage());
                 throw new IOException("Unsupported Excel file format", e2);
             }
@@ -183,7 +184,7 @@ public class ExcelDocumentExtractor implements DocumentExtractor {
             return formatTableAsText(tableData, hasMoreColumns);
 
         } catch (Exception e) {
-            logger.error("Error occurred while processing worksheet '{}'", sheet.getSheetName(), e);
+            log.error("Error occurred while processing worksheet '{}'", sheet.getSheetName(), e);
             return "[Worksheet read error: " + e.getMessage() + "]";
         }
     }
@@ -228,7 +229,7 @@ public class ExcelDocumentExtractor implements DocumentExtractor {
                     return "";
             }
         } catch (Exception e) {
-            logger.info("Error reading cell value: {}", e.getMessage());
+            log.info("Error reading cell value: {}", e.getMessage());
             return "[Read error]";
         }
     }

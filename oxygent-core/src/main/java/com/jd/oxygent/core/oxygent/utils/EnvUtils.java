@@ -16,8 +16,8 @@
 package com.jd.oxygent.core.oxygent.utils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -65,8 +65,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class EnvUtils {
-
-    private static final Logger logger = LoggerFactory.getLogger(EnvUtils.class);
 
     /**
      * Get string value of environment variable
@@ -209,7 +207,7 @@ public class EnvUtils {
         try {
             return Integer.parseInt(val);
         } catch (NumberFormatException e) {
-            logger.warn("Invalid CPU count '{}', using default 2", val);
+            log.warn("Invalid CPU count '{}', using default 2", val);
             return 2;
         }
     }
@@ -311,7 +309,7 @@ public class EnvUtils {
             InetAddress address = InetAddress.getLocalHost();
             return address.getHostAddress();
         } catch (UnknownHostException e) {
-            logger.warn("Failed to get local IP, using 127.0.0.1", e);
+            log.warn("Failed to get local IP, using 127.0.0.1", e);
             return "127.0.0.1";
         }
     }
@@ -329,7 +327,7 @@ public class EnvUtils {
         try {
             return Integer.parseInt(val);
         } catch (NumberFormatException e) {
-            logger.warn("Invalid GROUP_ID '{}', using default 0", val);
+            log.warn("Invalid GROUP_ID '{}', using default 0", val);
             return 0;
         }
     }

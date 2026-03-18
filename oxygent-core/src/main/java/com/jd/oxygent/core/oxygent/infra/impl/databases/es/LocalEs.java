@@ -19,6 +19,7 @@ import com.jd.oxygent.core.oxygent.infra.databases.BaseDB;
 import com.jd.oxygent.core.oxygent.infra.databases.BaseEs;
 import com.jd.oxygent.core.oxygent.utils.FileUtils;
 import com.jd.oxygent.core.oxygent.utils.ObjectUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -121,8 +122,8 @@ import java.util.stream.Collectors;
  */
 @ConditionalOnProperty(name = "oxygent.database.es", havingValue = "local", matchIfMissing = true)
 @Service
+@Slf4j
 public class LocalEs extends BaseDB implements BaseEs {
-    private static final Logger logger = Logger.getLogger(LocalEs.class.getName());
 
     private final String dataDir;
     private final Map<String, ReentrantLock> locks = new ConcurrentHashMap<>();
@@ -149,7 +150,7 @@ public class LocalEs extends BaseDB implements BaseEs {
         try {
             Files.createDirectories(Paths.get(dataDir));
         } catch (IOException e) {
-            logger.severe("Failed to create data directory: " + e.getMessage());
+            log.error("Failed to create data directory: " + e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -216,7 +217,7 @@ public class LocalEs extends BaseDB implements BaseEs {
             result.put("acknowledged", true);
             return result;
         } catch (IOException e) {
-            logger.severe("Failed to create index: " + e.getMessage());
+            log.error("Failed to create index: " + e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -282,7 +283,7 @@ public class LocalEs extends BaseDB implements BaseEs {
                         Files.move(backupPath, dataPath, StandardCopyOption.REPLACE_EXISTING);
                         data = FileUtils.readJsonSafe(dataDir, dataPath);
                     } catch (IOException e) {
-                        logger.warning("Failed to restore from backup: " + e.getMessage());
+                        log.warn("Failed to restore from backup: " + e.getMessage());
                     }
                 }
             }
@@ -292,9 +293,9 @@ public class LocalEs extends BaseDB implements BaseEs {
                 Path corruptPath = Paths.get(dataPath.toString() + ".corrupt");
                 try {
                     Files.move(dataPath, corruptPath, StandardCopyOption.REPLACE_EXISTING);
-                    logger.severe("Index " + indexName + " is corrupted – moved to " + corruptPath);
+                    log.error("Index " + indexName + " is corrupted – moved to " + corruptPath);
                 } catch (IOException e) {
-                    logger.severe("Failed to move corrupted file: " + e.getMessage());
+                    log.error("Failed to move corrupted file: " + e.getMessage());
                 }
                 data = new LinkedHashMap<>();
             }
@@ -319,7 +320,7 @@ public class LocalEs extends BaseDB implements BaseEs {
                 }
                 FileUtils.writeJsonAtomic(dataDir, dataPath, data);
             } catch (IOException e) {
-                logger.severe("Failed to persist data: " + e.getMessage());
+                log.error("Failed to persist data: " + e.getMessage());
                 throw new RuntimeException(e);
             }
 
@@ -435,7 +436,7 @@ public class LocalEs extends BaseDB implements BaseEs {
                         Files.move(backupPath, dataPath, StandardCopyOption.REPLACE_EXISTING);
                         data = FileUtils.readJsonSafe(dataDir, dataPath);
                     } catch (IOException e) {
-                        logger.warning("Failed to restore from backup: " + e.getMessage());
+                        log.warn("Failed to restore from backup: " + e.getMessage());
                     }
                 }
             }
@@ -445,9 +446,9 @@ public class LocalEs extends BaseDB implements BaseEs {
                 Path corruptPath = Paths.get(dataPath.toString() + ".corrupt");
                 try {
                     Files.move(dataPath, corruptPath, StandardCopyOption.REPLACE_EXISTING);
-                    logger.severe("Index " + indexName + " is corrupted – moved to " + corruptPath);
+                    log.error("Index " + indexName + " is corrupted – moved to " + corruptPath);
                 } catch (IOException e) {
-                    logger.severe("Failed to move corrupted file: " + e.getMessage());
+                    log.error("Failed to move corrupted file: " + e.getMessage());
                 }
                 data = new LinkedHashMap<>();
             }
@@ -462,7 +463,7 @@ public class LocalEs extends BaseDB implements BaseEs {
                 }
                 FileUtils.writeJsonAtomic(dataDir, dataPath, data);
             } catch (IOException e) {
-                logger.severe("Failed to persist data: " + e.getMessage());
+                log.error("Failed to persist data: " + e.getMessage());
                 throw new RuntimeException(e);
             }
 
@@ -727,7 +728,7 @@ public class LocalEs extends BaseDB implements BaseEs {
                 }
                 FileUtils.writeJsonAtomic(dataDir, dataPath, data);
             } catch (IOException e) {
-                logger.severe("Failed to persist data: " + e.getMessage());
+                log.error("Failed to persist data: " + e.getMessage());
                 throw new RuntimeException(e);
             }
 
@@ -763,7 +764,7 @@ public class LocalEs extends BaseDB implements BaseEs {
             result.put("acknowledged", true);
             return result;
         } catch (IOException e) {
-            logger.severe("Failed to delete index: " + e.getMessage());
+            log.error("Failed to delete index: " + e.getMessage());
             throw new RuntimeException(e);
         }
     }

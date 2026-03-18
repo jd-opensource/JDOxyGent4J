@@ -15,6 +15,8 @@
  */
 package com.jd.oxygent.core.oxygent.utils;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -77,6 +79,7 @@ import java.util.Objects;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class DateUtils {
     /**
      * Default date-time format: yyyy-MM-dd HH:mm:ss
@@ -237,7 +240,7 @@ public class DateUtils {
             System.out.println(getCurrentTimeStamp());
             System.out.println(getMinuteLevelTimeStamp());
         } catch (ParseException e) {
-            e.printStackTrace();
+            log.error("Error parsing date", e);
         }
     }
 

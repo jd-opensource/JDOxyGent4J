@@ -2,12 +2,13 @@ package com.jd.oxygent.core.oxygent.infra.impl.multimodal;
 
 import com.jd.oxygent.core.oxygent.infra.multimodal.DocumentExtractor;
 import com.jd.oxygent.core.oxygent.infra.multimodal.ExtractorType;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.extractor.WordExtractor;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,8 +29,8 @@ import java.util.Set;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class WordDocumentExtractor implements DocumentExtractor {
-    private static final Logger logger = LoggerFactory.getLogger(WordDocumentExtractor.class);
     private static final int MAX_LENGTH = 30000;
 
     @Override
@@ -52,17 +53,17 @@ public class WordDocumentExtractor implements DocumentExtractor {
             // First try to process as DOCX format
             return extractDocxDocument(inputStream);
         } catch (Exception docxException) {
-            logger.info("Failed to try DOCX format, trying DOC format: {}", docxException.getMessage());
+            log.info("Failed to try DOCX format, trying DOC format: {}", docxException.getMessage());
             try {
                 // Reset stream and try DOC format
                 if (inputStream.markSupported()) {
                     inputStream.reset();
                 } else {
-                    logger.warn("Input stream does not support reset, may cause DOC format parsing failure");
+                    log.warn("Input stream does not support reset, may cause DOC format parsing failure");
                 }
                 return extractDocDocument(inputStream);
             } catch (Exception docException) {
-                logger.error("Unable to recognize Word file format, DOCX error: {}, DOC error: {}",
+                log.error("Unable to recognize Word file format, DOCX error: {}, DOC error: {}",
                         docxException.getMessage(), docException.getMessage());
                 throw new IOException("Unsupported Word file format: " + docException.getMessage(), docException);
             }
@@ -92,7 +93,7 @@ public class WordDocumentExtractor implements DocumentExtractor {
             return "Word Document Content:\n" + text;
 
         } catch (Exception e) {
-            logger.error("Failed to extract DOCX document text", e);
+            log.error("Failed to extract DOCX document text", e);
             throw new IOException("Failed to extract DOCX document text: " + e.getMessage(), e);
         }
     }
@@ -119,7 +120,7 @@ public class WordDocumentExtractor implements DocumentExtractor {
             return "Word Document Content:\n" + text;
 
         } catch (Exception e) {
-            logger.error("Failed to extract DOC document text", e);
+            log.error("Failed to extract DOC document text", e);
             throw new IOException("Failed to extract DOC document text: " + e.getMessage(), e);
         }
     }

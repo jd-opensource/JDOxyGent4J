@@ -10,6 +10,7 @@ import com.jd.oxygent.core.oxygent.tools.PresetTools;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
 import lombok.extern.slf4j.Slf4j;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,8 +32,14 @@ public class DemoSkillAgent {
                         .name("skill_agent")
                         .isMaster(true)
                         .desc("An tool for execute shell command")
-                        .tools(List.of("view_text_file", "execute_shell_command"))
-                        .skills(List.of(".oxygent/skills"))
+                        .tools(List.of("file_tools", "shell_tools"
+                        ))
+                        .skills(List.of(".oxygent/skills"
+//                                "D:/skills",
+//                                "classpath:skills",
+//                                "classpath:com/jd/oxygent/core/oxygent/preset_skills/skill_creator",
+//                                Path.of(System.getProperty("user.home"), "skills").toString()
+                        )) // Supports absolute paths, project root relative paths, classpath resources, and paths within JAR files.
                         .build()
         );
     }

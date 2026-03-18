@@ -27,8 +27,8 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -89,8 +89,6 @@ import java.util.Map;
 @Slf4j
 public class PlanAndSolveAgent extends LocalAgent {
 
-    private static final Logger logger = LoggerFactory.getLogger(PlanAndSolveAgent.class);
-
     /**
      * Maximum replanning rounds
      * Limits the maximum number of replanning attempts to prevent infinite loops
@@ -129,7 +127,7 @@ public class PlanAndSolveAgent extends LocalAgent {
         this.addPermittedTool(this.plannerAgent);
         this.addPermittedTool(this.executorAgent);
 
-        logger.debug("PlanAndSolveAgent initialization completed: {}, planner: {}, executor: {}",
+        log.debug("PlanAndSolveAgent initialization completed: {}, planner: {}, executor: {}",
                 this.getName(), this.plannerAgent, this.executorAgent);
     }
 
@@ -170,7 +168,7 @@ public class PlanAndSolveAgent extends LocalAgent {
                 // 2. Execution phase: Execute each step
                 for (int currentStep = 0; currentStep < plans.size(); currentStep++) {
                     String currentTask = plans.get(currentStep);
-                    logger.debug("Executing step {}/{}: {}", currentStep + 1, plans.size(), currentTask);
+                    log.debug("Executing step {}/{}: {}", currentStep + 1, plans.size(), currentTask);
 
                     // Execute current task
                     OxyResponse executorResponse = callExecutor(oxyRequest, currentTask);
@@ -204,7 +202,7 @@ public class PlanAndSolveAgent extends LocalAgent {
             return generateFinalAnswer(oxyRequest, pastStepsStr, shortMemory, originalQuery);
 
         } catch (Exception e) {
-            logger.error("Error executing PlanAndSolveAgent: {}", e.getMessage(), e);
+            log.error("Error executing PlanAndSolveAgent: {}", e.getMessage(), e);
             return OxyResponse.builder()
                     .state(OxyState.FAILED)
                     .output("Error executing planning and solving process: " + e.getMessage())
@@ -290,7 +288,7 @@ public class PlanAndSolveAgent extends LocalAgent {
         try {
             return JsonUtils.readValue(planJson, List.class);
         } catch (Exception e) {
-            logger.warn("Failed to parse plans JSON, treating as single plan: {}", e.getMessage());
+            log.warn("Failed to parse plans JSON, treating as single plan: {}", e.getMessage());
             List<String> singlePlan = new ArrayList<>();
             singlePlan.add(planJson);
             return singlePlan;

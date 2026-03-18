@@ -19,16 +19,26 @@ package com.jd.oxygent.core.oxygent.utils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * File operation utility class
@@ -309,5 +319,74 @@ public class FileUtils {
             Files.createDirectories(subDir);
         }
         return subDir;
+    }
+
+    /**
+     * Unified method to read all file contents based on path and filters.
+     * * @param path            Base path, supports "classpath:path/to/dir" or absolute file paths.
+     * @param excludeDirs     List of directory names to skip (e.g., ".git", "target").
+     * @param fileNamePattern Specific filename or extension to match (e.g., "SKILL.md" or ".txt").
+     * @return A list of file contents as Strings.
+     */
+    public static List<Path> readAllFiles(String path, Set<String> excludeDirs, String fileNamePattern)
+            throws IOException, URISyntaxException {
+        if (path.startsWith("classpath:")) {
+            String resourcePath = path.substring(10); // Remove "classpath:" prefix
+            return readFromClasspath(resourcePath, excludeDirs, fileNamePattern);
+        } else {
+            return readFromFileSystem(Paths.get(path), excludeDirs, fileNamePattern);
+        }
+    }
+
+    public static List<Path> readFromClasspath(String resourcePath, Set<String> excludeDirs, String fileNamePattern)
+            throws IOException, URISyntaxException {
+        URL url = Thread.currentThread().getContextClassLoader().getResource(resourcePath);
+        if (url == null) throw new IOException("Resource not found: " + resourcePath);
+
+        URI uri = url.toURI();
+
+        // Handle resources inside JAR files
+        if ("jar".equals(uri.getScheme())) {
+            // Create a virtual file system for the JAR to allow NIO.2 Path operations
+            try (FileSystem fs = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
+                return readFromFileSystem(fs.getPath(resourcePath), excludeDirs, fileNamePattern);
+            }
+        } else {
+            return readFromFileSystem(Paths.get(uri), excludeDirs, fileNamePattern);
+        }
+    }
+
+    public static List<Path> readFromFileSystem(Path rootPath, Set<String> excludeDirs, String fileNamePattern) throws IOException {
+        Set<String> excludes = excludeDirs != null ? new HashSet<>(excludeDirs) : new HashSet<>();
+
+        try (Stream<Path> walk = Files.walk(rootPath)) {
+            return walk
+                    // 1. Filter out excluded directories and their sub-contents
+                    .filter(p -> {
+                        // Check if any segment of the path matches the exclusion list
+                        for (Path section : p) {
+                            if (excludes.contains(section.toString())) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    })
+                    // 2. Ensure the path points to a regular file
+                    .filter(Files::isRegularFile)
+                    // 3. Match filename or suffix
+                    .filter(p -> {
+                        String name = p.getFileName().toString();
+                        if (StringUtils.isNotBlank(fileNamePattern)) {
+                            return name.equals(fileNamePattern) || name.endsWith(fileNamePattern);
+                        } else {
+                            return true;
+                        }
+                    })
+                    // 4. Read file content to String
+                    .map(p -> {
+                        return p; // Files.readString(p);
+                    })
+                    .collect(Collectors.toList());
+        }
     }
 }

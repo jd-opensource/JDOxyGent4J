@@ -20,8 +20,9 @@ import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+
 
 import java.net.http.HttpRequest;
 import java.util.ArrayList;
@@ -82,9 +83,8 @@ import java.util.Map;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
+@Slf4j
 public class StreamableMCPClient extends BaseMCPClient {
-
-    private static final Logger logger = LoggerFactory.getLogger(StreamableMCPClient.class);
 
     /**
      * Base URL address of the MCP server
@@ -180,9 +180,9 @@ public class StreamableMCPClient extends BaseMCPClient {
     @Override
     public void init() {
         if (initClientSession(null)) {
-            logger.info("streamable--Starting to load {} tool methods into oxy:", this.getName());
+            log.info("streamable--Starting to load {} tool methods into oxy:", this.getName());
             this.listTools();
-            logger.info("MCP Server started via streamable.");
+            log.info("MCP Server started via streamable.");
         }
     }
 
@@ -194,12 +194,12 @@ public class StreamableMCPClient extends BaseMCPClient {
             HttpClientStreamableHttpTransport transport = HttpClientStreamableHttpTransport.builder(this.baseUrl).endpoint(endpoint).requestBuilder(httpRequestBuilder).build();
 
             this.clientSession = McpClient.sync(transport).build();
-            logger.info("{}--streamable--Starting initialization....", this.getName());
+            log.info("{}--streamable--Starting initialization....", this.getName());
             this.clientSession.initialize();
-            logger.info("Is initialized: " + this.clientSession.isInitialized());
+            log.info("Is initialized: " + this.clientSession.isInitialized());
             return true;
         } catch (Exception e) {
-            logger.error("Error initializing server {}: {}", this.getName(), e.getMessage(), e);
+            log.error("Error initializing server {}: {}", this.getName(), e.getMessage(), e);
             this.cleanup();
             return false;
         }

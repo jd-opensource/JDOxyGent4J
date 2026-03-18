@@ -17,10 +17,11 @@ package com.jd.oxygent.core.oxygent.infra.impl.multimodal;
 
 import com.jd.oxygent.core.oxygent.infra.multimodal.DocumentExtractor;
 import com.jd.oxygent.core.oxygent.infra.multimodal.ExtractorType;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,9 +55,8 @@ import java.util.Set;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class PdfDocumentExtractor implements DocumentExtractor {
-
-    private static final Logger logger = LoggerFactory.getLogger(PdfDocumentExtractor.class);
 
     /**
      * Maximum text length limit (approximately 1 million characters to avoid exceeding LLM token limits)
@@ -90,7 +90,7 @@ public class PdfDocumentExtractor implements DocumentExtractor {
             throw new IllegalArgumentException("Input stream cannot be null");
         }
 
-        logger.info("Starting to extract PDF document content from input stream");
+        log.info("Starting to extract PDF document content from input stream");
 
         try {
             // Use Apache PDFBox library to extract PDF text, configured to ignore font errors
@@ -110,7 +110,7 @@ public class PdfDocumentExtractor implements DocumentExtractor {
                     text = pdfStripper.getText(document);
                 } catch (Exception fontException) {
                     // Catch font-related exceptions, log warning but continue processing
-                    logger.warn("PDF font processing warning (ignored): {}", fontException.getMessage());
+                    log.warn("PDF font processing warning (ignored): {}", fontException.getMessage());
 
                     // Try to extract text page by page, skipping problematic pages
                     text = extractTextPageByPage(document, pdfStripper, "input stream");
@@ -133,7 +133,7 @@ public class PdfDocumentExtractor implements DocumentExtractor {
 
             }
         } catch (Exception e) {
-            logger.error("Error occurred while extracting PDF text", e);
+            log.error("Error occurred while extracting PDF text", e);
             throw new IOException("Failed to extract PDF text: " + e.getMessage(), e);
         }
     }
@@ -152,7 +152,7 @@ public class PdfDocumentExtractor implements DocumentExtractor {
         int successPages = 0;
         int failedPages = 0;
 
-        logger.info("Starting page-by-page PDF content extraction: {} (total pages: {})", fileName, totalPages);
+        log.info("Starting page-by-page PDF content extraction: {} (total pages: {})", fileName, totalPages);
 
         for (int pageNum = 1; pageNum <= totalPages; pageNum++) {
             try {
@@ -169,12 +169,12 @@ public class PdfDocumentExtractor implements DocumentExtractor {
 
             } catch (Exception pageException) {
                 failedPages++;
-                logger.info("Skipping page {}, font error: {}", pageNum, pageException.getMessage());
+                log.info("Skipping page {}, font error: {}", pageNum, pageException.getMessage());
                 extractedText.append(String.format("\n[Page %d skipped due to font issues]\n", pageNum));
             }
         }
 
-        logger.info("Page-by-page extraction completed: {} - Success: {}, Failed: {}", fileName, successPages, failedPages);
+        log.info("Page-by-page extraction completed: {} - Success: {}, Failed: {}", fileName, successPages, failedPages);
 
         // If all pages failed, return error message
         if (successPages == 0) {

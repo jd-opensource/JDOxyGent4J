@@ -3,6 +3,7 @@ package com.jd.oxygent.core.oxygent.oxy.agents;
 import com.jd.oxygent.core.oxygent.config.Prompts;
 import com.jd.oxygent.core.oxygent.oxy.skills.SkillMetadata;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
+import com.jd.oxygent.core.oxygent.utils.FileUtils;
 import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -58,7 +60,7 @@ import java.util.stream.Collectors;
 public class SkillAgent extends ReActAgent {
 
     /**
-     * List of skill directory paths to load skills from Each path can be a skill folder with SKILL.md or a parent directory containing multiple skill subfolders.
+     * List of skill directory paths to load skills from Each path can be a skill folder with SKILL.md or a parent directory containing multiple skill subfolders. Supports absolute paths, project root relative paths, classpath resources, and paths within JAR files.
      */
     @Builder.Default
     private List<String> skills = new ArrayList<>();
@@ -143,88 +145,34 @@ public class SkillAgent extends ReActAgent {
         log.debug("[SkillAgent] Agent '{}': Discovering skills from {} path(s)",
                 getName(), skills.size());
 
-        int successfulPaths = 0;
         int failedPaths = 0;
-
+        List<Path> skillFiles = new ArrayList<>();
         for (String skillPathStr : skills) {
             try {
-                Path skillPath = Paths.get(skillPathStr).toAbsolutePath();
-
-                if (!Files.exists(skillPath)) {
-                    log.warn("[SkillAgent] Agent '{}': Path does not exist: {}",
-                            getName(), skillPath);
-                    failedPaths++;
-                    continue;
-                }
-
-                Set<String> nonSkillSubdirs = Set.of("scripts", "references", "assets");
-
-                if (Files.exists(skillPath.resolve("SKILL.md"))) {
-                    Path skillFile = skillPath.resolve("SKILL.md");
-                    SkillMetadata metadata = loadMetadataFromFile(skillFile);
-                    if (metadata != null && metadata.getName() != null) {
-                        skillsMetadata.put(metadata.getName(), metadata);
-                        successfulPaths++;
-                        log.debug("[SkillAgent] Agent '{}': Loaded skill '{}' from '{}'",
-                                getName(), metadata.getName(), skillPath);
-                    } else {
-                        failedPaths++;
-                        log.warn("[SkillAgent] Agent '{}': Failed to load skill from '{}'",
-                                getName(), skillPath);
-                    }
-                } else {
-                    List<Path> skillFiles = new ArrayList<>();
-                    try {
-                        Files.walk(skillPath)
-                                .filter(Files::isRegularFile)
-                                .filter(p -> p.getFileName().toString().equals("SKILL.md"))
-                                .forEach(skillFiles::add);
-                    } catch (IOException e) {
-                        log.error("Error walking skill path", e);
-                    }
-
-                    int pathSkillCount = 0;
-                    for (Path skillFile : skillFiles) {
-                        try {
-                            Path relativePath = skillPath.relativize(skillFile);
-                            boolean skip = false;
-                            for (int i = 0; i < relativePath.getNameCount() - 1; i++) {
-                                if (nonSkillSubdirs.contains(relativePath.getName(i).toString())) {
-                                    skip = true;
-                                    break;
-                                }
-                            }
-                            if (skip) continue;
-                        } catch (Exception e) {
-                            log.error("Error processing relative path", e);
-                        }
-
-                        SkillMetadata metadata = loadMetadataFromFile(skillFile);
-                        if (metadata != null && metadata.getName() != null) {
-                            skillsMetadata.put(metadata.getName(), metadata);
-                            pathSkillCount++;
-                        }
-                    }
-
-                    if (pathSkillCount > 0) {
-                        successfulPaths++;
-                        log.debug("[SkillAgent] Agent '{}': Loaded {} skills from '{}'",
-                                getName(), pathSkillCount, skillPath);
-                    } else {
-                        failedPaths++;
-                        log.warn("[SkillAgent] Agent '{}': No skills discovered from '{}'",
-                                getName(), skillPath);
-                    }
-                }
-            } catch (Exception e) {
+                skillFiles.addAll(FileUtils.readAllFiles(skillPathStr, Set.of("scripts", "references", "assets"), "SKILL.md"));
+            } catch (IOException | URISyntaxException e) {
+                log.warn("[SkillAgent] Agent '{}': Path does not exist: {}", getName(), skillPathStr);
                 failedPaths++;
-                log.error("[SkillAgent] Agent '{}': Failed to load skills from '{}'",
-                        getName(), skillPathStr, e);
             }
         }
-
+        for (Path skillFile : skillFiles) {
+            int pathSkillCount = 0;
+            SkillMetadata metadata = loadMetadataFromFile(skillFile);
+            if (metadata != null && metadata.getName() != null) {
+                skillsMetadata.put(metadata.getName(), metadata);
+                pathSkillCount++;
+            }
+            if (pathSkillCount > 0) {
+                log.debug("[SkillAgent] Agent '{}': Loaded {} skills from '{}'",
+                        getName(), pathSkillCount, skillFile.toString());
+            } else {
+                failedPaths++;
+                log.warn("[SkillAgent] Agent '{}': No skills discovered from '{}'",
+                        getName(), skillFile.toString());
+            }
+        }
         log.info("[SkillAgent] Agent '{}': Discovery complete - {}, {} unique skills from {}/{}} path(s) ({} failed)",
-                getName(), JsonUtils.toJSONString(getSkillNames()), getSkillsCount(), successfulPaths, skills.size(), failedPaths);
+                getName(), JsonUtils.toJSONString(getSkillNames()), getSkillsCount(), skills.size() - failedPaths, skills.size(), failedPaths);
     }
 
     /**

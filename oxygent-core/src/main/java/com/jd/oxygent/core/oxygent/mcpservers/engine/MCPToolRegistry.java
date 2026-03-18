@@ -133,7 +133,7 @@ public class MCPToolRegistry {
                                 false
                         );
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        log.warn("Error calling tool: {}", toolMetadata.getName(), e);
                         return new McpSchema.CallToolResult(
                                 Collections.singletonList(new McpSchema.TextContent("Error: " + e.getMessage())),
                                 true

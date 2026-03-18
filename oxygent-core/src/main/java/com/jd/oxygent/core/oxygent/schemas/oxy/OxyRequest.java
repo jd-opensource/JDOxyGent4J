@@ -26,6 +26,7 @@ import com.jd.oxygent.core.oxygent.schemas.SSEMessage;
 import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import com.jd.oxygent.core.oxygent.utils.StringUtils;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -75,9 +76,8 @@ import static com.jd.oxygent.core.oxygent.utils.CommonUtils.generateShortUUID;
 @ToString(exclude = "mas")
 @AllArgsConstructor
 @NoArgsConstructor
+@Slf4j
 public class OxyRequest implements Cloneable {
-
-    private static final Logger logger = Logger.getLogger(OxyRequest.class.getName());
 
     // ==================== Request Identification and Tracking Fields ====================
 
@@ -399,7 +399,7 @@ public class OxyRequest implements Cloneable {
                     field.setAccessible(true);
                     field.set(copy, value);
                 } catch (Exception e) {
-                    logger.warning("cloneWith unknown field:" + key);
+                    log.warn("cloneWith unknown field:" + key);
                 }
             }
 
@@ -613,7 +613,7 @@ public class OxyRequest implements Cloneable {
                             
                             metrics.put("first_response_time_ms", firstResponseMs);
                             
-                            logger.info(String.format(
+                            log.info(String.format(
                                 "First response time: %.2fms, trace_id=%s, node_id=%s, message_type=%s",
                                 firstResponseMs,
                                 this.currentTraceId,
@@ -675,15 +675,14 @@ public class OxyRequest implements Cloneable {
                 boolean isFinal = attempt == oxy.getRetries();
 
                 int finalAttempt = attempt;
-                logger.info(() -> String.format(
+                log.info(String.format(
                         "Oxy %s exec failed, attempt %d/%d, trace=%s, node=%s, ex=%s",
                         oxy.getName(), finalAttempt, oxy.getRetries(),
                         oxyRequest.getCurrentTraceId(), oxyRequest.getNodeId(),
                         e.toString()));
 
                 if (isFinal) {
-                    logger.log(Level.SEVERE,
-                            String.format("Abandoning oxy %s after %d/%d retries",
+                    log.error(String.format("Abandoning oxy %s after %d/%d retries",
                                     oxy.getName(), attempt, oxy.getRetries()), e);
                     break;
                 }
@@ -691,7 +690,7 @@ public class OxyRequest implements Cloneable {
                     Thread.sleep((long) oxy.getDelay());
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    logger.warning("Retry loop interrupted for oxy " + oxy.getName());
+                    log.warn("Retry loop interrupted for oxy " + oxy.getName());
                     break;
                 }
             }
@@ -762,7 +761,7 @@ public class OxyRequest implements Cloneable {
         String oxyName = oxyRequest.callee;
 
         if (!this.hasOxy(oxyName)) {
-            logger.severe("oxy " + oxyName + " not exists");
+            log.error("oxy " + oxyName + " not exists");
             return OxyResponse.builder()
                     .state(OxyState.SKIPPED)
                     .output(String.format("No permission for tool: %s", oxyName))
@@ -777,7 +776,7 @@ public class OxyRequest implements Cloneable {
                 || callerOxy.getExtraPermittedToolNameList().contains(oxyName)
                 || callerOxy.getPermittedOxy().contains(oxyName))) {
 
-            logger.severe(String.format(
+            log.error(String.format(
                     "No permission for oxy: %s, caller: %s, trace_id=%s, node_id=%s",
                     oxyName,
                     oxyRequest.getCaller(),
@@ -870,7 +869,7 @@ public class OxyRequest implements Cloneable {
      */
     public OxyResponse start() {
         Objects.requireNonNull(this.callee, "Callee cannot be null");
-        logger.info("Starting execution of: " + callee);
+        log.info("Starting execution of: " + callee);
         return this.getOxy(this.callee).execute(this);
     }
 
@@ -935,12 +934,12 @@ public class OxyRequest implements Cloneable {
      */
     public void setGlobalData(String key, Object value) {
         if (this.mas == null) {
-            logger.warning("Cannot set global data: mas is null");
+            log.warn("Cannot set global data: mas is null");
             return;
         }
 
         if (this.mas.getGlobalData() == null) {
-            logger.warning("Cannot set global data: mas.globalData is null");
+            log.warn("Cannot set global data: mas.globalData is null");
             return;
         }
 
@@ -959,7 +958,7 @@ public class OxyRequest implements Cloneable {
         }
 
         if (key == null) {
-            logger.warning("Cannot set arguments: key is null");
+            log.warn("Cannot set arguments: key is null");
             return;
         }
 

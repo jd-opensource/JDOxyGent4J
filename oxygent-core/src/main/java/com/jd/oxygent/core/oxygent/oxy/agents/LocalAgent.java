@@ -38,8 +38,8 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -113,8 +113,6 @@ import java.util.stream.Collectors;
 @ToString(callSuper = true, exclude = "prompt")
 @Slf4j
 public class LocalAgent extends BaseAgent {
-
-    private static final Logger logger = LoggerFactory.getLogger(LocalAgent.class);
 
     /**
      * Large Language Model identifier
@@ -329,7 +327,7 @@ public class LocalAgent extends BaseAgent {
                     this.addPermittedTool(toolName);
                 }
             } else {
-                logger.warn("Unknown tool type: {}", oxy.getClass());
+                log.warn("Unknown tool type: {}", oxy.getClass());
             }
         }
 
@@ -347,7 +345,7 @@ public class LocalAgent extends BaseAgent {
                     this.addPermittedTool(toolName);
                 }
             } else {
-                logger.warn("Unknown bank type: {}", oxy.getClass());
+                log.warn("Unknown bank type: {}", oxy.getClass());
             }
         }
     }
@@ -380,13 +378,13 @@ public class LocalAgent extends BaseAgent {
             try {
                 String fallback = prompt != null ? prompt : "";
                 resolvedPrompt = getDynamicPrompt(promptKey, fallback);
-                logger.debug("Agent {} resolved prompt via key {}: {} chars",  getName(), promptKey, resolvedPrompt.length());
+                log.debug("Agent {} resolved prompt via key {}: {} chars",  getName(), promptKey, resolvedPrompt.length());
             } catch (Exception e) {
-                logger.error("Failed to reload prompt for agent {} with key {}", getName(), promptKey, e);
+                log.error("Failed to reload prompt for agent {} with key {}", getName(), promptKey, e);
             }
         } else {
             resolvedPrompt = prompt != null ? prompt : "";
-            logger.debug("Agent {} using static prompt from code (live prompt disabled)", getName());
+            log.debug("Agent {} using static prompt from code (live prompt disabled)", getName());
         }
 
         super.init();
@@ -404,7 +402,7 @@ public class LocalAgent extends BaseAgent {
             throw new IllegalStateException("LLM model [" + this.getLlmModel() + "] does not exist");
         }
 
-        logger.debug("LocalAgent initialization completed: {}, tool count: {}",
+        log.debug("LocalAgent initialization completed: {}, tool count: {}",
                 getName(), this.getPermittedToolNameList().size());
 
         // TODO: Team mode functionality to be implemented
@@ -456,13 +454,13 @@ public class LocalAgent extends BaseAgent {
             esBody.put("_source", true);
 
             // Add debug information
-            logger.debug("ES query body: {}", esBody);
+            log.debug("ES query body: {}", esBody);
 
             // Synchronous ES call (if your client is async, use searchBlocking or block at outer layer)
             Map<String, Object> resp = this.getMas().getEsClient().search(Config.getAppName() + "_history", esBody);
 
             // Add debug information, check ES returned data
-            logger.debug("ES response hits total: {}",
+            log.debug("ES response hits total: {}",
                     resp.get("hits") != null ? ((Map<?, ?>) resp.get("hits")).get("total") : "null");
 
             Map<String, Object> hitsWrapper = (Map<String, Object>) resp.get("hits");
@@ -470,7 +468,7 @@ public class LocalAgent extends BaseAgent {
                     ? Collections.emptyList()
                     : (List<Map<String, Object>>) hitsWrapper.getOrDefault("hits", Collections.emptyList());
 
-            logger.debug("Retrieved {} history records from ES", hitList.size());
+            log.debug("Retrieved {} history records from ES", hitList.size());
 
             // Add debug information for each record
             for (int i = 0; i < hitList.size(); i++) {
@@ -480,12 +478,12 @@ public class LocalAgent extends BaseAgent {
                     Object memObj = source.get("memory");
                     if (memObj != null) {
                         String memStr = String.valueOf(memObj);
-                        logger.debug("Record {}: memory field length = {}, type = {}",
+                        log.debug("Record {}: memory field length = {}, type = {}",
                                 i, memStr.length(), memObj.getClass().getSimpleName());
 
                         // Check if contains truncation flag
                         if (memStr.contains("...") || memStr.endsWith("，怎么解决")) {
-                            logger.warn("Record {} appears to be truncated, ends with: '{}'",
+                            log.warn("Record {} appears to be truncated, ends with: '{}'",
                                     i, memStr.length() > 100 ? memStr.substring(memStr.length() - 100) : memStr);
                         }
                     }
@@ -516,7 +514,7 @@ public class LocalAgent extends BaseAgent {
                         String memJson = String.valueOf(memObj);
 
                         // Add debug information, check original JSON length
-                        logger.debug("Processing memory JSON, length: {}, preview: {}",
+                        log.debug("Processing memory JSON, length: {}, preview: {}",
                                 memJson.length(),
                                 memJson.length() > 200 ? memJson.substring(0, 200) + "..." : memJson);
 
@@ -524,23 +522,23 @@ public class LocalAgent extends BaseAgent {
                             mem = JsonUtils.readValue(memJson, new TypeReference<>() {
                             });
                         } catch (Exception parseException) {
-                            logger.warn("First JSON parse attempt failed: {}", parseException.getMessage());
+                            log.warn("First JSON parse attempt failed: {}", parseException.getMessage());
                             try {
                                 com.fasterxml.jackson.databind.JsonNode jsonNode = JsonUtils.readTree(memJson);
                                 mem = JsonUtils.convertValue(jsonNode, new TypeReference<>() {
                                 });
-                                logger.debug("Second JSON parse attempt succeeded using JsonNode");
+                                log.debug("Second JSON parse attempt succeeded using JsonNode");
                             } catch (Exception secondParseException) {
-                                logger.warn("Second JSON parse attempt failed: {}, attempting manual cleanup",
+                                log.warn("Second JSON parse attempt failed: {}, attempting manual cleanup",
                                         secondParseException.getMessage());
 
                                 String cleanedJson = sanitizeJsonString(memJson);
-                                logger.debug("Cleaned JSON length: {}, preview: {}",
+                                log.debug("Cleaned JSON length: {}, preview: {}",
                                         cleanedJson.length(),
                                         cleanedJson.length() > 200 ? cleanedJson.substring(0, 200) + "..." : cleanedJson);
                                 mem = JsonUtils.readValue(cleanedJson, new TypeReference<>() {
                                 });
-                                logger.debug("Third JSON parse attempt succeeded after manual cleanup");
+                                log.debug("Third JSON parse attempt succeeded after manual cleanup");
                             }
                         }
                     }
@@ -551,7 +549,7 @@ public class LocalAgent extends BaseAgent {
                     // Add debug information, check parsed content length
                     if (a != null) {
                         String answerStr = a instanceof String ? (String) a : String.valueOf(a);
-                        logger.debug("Parsed answer length: {}, ends with: '{}'",
+                        log.debug("Parsed answer length: {}, ends with: '{}'",
                                 answerStr.length(),
                                 answerStr.length() > 50 ? answerStr.substring(Math.max(0, answerStr.length() - 50)) : answerStr);
                         shortMemory.addMessage(Message.assistantMessage(answerStr));
@@ -560,9 +558,9 @@ public class LocalAgent extends BaseAgent {
                         shortMemory.addMessage(Message.userMessage(String.valueOf(q)));
                     }
                 } catch (Exception e) {
-                    logger.warn("Failed to parse memory json after all attempts, skipping this record. Error: {}", e.getMessage());
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Full stack trace for memory parsing failure:", e);
+                    log.warn("Failed to parse memory json after all attempts, skipping this record. Error: {}", e.getMessage());
+                    if (log.isDebugEnabled()) {
+                        log.debug("Full stack trace for memory parsing failure:", e);
                     }
                 }
             }
@@ -800,7 +798,7 @@ public class LocalAgent extends BaseAgent {
     public boolean reloadPrompt() {
         // Check if live prompt is enabled
         if (!useLivePrompt) {
-            logger.debug("Agent {} has live prompt disabled, skipping reload", getName());
+            log.debug("Agent {} has live prompt disabled, skipping reload", getName());
             return false;
         }
         try {
@@ -808,13 +806,13 @@ public class LocalAgent extends BaseAgent {
             String newPrompt = getDynamicPrompt(promptKey, fallback);
             if (!newPrompt.equals(resolvedPrompt)) {
                 resolvedPrompt = newPrompt;
-                logger.info("Agent {} prompt hot-reloaded via key {}: {} chars", getName(), promptKey, resolvedPrompt.length());
+                log.info("Agent {} prompt hot-reloaded via key {}: {} chars", getName(), promptKey, resolvedPrompt.length());
             } else {
-                logger.debug("Agent {} prompt unchanged", getName());
+                log.debug("Agent {} prompt unchanged", getName());
             }
             return true;
         } catch (Exception e) {
-            logger.error("Failed to reload prompt for agent {} with key {}", getName(), promptKey, e);
+            log.error("Failed to reload prompt for agent {} with key {}", getName(), promptKey, e);
             return false;
         }
     }

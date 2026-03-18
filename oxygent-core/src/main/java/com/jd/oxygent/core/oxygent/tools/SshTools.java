@@ -75,7 +75,7 @@ public class SshTools extends FunctionHub {
             in.close();
             channel.disconnect();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error executing SSH command: {}", command, e);
         }
         return stringBuilder.toString();
     }

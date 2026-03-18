@@ -29,8 +29,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+
 
 import java.io.IOException;
 import java.net.URI;
@@ -64,8 +65,8 @@ import java.util.function.Function;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @SuperBuilder
+@Slf4j
 public class HttpLlm extends RemoteLlm {
-    private static final Logger logger = LoggerFactory.getLogger(HttpLlm.class);
 
     /** Http Client Version */
     private HttpClient.Version httpVersion = null;
@@ -136,7 +137,7 @@ public class HttpLlm extends RemoteLlm {
             if (funcProcessLlmException != null) {
                 return funcProcessLlmException.apply(e);
             } else {
-                logger.error("LLM request exception", e);
+                log.error("LLM request exception", e);
                 OxyResponse oxyResponse = OxyResponse.builder().state(OxyState.FAILED).output(e.getMessage()).oxyRequest(oxyRequest).build();
                 if (aiLogger != null && aiLogger.isEnabled()) {
                     aiLogger.log("llm", oxyResponse, this, Map.of("error", e.getMessage(), "elapsedMillis", String.valueOf(System.currentTimeMillis() - timer)));
@@ -257,20 +258,20 @@ public class HttpLlm extends RemoteLlm {
         long timer = System.currentTimeMillis();
         HttpResponse<java.io.InputStream> response = getHttpClient().send(request,
                 HttpResponse.BodyHandlers.ofInputStream());
-        logger.debug("HttpLlm executeNonStreamingRequest cost:{}ms request:{}", System.currentTimeMillis() - timer, jsonBody);
+        log.debug("HttpLlm executeNonStreamingRequest cost:{}ms request:{}", System.currentTimeMillis() - timer, jsonBody);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             String errorBody = "";
             try (java.io.InputStream errorStream = response.body();
                  java.io.BufferedReader errorReader = new java.io.BufferedReader(new java.io.InputStreamReader(errorStream))) {
                 errorBody = errorReader.lines().collect(java.util.stream.Collectors.joining("\n"));
             } catch (Exception e) {
-                logger.warn("Failed to read error response body", e);
+                log.warn("Failed to read error response body", e);
             }
             if (response.statusCode() == 429) { // rate limit
                 // get Retry-After header
                 long retryAfter = response.headers().firstValueAsLong("retry-after").orElse(0L);
                 String output = retryAfter > 0 ? " retry-after:" + retryAfter + " ```json" + errorBody + "```" : errorBody;
-                logger.error(output);
+                log.error(output);
                 return OxyResponse.builder()
                         .state(OxyState.RATE_LIMIT_EXCEEDED)
                         .output(output)
@@ -316,7 +317,7 @@ public class HttpLlm extends RemoteLlm {
                             usage = contentAndUsage[1];
                         }
                     } catch (Exception e) {
-                        logger.warn("Failed to parse streaming JSON: {}, error: {}", jsonData, e.getMessage());
+                        log.warn("Failed to parse streaming JSON: {}, error: {}", jsonData, e.getMessage());
                     }
                 } else if (line.startsWith("event:") || line.startsWith("id:") || line.trim().isEmpty()) {
                     continue;
@@ -342,12 +343,12 @@ public class HttpLlm extends RemoteLlm {
                             }
                         }
                     } catch (Exception e) {
-                        logger.debug("Skipping non-JSON line: {}", line);
+                        log.debug("Skipping non-JSON line: {}", line);
                     }
                 }
             }
         } catch (IOException e) {
-            logger.error("Error reading streaming response", e);
+            log.error("Error reading streaming response", e);
             throw new RuntimeException("Failed to read streaming response", e);
         }
 
@@ -387,13 +388,13 @@ public class HttpLlm extends RemoteLlm {
         try {
             long timer = System.currentTimeMillis();
             HttpResponse<String> response = getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-            logger.debug("HttpLlm executeNonStreamingRequest cost:{}ms request:{}", System.currentTimeMillis() - timer, jsonBody);
+            log.debug("HttpLlm executeNonStreamingRequest cost:{}ms request:{}", System.currentTimeMillis() - timer, jsonBody);
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 if (response.statusCode() == 429) { // rate limit
                     // get Retry-After header
                     long retryAfter = response.headers().firstValueAsLong("retry-after").orElse(0L);
                     String output = retryAfter > 0 ? " retry-after:" + retryAfter + " ```json" + response.body() + "```" : response.body();
-                    logger.error(output);
+                    log.error(output);
                     return OxyResponse.builder()
                             .state(OxyState.RATE_LIMIT_EXCEEDED)
                             .output(output)
@@ -402,7 +403,7 @@ public class HttpLlm extends RemoteLlm {
                 }
                 String errorMessage = String.format("HTTP request failed, status code: %d, URL: %s, response: %s",
                         response.statusCode(), url, response.body());
-                logger.error(errorMessage);
+                log.error(errorMessage);
                 throw new RuntimeException(errorMessage);
             }
 
@@ -415,21 +416,21 @@ public class HttpLlm extends RemoteLlm {
             try {
                 data = JsonUtils.readValue(responseBody, Map.class);
             } catch (Exception e) {
-                logger.error("Failed to parse response JSON: {}", responseBody);
+                log.error("Failed to parse response JSON: {}", responseBody);
                 throw new RuntimeException("Response is not valid JSON format: " + e.getMessage(), e);
             }
 
             if (data.containsKey("error")) {
                 Map<String, Object> error = (Map<String, Object>) data.get("error");
                 String errorMsg = error.getOrDefault("message", "Unknown error").toString();
-                logger.error("LLM API error: {}", errorMsg);
+                log.error("LLM API error: {}", errorMsg);
                 throw new RuntimeException("LLM API error: " + errorMsg);
             }
 
             String[] resultAndUsage = extractNonStreamContent(data, isGemini, useOpenai);
 
             if (resultAndUsage == null || (StringUtils.isBlank(resultAndUsage[0]) && StringUtils.isBlank(resultAndUsage[1]))) {
-                logger.warn("Content extracted from response is empty, original response: {}", responseBody);
+                log.warn("Content extracted from response is empty, original response: {}", responseBody);
             }
             return OxyResponse
                     .builder()
@@ -439,7 +440,7 @@ public class HttpLlm extends RemoteLlm {
                     .oxyRequest(oxyRequest)
                     .build();
         } catch (IOException e) {
-            logger.error("Network request failed: {}", e.getMessage());
+            log.error("Network request failed: {}", e.getMessage());
             throw new RuntimeException("Network request failed: " + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -510,7 +511,7 @@ public class HttpLlm extends RemoteLlm {
                 }
             }
         } catch (Exception e) {
-            logger.warn("Failed to extract stream content", e);
+            log.warn("Failed to extract stream content", e);
         }
         return result;
     }
@@ -560,7 +561,7 @@ public class HttpLlm extends RemoteLlm {
                 return result;
             }
         } catch (Exception e) {
-            logger.warn("Failed to extract non-stream content", e);
+            log.warn("Failed to extract non-stream content", e);
         }
         return result;
     }

@@ -20,8 +20,8 @@ import com.jd.oxygent.core.oxygent.utils.FileDownloadUtil;
 import com.jd.oxygent.core.oxygent.utils.ImageBase64Converter;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -195,11 +195,11 @@ public enum MultimodalResourceType {
                                 String fileType = tmpFile.getFileType();
 
                                 // Download file from URL to local cache
-                                logger.info("Processing file: {} from URL: {}", fileName, fileUrl);
+                                log.info("Processing file: {} from URL: {}", fileName, fileUrl);
                                 localFilePath = FileDownloadUtil.downloadFile(fileUrl, fileName, fileType);
 
                                 if (localFilePath == null) {
-                                    logger.error("Failed to download file from URL: {}", fileUrl);
+                                    log.error("Failed to download file from URL: {}", fileUrl);
                                     return Map.<String, Object>of(
                                             "type", "text",
                                             "text", "File download failed: " + fileName
@@ -226,7 +226,7 @@ public enum MultimodalResourceType {
                                     );
                                 } catch (RuntimeException e) {
                                     // Compression failed, return specific error message
-                                    logger.error("Image compression failed: {}, error: {}", fileName, e.getMessage());
+                                    log.error("Image compression failed: {}, error: {}", fileName, e.getMessage());
                                     return Map.<String, Object>of(
                                             "type", "text",
                                             "text", "Image processing failed: " + fileName + " - " + e.getMessage()
@@ -241,7 +241,7 @@ public enum MultimodalResourceType {
                                             "text", pdfText != null ? pdfText : "PDF text extraction failed: " + fileName
                                     );
                                 } catch (Exception e) {
-                                    logger.error("PDF text extraction failed: {}, error: {}", fileName, e.getMessage());
+                                    log.error("PDF text extraction failed: {}, error: {}", fileName, e.getMessage());
                                     return Map.<String, Object>of(
                                             "type", "text",
                                             "text", "PDF text extraction failed: " + fileName + " - " + e.getMessage()
@@ -256,7 +256,7 @@ public enum MultimodalResourceType {
                                             "text", documentText != null ? documentText : "Document text extraction failed: " + fileName
                                     );
                                 } catch (Exception e) {
-                                    logger.error("Document text extraction failed: {}, error: {}", fileName, e.getMessage());
+                                    log.error("Document text extraction failed: {}, error: {}", fileName, e.getMessage());
                                     return Map.<String, Object>of(
                                             "type", "text",
                                             "text", "Document text extraction failed: " + fileName + " - " + e.getMessage()
@@ -271,7 +271,7 @@ public enum MultimodalResourceType {
                                             "text", excelContent != null ? excelContent : "Excel content extraction failed: " + fileName
                                     );
                                 } catch (Exception e) {
-                                    logger.error("Excel content extraction failed: {}, error: {}", fileName, e.getMessage());
+                                    log.error("Excel content extraction failed: {}, error: {}", fileName, e.getMessage());
                                     return Map.<String, Object>of(
                                             "type", "text",
                                             "text", "Excel content extraction failed: " + fileName + " - " + e.getMessage()
@@ -286,7 +286,7 @@ public enum MultimodalResourceType {
                                             "text", csvContent != null ? csvContent : "CSV content extraction failed: " + fileName
                                     );
                                 } catch (Exception e) {
-                                    logger.error("CSV content extraction failed: {}, error: {}", fileName, e.getMessage());
+                                    log.error("CSV content extraction failed: {}, error: {}", fileName, e.getMessage());
                                     return Map.<String, Object>of(
                                             "type", "text",
                                             "text", "CSV content extraction failed: " + fileName + " - " + e.getMessage()
@@ -312,7 +312,7 @@ public enum MultimodalResourceType {
                                 );
                             }
                         } catch (Exception e) {
-                            logger.error("Error processing file: {}", file, e);
+                            log.error("Error processing file: {}", file, e);
                             return Map.<String, Object>of(
                                     "type", "text",
                                     "text", "File processing exception: " + e.getMessage()
@@ -383,7 +383,7 @@ public enum MultimodalResourceType {
                         return Paths.get(pathOrUrl).getFileName().toString();
                     } catch (Exception e) {
                         // If Paths.get() fails, fallback to manual extraction
-                        logger.warn("Failed to extract filename using Paths.get() for: {}, using fallback method", pathOrUrl);
+                        log.warn("Failed to extract filename using Paths.get() for: {}, using fallback method", pathOrUrl);
 
                         // Manual extraction as fallback
                         String normalized = pathOrUrl.replace("\\", "/");
@@ -392,7 +392,7 @@ public enum MultimodalResourceType {
                     }
                 }
             } catch (Exception e) {
-                logger.error("Error extracting filename from: {}, error: {}", pathOrUrl, e.getMessage());
+                log.error("Error extracting filename from: {}, error: {}", pathOrUrl, e.getMessage());
                 return "error_extracting_filename";
             }
         }
@@ -408,7 +408,6 @@ public enum MultimodalResourceType {
         }
     };
 
-    private static final Logger logger = LoggerFactory.getLogger(MultimodalResourceType.class);
     /**
      * -- GETTER --
      * Get identifier

@@ -2,6 +2,7 @@ package com.jd.oxygent.core.oxygent.samples.server.utils;
 
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.utils.JsonUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.util.jar.JarFile;
  * @description Create instances based on class names
  * @since 1.0.0
  */
+@Slf4j
 public final class RecursivePackageInstantiator {
     private static final String BASE_PACKAGE = "com.jd.oxygent.core.oxygent.oxy";
 
@@ -168,7 +170,7 @@ public final class RecursivePackageInstantiator {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error searching for class in jar: {}", className, e);
         }
         return null;
     }

@@ -24,9 +24,10 @@ import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 
 import java.net.http.HttpRequest;
 import java.util.ArrayDeque;
@@ -80,9 +81,8 @@ import java.util.stream.Stream;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
+@Slf4j
 public abstract class BaseMCPClient extends BaseTool {
-
-    private static final Logger logger = LoggerFactory.getLogger(BaseMCPClient.class);
 
     protected List<String> includedToolNameList = new ArrayList<>();
     protected McpSyncClient clientSession = null;
@@ -125,7 +125,7 @@ public abstract class BaseMCPClient extends BaseTool {
 
     public BaseMCPClient(Map<String, Object> args) {
         if (MapUtils.isEmpty(args)) {
-            logger.warn("header args is empty !!!!");
+            log.warn("header args is empty !!!!");
         } else {
             this.isKeepAlive = (Boolean) args.getOrDefault("is_keep_alive", false);
             this.isDynamicHeaders = (Boolean) args.getOrDefault("is_dynamic_headers", false);
@@ -211,7 +211,7 @@ public abstract class BaseMCPClient extends BaseTool {
             throw new RuntimeException("Server " + this.getName() + " not initialized");
         }
 
-        logger.info("Listing tools...");
+        log.info("Listing tools...");
         McpSchema.ListToolsResult toolsResponse = this.clientSession.listTools();
 
         Map<String, Object> params = modelDumpExclude(
@@ -273,9 +273,9 @@ public abstract class BaseMCPClient extends BaseTool {
                 if (matcher.find()) {
                     String textValue = "{" + matcher.group(1) + "}";
                     results.add(textValue);
-                    logger.info("textValue:" + textValue);
+                    log.info("textValue:" + textValue);
                 } else {
-                    logger.info("textValue Not found!");
+                    log.info("textValue Not found!");
                 }
 
             }
@@ -316,7 +316,7 @@ public abstract class BaseMCPClient extends BaseTool {
                     exitStack.close();
                 } catch (Exception e) {
                     if (e instanceof InterruptedException) {
-                        logger.warn("cleanup(): Operation was cancelled");
+                        log.warn("cleanup(): Operation was cancelled");
                         Thread.currentThread().interrupt();
                     }
                     // Suppress exceptions during cleanup
@@ -351,7 +351,7 @@ public abstract class BaseMCPClient extends BaseTool {
                     field.setAccessible(true);
                     result.put(name, field.get(this));
                 } catch (IllegalAccessException e) {
-                    logger.warn(e.getMessage());
+                    log.warn(e.getMessage());
                 }
             }
         }

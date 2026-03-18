@@ -73,6 +73,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 /**
  * OxyGent Multi-Agent System Core Management Class
@@ -702,19 +703,27 @@ public class Mas {
 
 🌐 OxyGent MAS Organization Structure Overview
 %s
-""".formatted(printTree(agentOrganization, 0)));
+""".formatted(printTree(agentOrganization, "")));
     }
 
-    // Recursively print tree structure
-    private String printTree(AgentNode node, int level) {
+    /**
+     * Recursively print tree structure
+     */
+    private String printTree(AgentNode node, String indent) {
         StringBuilder stringBuilder = new StringBuilder();
-        if (node == null) {
-            return "";
+        if ("".equals(indent)) {
+            stringBuilder.append(node.getName() + "\n");
         }
-        String indent = "  ".repeat(level);
-        stringBuilder.append(indent + "- " + node.getName() + " (" + node.getType() + ")\n");
-        for (AgentNode child : node.getChildren()) {
-            stringBuilder.append(printTree(child, level + 1));
+        List<AgentNode> children = node.getChildren();
+        for (int i = 0; i < children.size(); i++) {
+            AgentNode child = children.get(i);
+            boolean isLast = (i == children.size() - 1);
+            String connector = isLast ? "└── " : "├── ";
+            stringBuilder.append(indent + connector + child.getName() + "\n");
+            if (child.getChildren().size() > 0) {
+                String nextIndent = indent + (isLast ? "    " : "│   ");
+                stringBuilder.append(printTree(child, nextIndent));
+            }
         }
         return stringBuilder.toString();
     }
@@ -1091,7 +1100,7 @@ public class Mas {
                         field.setAccessible(true);
                         field.set(oxyRequest, v);
                     } catch (NoSuchFieldException | IllegalAccessException e) {
-                        e.printStackTrace();
+                        log.warn("NoSuchField: {}", kCamel, e);
                     }
                 } else {
                     oxyRequest.getArguments().put(k, v);
@@ -1396,20 +1405,21 @@ public class Mas {
     public void showMasInfo() {
         String template = """
 
-  ____                ____            _  \s
- / __ \\__  ____  ____/ __ \\___  ____  (_)_ \s
-/ / / / / / / / / / __/ /_/ / _ \\/ __ \\/ __/
-\\/ /_/ / /_/ / /_/ /_/ /_/ /  __/ / / / /_ \s
- \\____/\\__, /\\__, /\\____/_/\\___/_/ /_/\\__/ \s
-       /____//____/                        \s
-
-🚀 OxyGent Multi-Agent System (Java Version)
+================================================================
+🚀 OxyGent MAS Application Startup Information
 App Name     : %s
 Version      : %s
 Environment  : %s
 Java Ver     : %s
 Cache Dir    : %s
 Start Time   : %s
+================================================================
+   ____             ______           __\s
+  / __ \\_  ____  __/ ____/__  ____  / /_
+ / / / / |/_/ / / / / __/ _ \\/ __ \\/ __/
+/ /_/ />  </ /_/ / /_/ /  __/ / / / /_ \s
+\\____/_/|_|\\__, /\\____/\\___/_/ /_/\\__/ \s
+          /____/      \s
     """;
         String result = template.formatted(
                 Config.getAppName(),

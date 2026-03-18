@@ -18,10 +18,11 @@ package com.jd.oxygent.core.oxygent.utils;
 import com.github.f4b6a3.uuid.UuidCreator;
 import com.github.f4b6a3.uuid.codec.base.Base64UrlCodec;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -90,8 +91,8 @@ import java.util.stream.Collectors;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class CommonUtils {
-    private static final Logger logger = LoggerFactory.getLogger(CommonUtils.class);
     private static final OkHttpClient httpClient = new OkHttpClient();
 
     private static final int CORE_POOL_SIZE = 5;
@@ -170,7 +171,7 @@ public class CommonUtils {
             }
             return sb.toString();
         } catch (Exception e) {
-            logger.warn("Failed to get MAC address: {}", e.getMessage());
+            log.warn("Failed to get MAC address: {}", e.getMessage());
             return "00-00-00-00-00-00";
         }
     }
@@ -512,7 +513,7 @@ public class CommonUtils {
         String line = prefix + branch + node.getOrDefault("name", "");
 
         if (logger != null) {
-            logger.info(line);
+            log.info(line);
         } else {
             System.out.println(line);
         }
@@ -597,7 +598,7 @@ public class CommonUtils {
 
         for (String attachment : attachments) {
             if (!(attachment.startsWith("http") || Files.exists(Paths.get(attachment)))) {
-                logger.warn("Attachment file not found: {}", attachment);
+                log.warn("Attachment file not found: {}", attachment);
                 continue;
             }
 
@@ -720,7 +721,7 @@ public class CommonUtils {
                     map.put(key, value); // Simple types are directly put into Map
                 }
             } catch (IllegalAccessException e) {
-                e.printStackTrace();
+                log.warn(field.getName(), e);
             }
         }
         return map;

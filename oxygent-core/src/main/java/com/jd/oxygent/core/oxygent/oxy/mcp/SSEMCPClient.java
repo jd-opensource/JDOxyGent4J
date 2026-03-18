@@ -20,8 +20,7 @@ import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.http.HttpRequest;
 import java.util.Map;
@@ -77,8 +76,8 @@ import java.util.Map;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
+@Slf4j
 public class SSEMCPClient extends BaseMCPClient {
-    private static final Logger logger = LoggerFactory.getLogger(SSEMCPClient.class);
 
     /**
      * Base URL address of the MCP server
@@ -154,12 +153,12 @@ public class SSEMCPClient extends BaseMCPClient {
     public void init() {
         try {
             initClientSession(null);
-            logger.info("sse--Starting to load {} tool methods into oxy:", this.getName());
+            log.info("sse--Starting to load {} tool methods into oxy:", this.getName());
             this.listTools();
 
-            logger.info("MCP Server started via sse.");
+            log.info("MCP Server started via sse.");
         } catch (Exception e) {
-            logger.error("Error initializing server {}: {}", this.getName(), e.getMessage(), e);
+            log.error("Error initializing server {}: {}", this.getName(), e.getMessage(), e);
             this.cleanup();
             throw new RuntimeException("Server " + this.getName() + " error", e);
         }
@@ -172,12 +171,12 @@ public class SSEMCPClient extends BaseMCPClient {
             HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder(this.baseUrl).sseEndpoint(endpoint).requestBuilder(httpRequestBuilder).build();
 
             this.clientSession = McpClient.sync(transport).build();
-            logger.info("{}--sse--Starting initialization....", this.getName());
+            log.info("{}--sse--Starting initialization....", this.getName());
             this.clientSession.initialize();
-            logger.info("Is initialized: " + this.clientSession.isInitialized());
+            log.info("Is initialized: " + this.clientSession.isInitialized());
             return true;
         } catch (Exception e) {
-            logger.error("Error initializing server {}: {}", this.getName(), e.getMessage(), e);
+            log.error("Error initializing server {}: {}", this.getName(), e.getMessage(), e);
             this.cleanup();
             return false;
         }

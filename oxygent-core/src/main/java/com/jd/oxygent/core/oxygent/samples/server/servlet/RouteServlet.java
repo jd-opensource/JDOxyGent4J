@@ -349,6 +349,8 @@ public class RouteServlet extends HttpServlet {
         response.setContentType("application/json;charset=UTF-8");
         try (PrintWriter writer = response.getWriter()) {
             writer.write(objectMapper.writeValueAsString(data));
+        } catch (Exception e) {
+            log.error("Send JSON response failed", e);
         }
     }
 

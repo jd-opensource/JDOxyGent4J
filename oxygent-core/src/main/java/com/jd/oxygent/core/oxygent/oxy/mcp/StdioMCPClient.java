@@ -23,8 +23,9 @@ import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -109,6 +110,7 @@ import java.util.Map;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
+@Slf4j
 public class StdioMCPClient extends BaseMCPClient {
 
     /**
@@ -135,8 +137,6 @@ public class StdioMCPClient extends BaseMCPClient {
      * such as API keys, configuration paths, etc.
      */
     Map envMap;
-
-    private static final Logger logger = LoggerFactory.getLogger(StdioMCPClient.class);
 
     /**
      * Construct a Stdio MCP client instance
@@ -247,15 +247,15 @@ public class StdioMCPClient extends BaseMCPClient {
             StdioClientTransport clientTransport = new StdioClientTransport(parameters, new JacksonMcpJsonMapper(new ObjectMapper()));
 
             this.clientSession = McpClient.sync(clientTransport).build();
-            logger.info("{} starting initialization....", this.getName());
+            log.info("{} starting initialization....", this.getName());
             this.clientSession.initialize();
-            logger.info("Is initialized: " + this.clientSession.isInitialized());
-            logger.info("Starting to load {} tool methods into oxy:", this.getName());
+            log.info("Is initialized: " + this.clientSession.isInitialized());
+            log.info("Starting to load {} tool methods into oxy:", this.getName());
             this.listTools();
 
-            logger.info("MCP Server started via stdio.");
+            log.info("MCP Server started via stdio.");
         } catch (Exception e) {
-            logger.error("Failed to start MCP server", e);
+            log.error("Failed to start MCP server", e);
             throw new RuntimeException("Failed to start MCP server", e);
         }
     }
@@ -396,9 +396,9 @@ public class StdioMCPClient extends BaseMCPClient {
             if (!Files.exists(dirPath)) {
                 try {
                     Files.createDirectories(dirPath);
-                    logger.info("Created directory: " + targetDir);
+                    log.info("Created directory: " + targetDir);
                 } catch (Exception e) {
-                    logger.warn("Could not create directory " + targetDir + ": " + e);
+                    log.warn("Could not create directory " + targetDir + ": " + e);
                 }
             }
         }

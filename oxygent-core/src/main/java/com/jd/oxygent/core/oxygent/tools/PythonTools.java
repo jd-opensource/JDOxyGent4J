@@ -20,8 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.python.core.PyException;
 import org.python.core.PySystemState;
 import org.python.util.PythonInterpreter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -127,10 +126,10 @@ public class PythonTools extends FunctionHub {
      *   <li>Execution timeout and resource consumption restrictions apply</li>
      * </ul>
      *
-     * @param code           Python code to execute, cannot be null or empty
+     * @param code             Python code to execute, cannot be null or empty
      * @param variableToReturn Optional variable name to return, can be null
-     * @param safeGlobals    Optional global scope variables, can be null
-     * @param safeLocals     Optional local scope variables, can be null
+     * @param safeGlobals      Optional global scope variables, can be null
+     * @param safeLocals       Optional local scope variables, can be null
      * @return Execution result string, returns variable value when variableToReturn is specified, returns success message otherwise
      * @throws IllegalArgumentException when code is null or empty
      */
@@ -146,7 +145,7 @@ public class PythonTools extends FunctionHub {
     )
     public String runPythonCode(String code, String variableToReturn, Map<String, Object> safeGlobals, Map<String, Object> safeLocals) {
 
-        if(interpreter== null){
+        if (interpreter == null) {
             return "Error: Python engine not found";
         }
 
@@ -161,7 +160,7 @@ public class PythonTools extends FunctionHub {
             if (safeGlobals != null) {
                 safeGlobals.forEach((k, v) -> interpreter.set(k, v));
             }
-            
+
             if (safeLocals != null) {
                 safeLocals.forEach((k, v) -> interpreter.set(k, v));
             }
@@ -190,6 +189,7 @@ public class PythonTools extends FunctionHub {
     }
 
     // ========== Test Methods ==========
+
     /**
      * Test method demonstrating basic functionality of PythonTools.
      * <p>
@@ -206,7 +206,7 @@ public class PythonTools extends FunctionHub {
 
         // Test 1: Simple calculation
         System.out.println("1. Simple calculation test:");
-        String calcResult = (String) pythonTools.call("run_python_code", "result = 10 + 20",null,null,null);
+        String calcResult = (String) pythonTools.call("run_python_code", "result = 10 + 20", null, null, null);
         System.out.println("   Calculation result: " + calcResult);
 
         // Test 2: Variable return
@@ -217,29 +217,29 @@ public class PythonTools extends FunctionHub {
         // Test 3: Complex calculation with return
         System.out.println("\n3. Complex calculation with return test:");
         String complexCode = "import math\n" +
-                           "area = math.pi * 5 * 5\n" +
-                           "circumference = 2 * math.pi * 5";
+                "area = math.pi * 5 * 5\n" +
+                "circumference = 2 * math.pi * 5";
         String areaResult = (String) pythonTools.call("run_python_code", complexCode, "area", null, null);
         System.out.println("   Circle area: " + areaResult);
 
         // Test 4: Error handling
         System.out.println("\n4. Error handling test:");
-        String errorResult = (String) pythonTools.call("run_python_code", "undefined_variable + 1",null,null,null);
+        String errorResult = (String) pythonTools.call("run_python_code", "undefined_variable + 1", null, null, null);
         System.out.println("   Error handling: " + errorResult);
 
         // Test 5: With custom scope
         System.out.println("\n5. Custom scope test:");
         Map<String, Object> globals = new HashMap<>();
         globals.put("multiplier", 10);
-        
+
         Map<String, Object> locals = new HashMap<>();
         locals.put("base_value", 5);
-        
-        String scopeResult = (String) pythonTools.call("run_python_code", 
-            "result = base_value * multiplier", 
-            "result", 
-            globals, 
-            locals);
+
+        String scopeResult = (String) pythonTools.call("run_python_code",
+                "result = base_value * multiplier",
+                "result",
+                globals,
+                locals);
         System.out.println("   Scoped calculation result: " + scopeResult);
     }
 }

@@ -22,8 +22,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -70,8 +70,6 @@ import java.util.function.Function;
 @SuperBuilder
 public class MockLlm extends BaseLlM {
 
-    private static final Logger logger = LoggerFactory.getLogger(MockLlm.class);
-
     /**
      * Mock processing function - corresponds to Python's func_mock_process
      *
@@ -88,9 +86,9 @@ public class MockLlm extends BaseLlM {
         super.init();
         if (this.funcMockProcess == null) {
             this.funcMockProcess = this::_mockProcess;
-            logger.debug("Using default mock process function");
+            log.debug("Using default mock process function");
         } else {
-            logger.debug("Using custom mock process function");
+            log.debug("Using custom mock process function");
         }
     }
 
@@ -108,7 +106,7 @@ public class MockLlm extends BaseLlM {
             return "output";
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            logger.warn("Mock processing interrupted");
+            log.warn("Mock processing interrupted");
             return "Error: Mock processing interrupted";
         }
     }
@@ -125,7 +123,7 @@ public class MockLlm extends BaseLlM {
     @Override
     protected OxyResponse _execute(OxyRequest oxyRequest) {
         try {
-            logger.info("Executing mock LLM request");
+            log.info("Executing mock LLM request");
 
             // Call the mock processing function directly (sync version)
             String output = funcMockProcess.apply(oxyRequest);
@@ -137,7 +135,7 @@ public class MockLlm extends BaseLlM {
                     .build();
 
         } catch (Exception e) {
-            logger.error("Mock LLM execution failed: {}", e.getMessage(), e);
+            log.error("Mock LLM execution failed: {}", e.getMessage(), e);
             return OxyResponse.builder()
                     .state(OxyState.FAILED)
                     .output("Error: " + e.getMessage())

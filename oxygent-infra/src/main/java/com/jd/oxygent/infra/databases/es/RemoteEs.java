@@ -546,7 +546,7 @@ public class RemoteEs extends BaseDB implements BaseEs {
                 return properties;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error while getting mapping for index: {}", indexName, e);
         }
         return null;
     }

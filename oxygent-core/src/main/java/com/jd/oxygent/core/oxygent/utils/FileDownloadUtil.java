@@ -1,11 +1,12 @@
 package com.jd.oxygent.core.oxygent.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 
 import java.io.*;
 import java.net.URL;
@@ -24,8 +25,8 @@ import java.util.concurrent.TimeUnit;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class FileDownloadUtil {
-    private static final Logger logger = LoggerFactory.getLogger(FileDownloadUtil.class);
 
     // Default cache directory
     private static final String DEFAULT_CACHE_DIR = "./cache_dir/multimodal";
@@ -48,7 +49,7 @@ public class FileDownloadUtil {
      */
     public static String downloadFile(String fileUrl, String fileName, String fileType) {
         if (fileUrl == null || fileUrl.trim().isEmpty()) {
-            logger.warn("File URL is empty");
+            log.warn("File URL is empty");
             return null;
         }
 
@@ -65,22 +66,22 @@ public class FileDownloadUtil {
 
             // Check if cached file already exists
             if (Files.exists(cachedFilePath)) {
-                logger.info("File already cached: {}", cachedFilePath);
+                log.info("File already cached: {}", cachedFilePath);
                 return cachedFilePath.toString();
             }
 
             // Try to download file, supports automatic switching between internal and external links
             String result = downloadWithFallback(fileUrl, cachedFilePath);
             if (result != null) {
-                logger.info("File downloaded successfully: {}", cachedFilePath);
+                log.info("File downloaded successfully: {}", cachedFilePath);
                 return result;
             } else {
-                logger.error("Failed to download file from both internal and external URLs: {}", fileUrl);
+                log.error("Failed to download file from both internal and external URLs: {}", fileUrl);
                 return null;
             }
 
         } catch (Exception e) {
-            logger.error("Error downloading file from URL: {}", fileUrl, e);
+            log.error("Error downloading file from URL: {}", fileUrl, e);
             return null;
         }
     }
@@ -102,7 +103,7 @@ public class FileDownloadUtil {
         // If original URL fails, try switching between internal and external links
         String alternativeUrl = convertUrl(originalUrl);
         if (!alternativeUrl.equals(originalUrl)) {
-            logger.info("Original URL failed, trying alternative URL: {}", alternativeUrl);
+            log.info("Original URL failed, trying alternative URL: {}", alternativeUrl);
             result = attemptDownload(alternativeUrl, cachedFilePath);
             if (result != null) {
                 return result;
@@ -121,7 +122,7 @@ public class FileDownloadUtil {
      */
     private static String attemptDownload(String url, Path cachedFilePath) {
         try {
-            logger.info("Attempting to download from URL: {}", url);
+            log.info("Attempting to download from URL: {}", url);
             Request request = new Request.Builder()
                     .url(url)
                     .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
@@ -129,13 +130,13 @@ public class FileDownloadUtil {
 
             try (Response response = httpClient.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
-                    logger.warn("Download failed with HTTP {}: {}", response.code(), url);
+                    log.warn("Download failed with HTTP {}: {}", response.code(), url);
                     return null;
                 }
 
                 ResponseBody body = response.body();
                 if (body == null) {
-                    logger.warn("Response body is null for URL: {}", url);
+                    log.warn("Response body is null for URL: {}", url);
                     return null;
                 }
 
@@ -146,7 +147,7 @@ public class FileDownloadUtil {
                 }
             }
         } catch (Exception e) {
-            logger.warn("Exception occurred while downloading from URL: {}, error: {}", url, e.getMessage());
+            log.warn("Exception occurred while downloading from URL: {}, error: {}", url, e.getMessage());
             return null;
         }
     }
@@ -168,12 +169,12 @@ public class FileDownloadUtil {
             if (originalUrl.contains(".s3-internal.")) {
                 // Internal to external: remove "-internal"
                 String externalUrl = originalUrl.replace(".s3-internal.", ".s3.");
-                logger.debug("Converting internal URL to external: {} -> {}", originalUrl, externalUrl);
+                log.debug("Converting internal URL to external: {} -> {}", originalUrl, externalUrl);
                 return externalUrl;
             } else if (originalUrl.contains(".s3.")) {
                 // External to internal: add "-internal"
                 String internalUrl = originalUrl.replace(".s3.", ".s3-internal.");
-                logger.debug("Converting external URL to internal: {} -> {}", originalUrl, internalUrl);
+                log.debug("Converting external URL to internal: {} -> {}", originalUrl, internalUrl);
                 return internalUrl;
             }
         }
@@ -284,14 +285,14 @@ public class FileDownloadUtil {
                     .forEach(path -> {
                         try {
                             Files.delete(path);
-                            logger.info("Deleted old cached file: {}", path);
+                            log.info("Deleted old cached file: {}", path);
                         } catch (IOException e) {
-                            logger.warn("Failed to delete cached file: {}", path, e);
+                            log.warn("Failed to delete cached file: {}", path, e);
                         }
                     });
 
         } catch (Exception e) {
-            logger.error("Error cleaning cache", e);
+            log.error("Error cleaning cache", e);
         }
     }
 

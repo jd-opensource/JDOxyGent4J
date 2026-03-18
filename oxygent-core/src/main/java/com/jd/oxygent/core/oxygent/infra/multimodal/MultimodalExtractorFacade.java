@@ -15,8 +15,9 @@
  */
 package com.jd.oxygent.core.oxygent.infra.multimodal;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
+
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -72,9 +73,8 @@ import java.util.Set;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public class MultimodalExtractorFacade {
-
-    private static final Logger logger = LoggerFactory.getLogger(MultimodalExtractorFacade.class);
 
     /**
      * Extractor factory instance
@@ -106,7 +106,7 @@ public class MultimodalExtractorFacade {
         }
         this.extractorFactory = extractorFactory;
 
-        logger.debug("Initializing MultimodalExtractorFacade, factory type: {}",
+        log.debug("Initializing MultimodalExtractorFacade, factory type: {}",
                 extractorFactory.getClass().getSimpleName());
     }
 
@@ -143,7 +143,7 @@ public class MultimodalExtractorFacade {
         validateFile(file);
 
         String fileName = file.getName();
-        logger.debug("Starting document content extraction: {}", fileName);
+        log.debug("Starting document content extraction: {}", fileName);
 
         try {
             // Get appropriate extractor
@@ -157,7 +157,7 @@ public class MultimodalExtractorFacade {
             }
 
             DocumentExtractor extractor = extractorOpt.get();
-            logger.debug("Using extractor: {} to process file: {}",
+            log.debug("Using extractor: {} to process file: {}",
                     extractor.getClass().getSimpleName(), fileName);
 
             // Execute content extraction
@@ -170,7 +170,7 @@ public class MultimodalExtractorFacade {
 
             // Log extraction results
             int contentLength = content != null ? content.length() : 0;
-            logger.debug("Document content extraction completed: {} (duration: {}ms, content length: {})",
+            log.debug("Document content extraction completed: {} (duration: {}ms, content length: {})",
                     fileName, duration, contentLength);
 
             return content != null ? content : "";
@@ -179,7 +179,7 @@ public class MultimodalExtractorFacade {
             // Re-throw unsupported operation exception
             throw e;
         } catch (Exception e) {
-            logger.error("Exception occurred while extracting document content: {}", fileName, e);
+            log.error("Exception occurred while extracting document content: {}", fileName, e);
             throw new RuntimeException("Document content extraction failed: " + e.getMessage(), e);
         }
     }
@@ -262,7 +262,7 @@ public class MultimodalExtractorFacade {
      * used for dynamic deployment scenarios, called when new extractor implementations are deployed.</p>
      */
     public void refresh() {
-        logger.info("Refreshing multimodal extractor cache");
+        log.info("Refreshing multimodal extractor cache");
         extractorFactory.refresh();
     }
 
@@ -302,7 +302,7 @@ public class MultimodalExtractorFacade {
         }
 
         if (file.length() == 0) {
-            logger.warn("File is empty: {}", file.getAbsolutePath());
+            log.warn("File is empty: {}", file.getAbsolutePath());
         }
     }
 

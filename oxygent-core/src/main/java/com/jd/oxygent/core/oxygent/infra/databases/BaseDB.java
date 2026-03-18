@@ -15,6 +15,8 @@
  */
 package com.jd.oxygent.core.oxygent.infra.databases;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -26,9 +28,8 @@ import java.util.logging.Logger;
  * @version 1.0.0
  * @since 1.0.0
  */
+@Slf4j
 public abstract class BaseDB {
-
-    private static final Logger logger = Logger.getLogger(BaseDB.class.getName());
 
     /**
      * Execute operation with retry mechanism
@@ -47,7 +48,7 @@ public abstract class BaseDB {
             } catch (Exception e) {
                 lastException = e;
                 if (attempt < maxRetries) {
-                    logger.warning(String.format("Operation failed, attempt %d/%d: %s",
+                    log.warn(String.format("Operation failed, attempt %d/%d: %s",
                             attempt + 1, maxRetries + 1, e.getMessage()));
 
                     try {
@@ -57,7 +58,7 @@ public abstract class BaseDB {
                         throw new RuntimeException("Operation interrupted", ie);
                     }
                 } else {
-                    logger.severe(String.format("Operation failed after %d attempts: %s",
+                    log.error(String.format("Operation failed after %d attempts: %s",
                             maxRetries + 1, e.getMessage()));
                 }
             }
