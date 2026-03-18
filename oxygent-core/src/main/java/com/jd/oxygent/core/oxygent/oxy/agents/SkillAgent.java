@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -149,7 +150,7 @@ public class SkillAgent extends ReActAgent {
         List<Path> skillFiles = new ArrayList<>();
         for (String skillPathStr : skills) {
             try {
-                skillFiles.addAll(FileUtils.readAllFiles(skillPathStr, Set.of("scripts", "references", "assets"), "SKILL.md"));
+                skillFiles.addAll(FileUtils.findAllPaths(skillPathStr, Set.of("scripts", "references", "assets"), "SKILL.md"));
             } catch (IOException | URISyntaxException e) {
                 log.warn("[SkillAgent] Agent '{}': Path does not exist: {}", getName(), skillPathStr);
                 failedPaths++;
@@ -259,36 +260,16 @@ public class SkillAgent extends ReActAgent {
      * @return SkillMetadata if successful, None otherwise.
      */
     private static SkillMetadata loadMetadataFromFile(Path skillPath) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(skillPath.toFile()))) {
-            String firstLine = reader.readLine();
-            if (firstLine == null || !firstLine.strip().equals("---")) {
-                log.warn("SKILL.md missing frontmatter: {}", skillPath);
-                return null;
-            }
-
-            List<String> frontmatterLines = new ArrayList<>();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.strip().equals("---")) {
-                    break;
-                }
-                frontmatterLines.add(line);
-            }
-
-            if (line == null) {
-                log.warn("Invalid SKILL.md frontmatter format: {}", skillPath);
-                return null;
-            }
-
-            Map frontmatter = parseSimpleFormatter(frontmatterLines);
+        try {
+            String frontmatterLines = Files.readString(skillPath);
+            Map frontmatter = parseSimpleFormatter(Arrays.stream(frontmatterLines.split("\n")).toList());
             if (frontmatter.isEmpty()) {
                 log.warn("Empty frontmatter in: {}", skillPath);
                 return null;
             }
-
             return SkillMetadata.fromFrontmatter(frontmatter, skillPath);
-        } catch (Exception e) {
-            log.warn("Failed to load skill metadata from {}", skillPath, e);
+        } catch (IOException e) {
+            log.error("Error reading frontmatter from: {}", skillPath, e);
             return null;
         }
     }

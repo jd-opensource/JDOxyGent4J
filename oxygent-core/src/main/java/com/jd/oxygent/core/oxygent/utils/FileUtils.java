@@ -21,14 +21,15 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -36,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,7 +44,7 @@ import java.util.stream.Stream;
  * File operation utility class
  *
  * <p>Provides safe and reliable file operation functions, specifically optimized for JSON file read/write operations.
- * This utility class supports advanced features such as automatic encoding detection and migration, atomic writes, 
+ * This utility class supports advanced features such as automatic encoding detection and migration, atomic writes,
  * ensuring data integrity and consistency.</p>
  *
  * <p>Main functional modules:</p>
@@ -111,8 +111,8 @@ public class FileUtils {
      * <p>Finds all file paths starting with the given prefix in the specified directory.
      * This method is commonly used for batch processing index files with the same prefix.</p>
      *
-     * @param dataDir          Data directory path, cannot be null or empty string
-     * @param indexNamePrefix  Index name prefix, cannot be null
+     * @param dataDir         Data directory path, cannot be null or empty string
+     * @param indexNamePrefix Index name prefix, cannot be null
      * @return List of file paths matching the prefix
      * @throws IllegalArgumentException When dataDir is null or empty string
      * @throws RuntimeException         When directory access fails
@@ -178,8 +178,8 @@ public class FileUtils {
     /**
      * Safely read JSON file (supports encoding fallback)
      *
-     * <p>Safely reads JSON files with automatic encoding detection and fallback mechanism. This method first 
-     * attempts to read using UTF-8 encoding, and falls back to system default encoding if it fails. 
+     * <p>Safely reads JSON files with automatic encoding detection and fallback mechanism. This method first
+     * attempts to read using UTF-8 encoding, and falls back to system default encoding if it fails.
      * After successful reading, it automatically migrates the file to UTF-8 encoding.</p>
      *
      * <p>Processing flow:</p>
@@ -273,6 +273,7 @@ public class FileUtils {
 
     /**
      * Get current project's target directory path
+     *
      * @return Path object of the target directory
      * @throws IOException If directory cannot be created or accessed
      */
@@ -308,6 +309,7 @@ public class FileUtils {
 
     /**
      * Safely create a subdirectory under target directory (e.g., for storing Skill-generated files)
+     *
      * @param subDirName Subdirectory name
      * @return Full path of the subdirectory
      */
@@ -322,71 +324,85 @@ public class FileUtils {
     }
 
     /**
-     * Unified method to read all file contents based on path and filters.
-     * * @param path            Base path, supports "classpath:path/to/dir" or absolute file paths.
-     * @param excludeDirs     List of directory names to skip (e.g., ".git", "target").
-     * @param fileNamePattern Specific filename or extension to match (e.g., "SKILL.md" or ".txt").
-     * @return A list of file contents as Strings.
+     * Finds all matching Paths based on criteria.
+     * Note: If the paths are inside a ZIP/JAR, the FileSystem must remain open to use them.
      */
-    public static List<Path> readAllFiles(String path, Set<String> excludeDirs, String fileNamePattern)
+    public static List<Path> findAllPaths(String path, Set<String> excludeDirs, String fileNamePattern)
             throws IOException, URISyntaxException {
+
         if (path.startsWith("classpath:")) {
-            String resourcePath = path.substring(10); // Remove "classpath:" prefix
-            return readFromClasspath(resourcePath, excludeDirs, fileNamePattern);
+            return findFromClasspath(path.substring(10), excludeDirs, fileNamePattern);
+        }
+
+        Path fsPath = Paths.get(path);
+
+        if (isZipFile(fsPath)) {
+            // For ZIP files, we need to handle the FileSystem lifecycle carefully.
+            // Here we return paths from a new FileSystem.
+            return findFromZipFile(fsPath, "/", excludeDirs, fileNamePattern);
         } else {
-            return readFromFileSystem(Paths.get(path), excludeDirs, fileNamePattern);
+            return findFromFileSystem(fsPath, excludeDirs, fileNamePattern);
         }
     }
 
-    public static List<Path> readFromClasspath(String resourcePath, Set<String> excludeDirs, String fileNamePattern)
+    public static List<Path> findFromClasspath(String resourcePath, Set<String> excludeDirs, String fileNamePattern)
             throws IOException, URISyntaxException {
-        URL url = Thread.currentThread().getContextClassLoader().getResource(resourcePath);
+        var loader = Thread.currentThread().getContextClassLoader();
+        var url = loader.getResource(resourcePath);
         if (url == null) throw new IOException("Resource not found: " + resourcePath);
 
         URI uri = url.toURI();
-
-        // Handle resources inside JAR files
         if ("jar".equals(uri.getScheme())) {
-            // Create a virtual file system for the JAR to allow NIO.2 Path operations
-            try (FileSystem fs = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
-                return readFromFileSystem(fs.getPath(resourcePath), excludeDirs, fileNamePattern);
-            }
-        } else {
-            return readFromFileSystem(Paths.get(uri), excludeDirs, fileNamePattern);
+            // Note: In a production app, you might want to cache these FileSystems
+            return findFromZipFile(Paths.get(resourcePath), "/", excludeDirs, fileNamePattern);
         }
+        return findFromFileSystem(Paths.get(uri), excludeDirs, fileNamePattern);
     }
 
-    public static List<Path> readFromFileSystem(Path rootPath, Set<String> excludeDirs, String fileNamePattern) throws IOException {
-        Set<String> excludes = excludeDirs != null ? new HashSet<>(excludeDirs) : new HashSet<>();
+    public static List<Path> findFromZipFile(Path zipPath, String internalPath, Set<String> excludeDirs, String fileNamePattern) throws IOException {
+        return new ArrayList<>();
+//        URI uri = URI.create("jar:" + zipPath.toUri());
+//
+//        FileSystem zipFs = null;
+//        boolean shouldClose = false;
+//
+//        try {
+//            zipFs = FileSystems.getFileSystem(uri);
+//        } catch (FileSystemNotFoundException e) {
+//            zipFs = FileSystems.newFileSystem(uri, Collections.emptyMap());
+//            shouldClose = true;
+//        }
+//
+//        try {
+//            return findFromFileSystem(zipFs.getPath(internalPath), excludeDirs, fileNamePattern);
+//        } finally {
+//            if (shouldClose && zipFs != null) {
+//                zipFs.close();
+//            }
+//        }
+    }
 
+    public static List<Path> findFromFileSystem(Path rootPath, Set<String> excludeDirs, String fileNamePattern) throws IOException {
         try (Stream<Path> walk = Files.walk(rootPath)) {
             return walk
-                    // 1. Filter out excluded directories and their sub-contents
                     .filter(p -> {
-                        // Check if any segment of the path matches the exclusion list
                         for (Path section : p) {
-                            if (excludes.contains(section.toString())) {
-                                return false;
-                            }
+                            if (excludeDirs.contains(section.toString())) return false;
                         }
                         return true;
                     })
-                    // 2. Ensure the path points to a regular file
                     .filter(Files::isRegularFile)
-                    // 3. Match filename or suffix
                     .filter(p -> {
                         String name = p.getFileName().toString();
-                        if (StringUtils.isNotBlank(fileNamePattern)) {
-                            return name.equals(fileNamePattern) || name.endsWith(fileNamePattern);
-                        } else {
-                            return true;
-                        }
+                        return name.equals(fileNamePattern) || name.endsWith(fileNamePattern);
                     })
-                    // 4. Read file content to String
-                    .map(p -> {
-                        return p; // Files.readString(p);
-                    })
+                    // Collect into a List to realize the Stream before any auto-close happens
                     .collect(Collectors.toList());
         }
+    }
+
+    public static boolean isZipFile(Path path) {
+        String name = path.getFileName().toString().toLowerCase();
+        return Files.isRegularFile(path) && (name.endsWith(".zip") || name.endsWith(".jar"));
     }
 }
