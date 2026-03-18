@@ -1,8 +1,10 @@
-package com.jd.oxygent.core.oxygent.utils;
+package com.jd.oxygent.test.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.jd.oxygent.core.oxygent.utils.JsonUtils;
+import com.jd.oxygent.core.oxygent.utils.ObjectUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

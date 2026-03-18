@@ -1,0 +1,71 @@
+package com.jd.oxygent.test.tool;
+
+import com.jd.oxygent.core.oxygent.tools.PythonTools;
+import org.junit.Assert;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class PythonToolsTest {
+
+    PythonTools pythonTools = new PythonTools();
+
+    @Test
+    void simpleCodeExecution() {
+        String code = "result = 2 + 3";
+        String variableToReturn = "result";
+        Map safeGlobals = null;
+        Map safeLocals = null;
+        String output = (String) pythonTools.call("run_python_code", code, variableToReturn, safeGlobals, safeLocals);
+        Assert.assertEquals("5", output);
+
+        code = "x = 10";
+        output = (String) pythonTools.call("run_python_code", code, variableToReturn, safeGlobals, safeLocals);
+        assertEquals("successfully run python code", output);
+
+        code = "x = 5";
+        output = (String) pythonTools.call("run_python_code", code, "y", safeGlobals, safeLocals);
+        assertEquals("Variable y not found", output);
+
+        code = "result = test_var * 2";
+        Map<String, Object> customGlobals = Map.of("test_var", 10);
+        output = (String) pythonTools.call("run_python_code", code, "result", safeGlobals, safeLocals);
+        assertEquals("20", output);
+
+        code = "message = 'Hello World'";
+        output = (String) pythonTools.call("run_python_code", code, "message", safeGlobals, safeLocals);
+        assertEquals("Hello World", output);
+
+        code = "numbers = [1, 2, 3, 4, 5]";
+        output = (String) pythonTools.call("run_python_code", code, "numbers", safeGlobals, safeLocals);
+        assertEquals("[1, 2, 3, 4, 5]", output);
+
+        code = "flag = True";
+        output = (String) pythonTools.call("run_python_code", code, "flag", safeGlobals, safeLocals);
+        assertEquals("True", output);
+    }
+
+    @Test
+    void errorHandling() {
+        String code = "raise ValueError('Test error')";
+        String variableToReturn = null;
+        Map safeGlobals = null;
+        Map safeLocals = null;
+        String result = (String) pythonTools.call("run_python_code", code, variableToReturn, safeGlobals, safeLocals);
+        Assert.assertEquals("Error executing Python code: ValueError: Test error", result);
+    }
+
+    @Test
+    void globalAndLocalVariables() {
+        String code = """
+                result = global_var * local_var
+                """;
+        String variableToReturn = "result";
+        Map safeGlobals = Map.of("global_var", 11);
+        Map safeLocals = Map.of("local_var", 13);
+        String result = (String) pythonTools.call("run_python_code", code, variableToReturn, safeGlobals, safeLocals);
+        Assert.assertEquals("143", result);
+    }
+}

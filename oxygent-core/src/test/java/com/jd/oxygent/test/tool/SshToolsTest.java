@@ -1,10 +1,11 @@
-package com.jd.oxygent.core.oxygent.utils;
+package com.jd.oxygent.test.tool;
 
-import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.jd.oxygent.core.oxygent.tools.SshTools;
+import com.jd.oxygent.core.oxygent.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.SmartCharsetReader;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -35,11 +36,11 @@ public class SshToolsTest {
             jsch.addIdentity(keyPath);
         }
         Properties config = new Properties();
-        config.put("StrictHostKeyChecking", "no"); // 跳过指纹确认
-        config.put("kex", "curve25519-sha256,diffie-hellman-group-exchange-sha256"); // 优先现代算法
+        config.put("StrictHostKeyChecking", "no"); // Skip fingerprint confirmation
+        config.put("kex", "curve25519-sha256,diffie-hellman-group-exchange-sha256"); // Prefer modern algorithms
         session.setConfig(config);
 
-        // 设置心跳防止长耗时命令（如 oxybank 迁移）断开
+        // Set heartbeat to prevent long-running commands (e.g., oxybank migration) from disconnecting
         session.setServerAliveInterval(30000);
         session.connect();
     }

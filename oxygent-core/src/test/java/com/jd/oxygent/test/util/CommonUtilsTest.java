@@ -1,8 +1,7 @@
-package com.jd.oxygent.core.oxygent.utils;
+package com.jd.oxygent.test.util;
 
+import com.jd.oxygent.core.oxygent.utils.CommonUtils;
 import org.junit.jupiter.api.Test;
-
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

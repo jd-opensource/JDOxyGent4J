@@ -1,6 +1,8 @@
 package com.jd.oxygent.core.oxygent.oxy.agents;
 
+import com.jd.oxygent.core.oxygent.config.Prompts;
 import com.jd.oxygent.core.oxygent.oxy.skills.SkillMetadata;
+import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
@@ -56,8 +58,7 @@ import java.util.stream.Collectors;
 public class SkillAgent extends ReActAgent {
 
     /**
-     * List of skill directory paths to load skills from.
-     * Each path can be a skill folder with SKILL.md or a parent directory containing multiple skill subfolders.
+     * List of skill directory paths to load skills from Each path can be a skill folder with SKILL.md or a parent directory containing multiple skill subfolders.
      */
     @Builder.Default
     private List<String> skills = new ArrayList<>();
@@ -66,23 +67,16 @@ public class SkillAgent extends ReActAgent {
     private Map<String, SkillMetadata> skillsMetadata = new HashMap<>();
 
     /**
-     * Template for generating skill prompt section.
-     * Use {skill_list} as placeholder for skill entries.
+     * Defaults to 'SYSTEM_PROMPT', the prompt to initialize the agent's behavior.
      */
     @Builder.Default
-    private String skillPromptTemplate = """
-            # IMPORTANT
-            - Don't make any assumptions. All your knowledge about available capabilities must come from your equipped skills.
-            - If the current information is sufficient to answer the question, do NOT invoke any tools or skills.
-            - Only use skills when you need specialized knowledge, workflows, or resources that are not in your current context.
-            
-            # Agent Skills
-            The agent skills are a collection of instructions, scripts, and resources that you can load dynamically to improve performance on specialized tasks. Each agent skill has a `SKILL.md` file in its folder that describes how to use the skill. If you want to use a skill, you MUST read its `SKILL.md` file carefully.
-            
-            {skill_list}
-            
-            ---
-            """;
+    public static String PROMPT = Prompts.SYSTEM_PROMPT_SKILLS;
+
+    /**
+     * Build skill list (sorted for consistency)
+     */
+    @Builder.Default
+    private List<String> skillEntries = new ArrayList<>();
 
     public int getSkillsCount() {
         return skillsMetadata.size();
@@ -254,8 +248,6 @@ public class SkillAgent extends ReActAgent {
             log.debug("[SkillAgent] Agent '{}': No skills to add to prompt", getName());
             return;
         }
-
-        List<String> skillEntries = new ArrayList<>();
         for (Map.Entry<String, SkillMetadata> entry : skillsMetadata.entrySet()) {
             String name = entry.getKey();
             SkillMetadata meta = entry.getValue();
@@ -265,18 +257,21 @@ public class SkillAgent extends ReActAgent {
             }
             skillEntries.add(entryText);
         }
-
         String skillList = String.join("\n\n", skillEntries);
-        String skillPrompt = skillPromptTemplate.replace("{skill_list}", skillList);
+        String skillPrompt = PROMPT.replace("{skill_list}", skillList);
 
         if (getAdditionalPrompt() != null && !getAdditionalPrompt().isEmpty()) {
             setAdditionalPrompt(getAdditionalPrompt() + "\n\n" + skillPrompt);
         } else {
             setAdditionalPrompt(skillPrompt);
         }
+    }
 
-        log.debug("[SkillAgent] Agent '{}': Injected skill prompt ({} chars) for {} skills",
-                getName(), skillPrompt.length(), skillEntries.size());
+    @Override
+    protected OxyRequest beforeExecute(OxyRequest oxyRequest) {
+        super.beforeExecute(oxyRequest);
+        oxyRequest.setArguments("skill_list", String.join("\n\n", skillEntries));
+        return oxyRequest;
     }
 
     /**

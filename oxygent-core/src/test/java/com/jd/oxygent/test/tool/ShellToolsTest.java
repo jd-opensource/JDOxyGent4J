@@ -1,4 +1,4 @@
-package com.jd.oxygent.core.oxygent.utils;
+package com.jd.oxygent.test.tool;
 
 import com.jd.oxygent.core.oxygent.tools.ShellTools;
 import org.junit.jupiter.api.Test;

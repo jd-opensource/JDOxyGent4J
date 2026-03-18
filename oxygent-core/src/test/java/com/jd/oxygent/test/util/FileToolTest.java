@@ -1,4 +1,4 @@
-package com.jd.oxygent.core.oxygent.utils;
+package com.jd.oxygent.test.util;
 
 import com.jd.oxygent.core.oxygent.config.Prompts;
 import com.jd.oxygent.core.oxygent.tools.FileTool;
