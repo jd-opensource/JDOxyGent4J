@@ -181,6 +181,7 @@ public class PythonTools extends FunctionHub {
             }
         } catch (PyException e) {
             log.error("Error executing Python code: {}", e.getMessage(), e);
+            e.printStackTrace();
             return "Error executing Python code: " + e.getMessage();
         } catch (Exception e) {
             log.error("Unexpected error during Python code execution: {}", e.getMessage(), e);

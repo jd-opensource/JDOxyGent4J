@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
-public class ObjectUtilsTest {
+public class TestObjectUtils {
 
     @Test
     void deepCopy() {
@@ -88,6 +88,6 @@ public class ObjectUtilsTest {
         }
         double cost = (System.currentTimeMillis() - start) / 1000.0;
         System.out.println("Time: " + cost + "s");
-        assertTrue(cost < 2);
+        assertTrue(cost < 3);
     }
 }

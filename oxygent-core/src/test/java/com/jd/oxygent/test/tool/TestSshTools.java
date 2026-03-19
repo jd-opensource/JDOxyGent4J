@@ -19,7 +19,7 @@ import java.util.Properties;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class SshToolsTest {
+public class TestSshTools {
 
     private static Session session;
 
@@ -62,7 +62,7 @@ public class SshToolsTest {
     @Test
     @Order(3)
     void testWget() {
-        String command = "wget https://github.com/jd-opensource/JDOxyGent4J/blob/main/CHANGELOG_zh.md";
+        String command = "wget https://github.com/jd-opensource/JDOxyGent4J/blob/main/.gitignore";
         SshTools.sshTool(command, session);
     }
 
@@ -71,12 +71,6 @@ public class SshToolsTest {
     void testGitCommand() {
         String command = "git clone --progress git@github.com:jd-opensource/JDOxyGent4J.git";
         SshTools.sshTool(command, session);
-    }
-
-    @Test
-    void testWslIp() throws InterruptedException, IOException {
-        String ip = getWslIpAddress();
-        log.info("WSL IP: {}", ip);
     }
 
     public static String getWslIpAddress() throws InterruptedException, IOException {

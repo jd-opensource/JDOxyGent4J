@@ -27,7 +27,6 @@ import com.jd.oxygent.core.oxygent.utils.EnvUtils;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Test sug agent tree

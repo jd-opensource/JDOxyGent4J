@@ -9,13 +9,10 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -268,7 +265,7 @@ public class SkillAgent extends ReActAgent {
                 return null;
             }
             return SkillMetadata.fromFrontmatter(frontmatter, skillPath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Error reading frontmatter from: {}", skillPath, e);
             return null;
         }

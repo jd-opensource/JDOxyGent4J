@@ -58,7 +58,7 @@
         <!-- FastJSON -->
         <fastjson.version>1.2.83</fastjson.version>
         <!-- Test -->
-        <junit.version>6.0.2</junit.version>
+        <junit.version>6.0.3</junit.version>
          <!-- Kubernetes -->
         <kubernetes.version>25.0.0</kubernetes.version>
          <!-- YAML -->
@@ -240,8 +240,14 @@
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
                 <version>${junit.version}</version>
+                <scope>test</scope>
                 <type>pom</type>
-                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-suite</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
             </dependency>
             <!-- Python -->
             <dependency>
@@ -253,18 +259,6 @@
     </dependencyManagement>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/java</directory>
-                <includes>
-                    <include>**/*.md</include>
-                    <include>**/*.txt</include>
-                </includes>
-                <excludes>
-                    <exclude>**/*.java</exclude>
-                </excludes>
-            </resource>
-        </resources>
         <plugins>
             <!-- Flatten Maven Plugin - for proper version resolution -->
             <plugin>

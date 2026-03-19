@@ -15,6 +15,7 @@
  */
 package com.jd.oxygent.core.oxygent.utils;
 
+import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import lombok.extern.slf4j.Slf4j;
 
 import java.beans.PropertyDescriptor;
@@ -69,10 +71,16 @@ import java.util.*;
 @Slf4j
 public class JsonUtils {
 
-    // Configured ObjectMapper instance, supports control characters, reusable
-    public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .configure(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true)
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+//    public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+//            .configure(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true)
+//            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    public static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+            .enable(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS)
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .findAndAddModules()
+            .build();
 
     /**
      * Convert Map to JSON string
@@ -427,20 +435,6 @@ public class JsonUtils {
     }
 
     /**
-     * Check if string is in JSON format
-     *
-     * @param str String to check
-     * @return true if valid JSON, false otherwise
-     */
-    public static boolean isJson(String str) {
-        if (str == null || str.isEmpty()) {
-            return false;
-        }
-        String pattern = "^(\\{.*\\}|\\[.*\\])$";
-        return str.matches(pattern);
-    }
-
-    /**
      * Property copying between objects
      *
      * @param source
@@ -535,7 +529,8 @@ public class JsonUtils {
         try {
             return OBJECT_MAPPER.readValue(json, valueType);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("JSON deserialization failed: " + e.getMessage(), e);
+            String errorMessage = isValidJson(json) ? "JSON deserialization failed, json: " + json : "Not a valid JSON";
+            throw new RuntimeException(errorMessage, e);
         }
     }
 
@@ -552,7 +547,8 @@ public class JsonUtils {
         try {
             return OBJECT_MAPPER.readValue(json, valueType);
         } catch (JsonProcessingException e) {
-            log.warn("JSON deserialization failed: {} {}", json, e.getMessage());
+            String errorMessage = isValidJson(json) ? "JSON deserialization failed, json: " + json : "Not a valid JSON";
+            log.warn(errorMessage, e.getMessage());
             return defaultValue;
         }
     }
@@ -585,7 +581,8 @@ public class JsonUtils {
         try {
             return OBJECT_MAPPER.readTree(json);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("JSON parsing to tree structure failed: " + e.getMessage(), e);
+            String errorMessage = isValidJson(json) ? "JSON deserialization failed, json: " + json : "Not a valid JSON";
+            throw new RuntimeException(errorMessage, e);
         }
     }
 
@@ -723,5 +720,27 @@ public class JsonUtils {
      */
     public static Object parse(String text) {
         return readTree(text);
+    }
+
+    /**
+     * lightweight json validator, avoid memory usage
+     * @param json
+     * @return
+     */
+    public static boolean isValidJson(String json) {
+        if (json == null) return false;
+        String trimmed = json.trim();
+        if ((trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+                (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+            JsonFactory factory = new JsonFactory();
+            try (JsonParser parser = factory.createParser(json)) {
+                while (parser.nextToken() != null) {
+                }
+                return true;
+            } catch (IOException e) {
+                return false;
+            }
+        }
+        return false;
     }
 }

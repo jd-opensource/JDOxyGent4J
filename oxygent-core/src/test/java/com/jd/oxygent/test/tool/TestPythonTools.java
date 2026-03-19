@@ -8,7 +8,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class PythonToolsTest {
+public class TestPythonTools {
 
     PythonTools pythonTools = new PythonTools();
 
@@ -22,8 +22,8 @@ public class PythonToolsTest {
         Assert.assertEquals("5", output);
 
         code = "x = 10";
-        output = (String) pythonTools.call("run_python_code", code, variableToReturn, safeGlobals, safeLocals);
-        assertEquals("successfully run python code", output);
+        output = (String) pythonTools.call("run_python_code", code, "x", safeGlobals, safeLocals);
+        assertEquals("10", output);
 
         code = "x = 5";
         output = (String) pythonTools.call("run_python_code", code, "y", safeGlobals, safeLocals);
@@ -31,7 +31,7 @@ public class PythonToolsTest {
 
         code = "result = test_var * 2";
         Map<String, Object> customGlobals = Map.of("test_var", 10);
-        output = (String) pythonTools.call("run_python_code", code, "result", safeGlobals, safeLocals);
+        output = (String) pythonTools.call("run_python_code", code, "result", customGlobals, safeLocals);
         assertEquals("20", output);
 
         code = "message = 'Hello World'";

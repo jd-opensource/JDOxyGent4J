@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-public class ShellToolsTest {
+public class TestShellTools {
 
     // ========== Test Methods ==========
 

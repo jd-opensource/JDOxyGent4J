@@ -21,11 +21,13 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -325,7 +327,7 @@ public class FileUtils {
 
     /**
      * Finds all matching Paths based on criteria.
-     * Note: If the paths are inside a ZIP/JAR, the FileSystem must remain open to use them.
+     * Note: If the paths are inside a ZIP/JAR, the FileSystem must reopen to use them.
      */
     public static List<Path> findAllPaths(String path, Set<String> excludeDirs, String fileNamePattern)
             throws IOException, URISyntaxException {
@@ -336,10 +338,11 @@ public class FileUtils {
 
         Path fsPath = Paths.get(path);
 
-        if (isZipFile(fsPath)) {
+        if (isZipFile(fsPath) || isInsideZip(fsPath)) {
             // For ZIP files, we need to handle the FileSystem lifecycle carefully.
             // Here we return paths from a new FileSystem.
-            return findFromZipFile(fsPath, "/", excludeDirs, fileNamePattern);
+//            return findFromZipFile(fsPath, "/", excludeDirs, fileNamePattern);
+            return new ArrayList<>();
         } else {
             return findFromFileSystem(fsPath, excludeDirs, fileNamePattern);
         }
@@ -354,32 +357,10 @@ public class FileUtils {
         URI uri = url.toURI();
         if ("jar".equals(uri.getScheme())) {
             // Note: In a production app, you might want to cache these FileSystems
-            return findFromZipFile(Paths.get(resourcePath), "/", excludeDirs, fileNamePattern);
+//            return findFromZipFile(Paths.get(resourcePath), "/", excludeDirs, fileNamePattern);
+            return new ArrayList<>();
         }
         return findFromFileSystem(Paths.get(uri), excludeDirs, fileNamePattern);
-    }
-
-    public static List<Path> findFromZipFile(Path zipPath, String internalPath, Set<String> excludeDirs, String fileNamePattern) throws IOException {
-        return new ArrayList<>();
-//        URI uri = URI.create("jar:" + zipPath.toUri());
-//
-//        FileSystem zipFs = null;
-//        boolean shouldClose = false;
-//
-//        try {
-//            zipFs = FileSystems.getFileSystem(uri);
-//        } catch (FileSystemNotFoundException e) {
-//            zipFs = FileSystems.newFileSystem(uri, Collections.emptyMap());
-//            shouldClose = true;
-//        }
-//
-//        try {
-//            return findFromFileSystem(zipFs.getPath(internalPath), excludeDirs, fileNamePattern);
-//        } finally {
-//            if (shouldClose && zipFs != null) {
-//                zipFs.close();
-//            }
-//        }
     }
 
     public static List<Path> findFromFileSystem(Path rootPath, Set<String> excludeDirs, String fileNamePattern) throws IOException {
@@ -387,14 +368,19 @@ public class FileUtils {
             return walk
                     .filter(p -> {
                         for (Path section : p) {
-                            if (excludeDirs.contains(section.toString())) return false;
+                            if (excludeDirs != null && excludeDirs.contains(section.toString())) return false;
                         }
                         return true;
                     })
                     .filter(Files::isRegularFile)
                     .filter(p -> {
                         String name = p.getFileName().toString();
-                        return name.equals(fileNamePattern) || name.endsWith(fileNamePattern);
+                        if (fileNamePattern == null) {
+                            return true;
+                        } else if (fileNamePattern != null && (name.equals(fileNamePattern) || name.endsWith(fileNamePattern))) {
+                            return true;
+                        }
+                        return false;
                     })
                     // Collect into a List to realize the Stream before any auto-close happens
                     .collect(Collectors.toList());
@@ -402,7 +388,78 @@ public class FileUtils {
     }
 
     public static boolean isZipFile(Path path) {
+        if (path.getClass().getName().equals("jdk.nio.zipfs.ZipPath")) {
+            return true;
+        }
         String name = path.getFileName().toString().toLowerCase();
         return Files.isRegularFile(path) && (name.endsWith(".zip") || name.endsWith(".jar"));
+    }
+
+    /**
+     * Checks if a Path object belongs to a ZIP or JAR FileSystem.
+     * @param path The path to check.
+     * @return true if the path is inside a ZIP/JAR.
+     */
+    public static boolean isInsideZip(Path path) {
+        // Get the scheme of the FileSystem provider
+        // ZipFileSystemProvider always uses "jar" as its scheme
+        String scheme = path.getFileSystem().provider().getScheme();
+        return "jar".equalsIgnoreCase(scheme) || "zip".equalsIgnoreCase(scheme);
+    }
+
+    /**
+     * Finds all matching Paths from a ZIP/JAR file.
+     * Note: If the paths are inside a ZIP/JAR, the FileSystem must reopen to use them.
+     * @param zipPath
+     * @param internalPath
+     * @param excludeDirs
+     * @param fileNamePattern
+     * @return
+     * @throws IOException
+     */
+    public static List<Path> findFromZipFile(Path zipPath, String internalPath, Set<String> excludeDirs, String fileNamePattern) throws IOException {
+        URI uri = URI.create("jar:" + zipPath.toUri());
+        try (FileSystem zipFs = getFileSystem(uri)) {
+            return findFromFileSystem(zipFs.getPath(internalPath), excludeDirs, fileNamePattern);
+        }
+    }
+
+    /**
+     * Reads the content of a file inside a ZIP archive.
+     * * @param zipPath      The Path to the .zip or .jar file on disk.
+     * @param internalPath The relative path inside the ZIP (e.g., "/docs/info.txt").
+     * @param cs The Charset to use for reading the file.(Defaulting to UTF-8)
+     * @return The file content as a String.
+     * @throws IOException If the ZIP cannot be opened or the internal file is missing.
+     */
+    public static String readFromZipPath(Path zipPath, String internalPath, Charset cs) throws IOException {
+        // 1. Construct the JAR URI (format: jar:file:/path/to/file.zip)
+        URI uri = URI.create("jar:" + zipPath.toUri());
+
+        // 2. Use try-with-resources to ensure the FileSystem is closed automatically
+        // This prevents 'FileSystemAlreadyExistsException' in subsequent calls
+        try (FileSystem zipFs = getFileSystem(uri)) {
+            Path pathInZip = zipFs.getPath(internalPath);
+
+            if (!Files.exists(pathInZip)) {
+                throw new NoSuchFileException("File " + internalPath + " not found in " + zipPath);
+            }
+
+            // 3. Read the content (Defaulting to UTF-8)
+            return Files.readString(pathInZip, cs != null ? cs : StandardCharsets.UTF_8);
+        }
+    }
+
+    /**
+     * Helper method to safely get or create a FileSystem instance.
+     */
+    private static FileSystem getFileSystem(URI uri) throws IOException {
+        try {
+            // Try to get an existing one first to avoid FileSystemAlreadyExistsException
+            return FileSystems.getFileSystem(uri);
+        } catch (FileSystemNotFoundException e) {
+            // If not found, create a new one (Read-only mode)
+            return FileSystems.newFileSystem(uri, Map.of("create", "false"));
+        }
     }
 }
