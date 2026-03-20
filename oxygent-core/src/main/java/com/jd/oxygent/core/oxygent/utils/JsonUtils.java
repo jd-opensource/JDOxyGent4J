@@ -529,8 +529,7 @@ public class JsonUtils {
         try {
             return OBJECT_MAPPER.readValue(json, valueType);
         } catch (JsonProcessingException e) {
-            String errorMessage = isValidJson(json) ? "JSON deserialization failed, json: " + json : "Not a valid JSON";
-            throw new RuntimeException(errorMessage, e);
+            throw new RuntimeException("JSON deserialization failed, json: %s Exception: %s".formatted(json, e.getMessage()), e);
         }
     }
 
@@ -547,8 +546,7 @@ public class JsonUtils {
         try {
             return OBJECT_MAPPER.readValue(json, valueType);
         } catch (JsonProcessingException e) {
-            String errorMessage = isValidJson(json) ? "JSON deserialization failed, json: " + json : "Not a valid JSON";
-            log.warn(errorMessage, e.getMessage());
+            log.info("JSON deserialization failed, json: {} Exception: {}", json, e.getMessage());
             return defaultValue;
         }
     }
@@ -581,8 +579,7 @@ public class JsonUtils {
         try {
             return OBJECT_MAPPER.readTree(json);
         } catch (JsonProcessingException e) {
-            String errorMessage = isValidJson(json) ? "JSON deserialization failed, json: " + json : "Not a valid JSON";
-            throw new RuntimeException(errorMessage, e);
+            throw new RuntimeException("JSON deserialization failed, json: %s Exception: %s".formatted(json, e.getMessage()), e);
         }
     }
 
@@ -720,27 +717,5 @@ public class JsonUtils {
      */
     public static Object parse(String text) {
         return readTree(text);
-    }
-
-    /**
-     * lightweight json validator, avoid memory usage
-     * @param json
-     * @return
-     */
-    public static boolean isValidJson(String json) {
-        if (json == null) return false;
-        String trimmed = json.trim();
-        if ((trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-                (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
-            JsonFactory factory = new JsonFactory();
-            try (JsonParser parser = factory.createParser(json)) {
-                while (parser.nextToken() != null) {
-                }
-                return true;
-            } catch (IOException e) {
-                return false;
-            }
-        }
-        return false;
     }
 }

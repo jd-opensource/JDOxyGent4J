@@ -19,6 +19,7 @@ import com.jd.oxygent.core.oxygent.utils.CommonUtils;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.samples.server.utils.GlobalDefaultOxySpaceMapping;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.OSUtil;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.Arrays;
@@ -53,7 +54,11 @@ public class AppMathAgent {
                         .build(),
 
 //                mac or linux usage (mcp_servers directory points to python mcp server)
-                new StdioMCPClient("math_tools", "uv", Arrays.asList("--directory", "/Users/{username}/Documents/git2024/OxyGent/mcp_servers/", "run", "math_tools.py")),
+                OSUtil.isWindows() ?
+                        new StdioMCPClient("math_tools", "cmd.exe", Arrays.asList("/c", "uv", "--directory", "./mcp_servers", "run", "math_tools.py"))
+                        :
+                        new StdioMCPClient("math_tools", "uv", Arrays.asList("--directory", "./mcp_servers", "run", "math_tools.py")),
+
                 // Windows syntax  (mcp_servers directory points to python mcp server)
 //                new StdioMCPClient("math_tools", "cmd", Arrays.asList("/c", "uv", "--directory", "./mcp_servers", "run", "math_tools.py")),
 //                new StdioMCPClient("math_tools", "cmd", Arrays.asList("/c", "uv", "--directory", "D:\ProjectsCode\PythonProjects\GitHub\OxyGent\mcp_servers", "run", "math_tools.py")),

@@ -370,6 +370,9 @@ public final class OxySpaceBeanCollector {
         return status;
     }
 
+    public Map<String, Method> getOxySpaceMethods() {
+        return oxySpaceMethods;
+    }
 
     public static void main(String[] args) {
         // Create collector

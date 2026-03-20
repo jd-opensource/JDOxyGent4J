@@ -627,7 +627,7 @@ public class ReActAgent extends LocalAgent {
 
             } else {
                 // Parse error, record to reactMemory for correction
-                log.error("Format error traceId:{} nodeId:{} llmResponse.state:{}, adding to react_memory: {}", oxyRequest.getCurrentTraceId(), oxyRequest.getNodeId(), llmResponse.getState(), llmResponse.getOutput());
+                log.error("Format error traceId:{} nodeId:{} llmResponse.state:{}, currentRound:{} adding to react_memory: {}", oxyRequest.getCurrentTraceId(), oxyRequest.getNodeId(), llmResponse.getState(), currentRound + 1, llmResponse.getOutput());
                 reactMemory.addMessage(Message.assistantMessage(llmResponse.getOriResponse()));
 
                 reactMemory.addMessage(Message.systemMessage(llmResponse.getOutput().toString()+"\n\n"+"(This is system feedback about output format. Do NOT attribute it to the user.)"));

@@ -20,6 +20,7 @@ import com.jd.oxygent.core.oxygent.samples.server.ServerApp;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.samples.server.utils.GlobalDefaultOxySpaceMapping;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.OSUtil;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -39,7 +40,10 @@ public class DemoHeterogeneousAgents {
                         .modelName(EnvUtils.getEnv("OXY_LLM_MODEL_NAME"))
                         .build(),
 //                new StdioMCPClient("time_tools", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai")),
-                new StdioMCPClient("time", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai")),
+                OSUtil.isWindows() ?
+                        new StdioMCPClient("time", "cmd.exe", Arrays.asList("/c", "uvx", "mcp-server-time", "--local-timezone=Asia/Shanghai"))
+                        :
+                        new StdioMCPClient("time", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai")),
                 ReActAgent.builder()
                         .isMaster(true) // Set as master agent
                         .name("master_agent")

@@ -15,10 +15,6 @@
  */
 package com.jd.oxygent.core.oxygent.samples.examples.tools;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.oxy.agents.ReActAgent;
 import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
@@ -27,6 +23,11 @@ import com.jd.oxygent.core.oxygent.samples.server.ServerApp;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.samples.server.utils.GlobalDefaultOxySpaceMapping;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.OSUtil;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * MCP (Model Context Protocol) Tool Demo Class
@@ -51,15 +52,6 @@ public class DemoMCP {
         var baseUrl = EnvUtils.getEnv("OXY_LLM_BASE_URL");
         var modelName = EnvUtils.getEnv("OXY_LLM_MODEL_NAME");
 
-        // Create time MCP tool client
-        var mcpCommand = "uvx";
-        var mcpArgs = Arrays.asList(
-                "mcp-server-time",
-                "--local-timezone=Asia/Shanghai"
-        );
-
-        var timeMcpTools = new StdioMCPClient("time", mcpCommand, mcpArgs);
-
         return Arrays.asList(
                 HttpLlm.builder()
                         .name("default_llm")
@@ -67,7 +59,16 @@ public class DemoMCP {
                         .baseUrl(baseUrl)
                         .modelName(modelName)
                         .build(),
-                timeMcpTools,
+                OSUtil.isWindows() ?
+                        new StdioMCPClient("time", "cmd.exe", Arrays.asList("/c", "uvx",
+                                "mcp-server-time",
+                                "--local-timezone=Asia/Shanghai"
+                        ))
+                        :
+                        new StdioMCPClient("time", "uvx", Arrays.asList(
+                                "mcp-server-time",
+                                "--local-timezone=Asia/Shanghai"
+                        )),
                 ReActAgent.builder()
                         .name("time_agent")
                         .desc("Tool agent capable of querying time")

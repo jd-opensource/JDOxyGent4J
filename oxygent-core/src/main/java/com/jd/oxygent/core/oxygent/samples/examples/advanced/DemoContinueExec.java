@@ -5,12 +5,12 @@ import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.oxy.agents.ReActAgent;
 import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
 import com.jd.oxygent.core.oxygent.oxy.mcp.StdioMCPClient;
-import com.jd.oxygent.core.oxygent.samples.server.ServerApp;
-import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
-import com.jd.oxygent.core.oxygent.utils.EnvUtils;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.MasFactoryRegistry;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.samples.server.utils.GlobalDefaultOxySpaceMapping;
+import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
+import com.jd.oxygent.core.oxygent.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.OSUtil;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -38,8 +38,10 @@ public class DemoContinueExec {
                         .baseUrl(EnvUtils.getEnv("OXY_LLM_BASE_URL"))
                         .modelName(EnvUtils.getEnv("OXY_LLM_MODEL_NAME"))
                         .build(),
-
-                new StdioMCPClient("time_tools", "uvx", List.of("mcp-server-time", "--local-timezone=Asia/Shanghai")),
+                OSUtil.isWindows() ?
+                        new StdioMCPClient("time_tools", "cmd.exe", List.of("/c", "uvx", "mcp-server-time", "--local-timezone=Asia/Shanghai"))
+                        :
+                        new StdioMCPClient("time_tools", "uvx", List.of("mcp-server-time", "--local-timezone=Asia/Shanghai")),
 
                 ReActAgent.builder()
                         .name("time_agent")

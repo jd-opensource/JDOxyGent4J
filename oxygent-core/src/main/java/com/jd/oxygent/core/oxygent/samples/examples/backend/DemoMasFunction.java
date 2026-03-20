@@ -22,6 +22,7 @@ import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
 import com.jd.oxygent.core.oxygent.oxy.mcp.StdioMCPClient;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.OSUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
@@ -62,7 +63,10 @@ public class DemoMasFunction {
                         .baseUrl(EnvUtils.getEnv("OXY_LLM_BASE_URL"))
                         .modelName(EnvUtils.getEnv("OXY_LLM_MODEL_NAME"))
                         .build(),
-                new StdioMCPClient("time_tools", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai")),
+                OSUtil.isWindows() ?
+                        new StdioMCPClient("time_tools", "cmd.exe", Arrays.asList("/c", "uvx", "mcp-server-time", "--local-timezone=Asia/Shanghai"))
+                        :
+                        new StdioMCPClient("time_tools", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai")),
                 ReActAgent.builder()
                         .name("time_agent")
                         .tools(Arrays.asList("time_tools"))

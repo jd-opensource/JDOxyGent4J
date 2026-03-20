@@ -75,14 +75,14 @@ public class DemoPlanAndSolve {
                 fh,
                 OSUtil.isWindows() ?
                         // windows version
-                        new StdioMCPClient("time_tools", "cmd", Arrays.asList("/c", "uvx", "-y", "mcp-server-time", "--local-timezone=Asia/Shanghai"))
+                        new StdioMCPClient("time_tools", "cmd", Arrays.asList("/c", "uvx", "mcp-server-time", "--local-timezone=Asia/Shanghai"))
                 :
                         // mac or linux version
                         new StdioMCPClient("time_tools", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai"))
                 ,
                 OSUtil.isWindows() ?
                         // windows version
-                        new StdioMCPClient("file_tools", "cmd", Arrays.asList("/c", "uvx", "-y", "@modelcontextprotocol/server-filesystem", "./local_file"))
+                        new StdioMCPClient("file_tools", "cmd", Arrays.asList("/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "./local_file"))
                         :
                         // Mac or Linux version
                         new StdioMCPClient("file_tools", "npx", Arrays.asList("-y", "@modelcontextprotocol/server-filesystem", "./local_file"))

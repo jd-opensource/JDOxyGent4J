@@ -62,6 +62,7 @@ public class DemoProcessLlmException {
                 ReActAgent.builder()
                         .name("master_agent")
                         .isMaster(true)
+                        .maxReactRounds(1)
                         .build()
         );
     }

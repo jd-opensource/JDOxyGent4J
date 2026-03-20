@@ -11,6 +11,7 @@ import com.jd.oxygent.core.oxygent.samples.server.masprovider.MasFactoryRegistry
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.samples.server.utils.GlobalDefaultOxySpaceMapping;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.OSUtil;
 import lombok.extern.slf4j.Slf4j;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -43,7 +44,10 @@ public class DemoBankReactAgentAutonomy {
                         .semaphore(new Semaphore(4))
                         .build(),
                 // Time tool MCP client
-                new StdioMCPClient("time_tools", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai")),
+                OSUtil.isWindows() ?
+                        new StdioMCPClient("time_tools", "cmd.exe", Arrays.asList("/c", "uvx", "mcp-server-time", "--local-timezone=Asia/Shanghai"))
+                        :
+                        new StdioMCPClient("time_tools", "uvx", Arrays.asList("mcp-server-time", "--local-timezone=Asia/Shanghai")),
                 // ReActAgent
                 ReActAgent.builder()
                         .name("qa_agent")

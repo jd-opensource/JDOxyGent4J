@@ -16,6 +16,7 @@ import com.jd.oxygent.core.oxygent.samples.server.ServerApp;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.samples.server.utils.GlobalDefaultOxySpaceMapping;
 import com.jd.oxygent.core.oxygent.utils.EnvUtils;
+import com.jd.oxygent.core.oxygent.utils.OSUtil;
 
 import java.util.Arrays;
 import java.util.List;
@@ -41,9 +42,10 @@ public class AppMasterAgent {
                         .build(),
 
                 // mac or linux usage
-                new StdioMCPClient("file_tools", "npx", Arrays.asList("-y", "@modelcontextprotocol/server-filesystem", "./local_file")),
-                // Windows syntax
-//                new StdioMCPClient("file_tools", "cmd", Arrays.asList("/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "local_file")),
+                OSUtil.isWindows() ?
+                        new StdioMCPClient("file_tools", "cmd", Arrays.asList("/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "local_file"))
+                        :
+                        new StdioMCPClient("file_tools", "npx", Arrays.asList("-y", "@modelcontextprotocol/server-filesystem", "./local_file")),
 
                 ReActAgent.builder()
                         .name("file_agent")
