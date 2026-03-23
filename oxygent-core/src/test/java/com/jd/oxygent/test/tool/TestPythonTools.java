@@ -3,7 +3,14 @@ package com.jd.oxygent.test.tool;
 import com.jd.oxygent.core.oxygent.tools.PythonTools;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -67,5 +74,25 @@ public class TestPythonTools {
         Map safeLocals = Map.of("local_var", 13);
         String result = (String) pythonTools.call("run_python_code", code, variableToReturn, safeGlobals, safeLocals);
         Assert.assertEquals("143", result);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"test_python_tools_1.py", "test_python_tools_2.py"})
+    void runScript(String fileName) throws IOException, URISyntaxException {
+        // 1. 通过 ClassLoader 获取资源的 URL
+        URL resource = getClass().getClassLoader().getResource(fileName);
+
+        if (resource == null) {
+            throw new IllegalArgumentException("文件未找到: " + fileName);
+        }
+
+        // 2. 将 URL 转换为 Path 并读取
+        // 注意：如果资源在 Jar 包内，此方法会抛出 FileSystemNotFoundException
+        String code = Files.readString(Path.of(resource.toURI()));
+        String variableToReturn = null;
+        Map safeGlobals = null;
+        Map safeLocals = null;
+        String output = (String) pythonTools.call("run_python_code", code, variableToReturn, safeGlobals, safeLocals);
+        Assert.assertEquals("5", output);
     }
 }
