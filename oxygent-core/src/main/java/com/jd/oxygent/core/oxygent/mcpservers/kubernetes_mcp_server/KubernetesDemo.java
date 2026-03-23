@@ -67,7 +67,7 @@ public class KubernetesDemo {
                 Arrays.asList(
                         "-cp",
                         classpath,
-                        "com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.KubernetesMcpServer",
+                        "com.jd.oxygent.core.oxygent.mcpservers.kubernetes_mcp_server.Server",
                         "--transport", "stdio",
                         "--toolsets", "config,core,helm",
                         "--read-only", "false",
