@@ -1,5 +1,6 @@
 package com.jd.oxygent.core.oxygent.samples.examples.agent;
 
+import com.jd.oxygent.core.oxygent.config.Prompts;
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.oxy.agents.SkillAgent;
 import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
@@ -31,9 +32,9 @@ public class DemoSkillAgent {
                 SkillAgent.builder()
                         .name("skill_agent")
                         .isMaster(true)
+                        .prompt(Prompts.SYSTEM_PROMPT_SKILLS) // must be set
                         .desc("An tool for execute shell command")
-                        .tools(List.of("file_tools", "shell_tools"
-                        ))
+                        .tools(List.of("file_tools", "shell_tools"))
                         .skills(List.of(".oxygent/skills"
 //                                "D:/skills",
 //                                "classpath:skills",

@@ -67,12 +67,6 @@ public class SkillAgent extends ReActAgent {
     private Map<String, SkillMetadata> skillsMetadata = new HashMap<>();
 
     /**
-     * Defaults to 'SYSTEM_PROMPT', the prompt to initialize the agent's behavior.
-     */
-    @Builder.Default
-    public static String PROMPT = Prompts.SYSTEM_PROMPT_SKILLS;
-
-    /**
      * Build skill list (sorted for consistency)
      */
     @Builder.Default
@@ -202,14 +196,6 @@ public class SkillAgent extends ReActAgent {
                 entryText += "\nCheck \"" + meta.getSkillPath() + "\" for how to use this skill";
             }
             skillEntries.add(entryText);
-        }
-        String skillList = String.join("\n\n", skillEntries);
-        String skillPrompt = PROMPT.replace("{skill_list}", skillList);
-
-        if (getAdditionalPrompt() != null && !getAdditionalPrompt().isEmpty()) {
-            setAdditionalPrompt(getAdditionalPrompt() + "\n\n" + skillPrompt);
-        } else {
-            setAdditionalPrompt(skillPrompt);
         }
     }
 
