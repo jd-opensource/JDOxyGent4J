@@ -511,8 +511,14 @@ public class Mas {
         properties.put("user_ip", Map.of("type", "ip"));
         properties.put("comment", Map.of("type", "text"));
         properties.put("erp", Map.of("type", "keyword"));
-        properties.put("create_time", Map.of("type", "keyword"));
-        properties.put("update_time", Map.of("type", "keyword"));
+        properties.put("create_time", Map.of(
+                "type", "date",
+                "format", "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
+        ));
+        properties.put("update_time", Map.of(
+                "type", "date",
+                "format", "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
+        ));
 
         Map<String, Object> mappings = new HashMap<>();
         mappings.put("properties", properties);
