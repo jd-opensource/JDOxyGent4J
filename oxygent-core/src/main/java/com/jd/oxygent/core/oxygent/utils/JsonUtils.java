@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import lombok.extern.slf4j.Slf4j;
 
@@ -79,6 +80,7 @@ public class JsonUtils {
             .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
             .enable(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             .findAndAddModules()
             .build();
 
