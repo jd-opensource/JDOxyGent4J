@@ -405,6 +405,7 @@ public class OxyRequest implements Cloneable {
 
             return copy;
         } catch (Exception e) {
+            log.error("cloneWith error:", e);
             throw new RuntimeException("cloneWith deep copy failed", e);
         }
     }

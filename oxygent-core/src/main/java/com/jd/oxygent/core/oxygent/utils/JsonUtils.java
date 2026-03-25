@@ -71,16 +71,16 @@ import java.util.*;
 @Slf4j
 public class JsonUtils {
 
-//    public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-//            .configure(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true)
-//            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .configure(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    public static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
-            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
-            .enable(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS)
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            .findAndAddModules()
-            .build();
+//    public static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+//            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+//            .enable(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS)
+//            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+//            .findAndAddModules()
+//            .build();
 
     /**
      * Convert Map to JSON string

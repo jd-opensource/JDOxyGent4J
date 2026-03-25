@@ -1,10 +1,19 @@
 package com.jd.oxygent.core.oxygent.schemas.evaluation;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class ConversationWithRating {
     private String traceId;
     private String input;
@@ -14,86 +23,6 @@ public class ConversationWithRating {
     private String fromTraceId;
     private RatingStats ratingStats;
     private List<ConversationRating> ratingHistory;
-
-    public ConversationWithRating() {
-    }
-
-    public ConversationWithRating(String traceId, String input, String callee, String output,
-                                  String createTime, String fromTraceId, RatingStats ratingStats,
-                                  List<ConversationRating> ratingHistory) {
-        this.traceId = traceId;
-        this.input = input;
-        this.callee = callee;
-        this.output = output;
-        this.createTime = createTime;
-        this.fromTraceId = fromTraceId;
-        this.ratingStats = ratingStats;
-        this.ratingHistory = ratingHistory != null ? ratingHistory : new ArrayList<>();
-    }
-
-    public String getTraceId() {
-        return traceId;
-    }
-
-    public void setTraceId(String traceId) {
-        this.traceId = traceId;
-    }
-
-    public String getInput() {
-        return input;
-    }
-
-    public void setInput(String input) {
-        this.input = input;
-    }
-
-    public String getCallee() {
-        return callee;
-    }
-
-    public void setCallee(String callee) {
-        this.callee = callee;
-    }
-
-    public String getOutput() {
-        return output;
-    }
-
-    public void setOutput(String output) {
-        this.output = output;
-    }
-
-    public String getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(String createTime) {
-        this.createTime = createTime;
-    }
-
-    public String getFromTraceId() {
-        return fromTraceId;
-    }
-
-    public void setFromTraceId(String fromTraceId) {
-        this.fromTraceId = fromTraceId;
-    }
-
-    public RatingStats getRatingStats() {
-        return ratingStats;
-    }
-
-    public void setRatingStats(RatingStats ratingStats) {
-        this.ratingStats = ratingStats;
-    }
-
-    public List<ConversationRating> getRatingHistory() {
-        return ratingHistory;
-    }
-
-    public void setRatingHistory(List<ConversationRating> ratingHistory) {
-        this.ratingHistory = ratingHistory;
-    }
 
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashMap<>();

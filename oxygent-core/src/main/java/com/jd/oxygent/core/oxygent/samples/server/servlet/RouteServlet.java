@@ -1846,7 +1846,7 @@ public class RouteServlet extends HttpServlet {
     private void rating(HttpServletRequest request, HttpServletResponse response) throws IOException {
         try {
             Map<String, Object> payload = readRequestBody(request);
-            RatingRequest ratingRequest = new RatingRequest((String) payload.get("trace_id"), RatingType.valueOf(((String) payload.get("rating_type")).toUpperCase()), (String) payload.get("comment"), (String) payload.get("erp"));
+            RatingRequest ratingRequest = new RatingRequest((String) payload.get("trace_id"), RatingType.valueOf(((String) payload.get("rating_type")).toUpperCase()), (List<String>) payload.get("tag_list"), (String) payload.get("comment"), (String) payload.get("erp"), (String) payload.get("module"));
             RatingResponse result = evaluationManager.createRating(ratingRequest, request, null);
 
             Map<String, Object> data = new HashMap<>();

@@ -742,7 +742,7 @@ public class RouteController {
                             }
 
                             if ((v instanceof Integer || v instanceof Double ||
-                                    v instanceof Double) && !(v instanceof Boolean)) {
+                                    v instanceof Float) && !(v instanceof Boolean)) {
                                 double numValue = Double.parseDouble(v.toString());
                                 double maxValue = numValue <= 1 ? 1 : numValue * 10;
                                 dataRangeMap.put(k, Map.of(

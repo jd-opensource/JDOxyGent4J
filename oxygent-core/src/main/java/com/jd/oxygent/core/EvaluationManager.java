@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Conversation evaluation manager.
@@ -110,14 +111,19 @@ public class EvaluationManager {
             String currentTime = LocalDateTime.now().format(DATETIME_FORMATTER);
             String ratingId = UUID.randomUUID().toString();
             String userIp = CommonUtils.getClientIp(request);
+            String module = ratingRequest.getModule();
+            List<String> tagList = ratingRequest.getTagList();
             ConversationRating rating = new ConversationRating(
                     ratingId,
                     ratingRequest.getTraceId(),
                     ratingRequest.getRatingType(),
                     userId,
+                    module,
                     userIp,
+                    tagList,
                     ratingRequest.getComment(),
                     ratingRequest.getErp(),
+                    currentTime,
                     currentTime
             );
             esClient.index(ratingIndex, ratingId, rating.toMap());
