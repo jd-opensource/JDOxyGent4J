@@ -511,6 +511,7 @@ public class Mas {
         properties.put("user_ip", Map.of("type", "ip"));
         properties.put("tag_list", Map.of("type", "keyword"));
         properties.put("module", Map.of("type", "keyword"));
+        properties.put("score", Map.of("type", "integer"));
         properties.put("comment", Map.of("type", "text"));
         properties.put("erp", Map.of("type", "keyword"));
         properties.put("create_time", Map.of(

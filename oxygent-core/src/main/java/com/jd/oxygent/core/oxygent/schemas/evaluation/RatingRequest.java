@@ -2,6 +2,7 @@ package com.jd.oxygent.core.oxygent.schemas.evaluation;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -10,6 +11,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class RatingRequest {
     @JsonProperty("trace_id")
     private String traceId;
@@ -20,4 +22,7 @@ public class RatingRequest {
     private String comment;
     private String erp;
     private String module;
+    private Integer score;
+    private String userIp;
+    private String userId;
 }

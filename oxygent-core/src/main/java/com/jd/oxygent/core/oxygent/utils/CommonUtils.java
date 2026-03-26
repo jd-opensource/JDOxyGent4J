@@ -1130,6 +1130,9 @@ public class CommonUtils {
      * @return
      */
     public static String getClientIp(HttpServletRequest request) {
+        if (request == null) {
+            return "";
+        }
         String[] headers = {
                 "X-Forwarded-For",
                 "X-Real-IP",

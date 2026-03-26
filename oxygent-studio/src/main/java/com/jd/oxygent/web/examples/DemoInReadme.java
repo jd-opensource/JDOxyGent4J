@@ -62,7 +62,7 @@ public class DemoInReadme {
                         .apiKey(apiKey)
                         .baseUrl(baseUrl)
                         .modelName(modelName)
-                        .llmParams(Map.of("temperature", 0.01)) // Use Map.of to create immutable Map
+                        .llmParams(Map.of("temperature", 0.01))
                         .timeout(30)
                         .build(),
 

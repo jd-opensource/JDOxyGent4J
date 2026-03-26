@@ -28,6 +28,10 @@ public class ConversationRating {
      */
     private RatingType ratingType;
     /**
+     * human rate score
+     */
+    private Integer score;
+    /**
      * User ID (if user system exists)
      */
     private String userId;

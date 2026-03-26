@@ -69,7 +69,7 @@ public class ReactAgentController {
                         .apiKey(EnvUtils.getEnv("OXY_LLM_API_KEY"))
                         .baseUrl(EnvUtils.getEnv("OXY_LLM_BASE_URL"))
                         .modelName(EnvUtils.getEnv("OXY_LLM_MODEL_NAME"))
-                        .llmParams(Map.of("temperature", 0.01)) // Use Map.of to create immutable Map
+                        .llmParams(Map.of("temperature", 0.01))
                         .timeout(30)
                         .build(),
 

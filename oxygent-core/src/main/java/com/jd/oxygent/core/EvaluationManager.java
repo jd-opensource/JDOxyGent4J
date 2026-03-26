@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class EvaluationManager {
     private static EvaluationManager instance;
-    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS");
 
     private BaseEs esClient;
 
@@ -102,7 +102,7 @@ public class EvaluationManager {
         }
     }
 
-    public RatingResponse createRating(RatingRequest ratingRequest, HttpServletRequest request, String userId) {
+    public RatingResponse createRating(RatingRequest ratingRequest) {
         try {
             boolean traceExists = checkTraceExists(ratingRequest.getTraceId());
             if (!traceExists) {
@@ -110,22 +110,19 @@ public class EvaluationManager {
             }
             String currentTime = LocalDateTime.now().format(DATETIME_FORMATTER);
             String ratingId = UUID.randomUUID().toString();
-            String userIp = CommonUtils.getClientIp(request);
-            String module = ratingRequest.getModule();
-            List<String> tagList = ratingRequest.getTagList();
-            ConversationRating rating = new ConversationRating(
-                    ratingId,
-                    ratingRequest.getTraceId(),
-                    ratingRequest.getRatingType(),
-                    userId,
-                    module,
-                    userIp,
-                    tagList,
-                    ratingRequest.getComment(),
-                    ratingRequest.getErp(),
-                    currentTime,
-                    currentTime
-            );
+            ConversationRating rating = ConversationRating.builder()
+                    .ratingId(ratingId)
+                    .traceId(ratingRequest.getTraceId())
+                    .ratingType(ratingRequest.getRatingType())
+                    .userId(ratingRequest.getUserId())
+                    .module(ratingRequest.getModule())
+                    .userIp(ratingRequest.getUserIp())
+                    .tagList(ratingRequest.getTagList())
+                    .comment(ratingRequest.getComment())
+                    .score(ratingRequest.getScore())
+                    .erp(ratingRequest.getErp())
+                    .createTime(currentTime)
+                    .build();
             esClient.index(ratingIndex, ratingId, rating.toMap());
             refreshIndex(ratingIndex);
             RatingStats stats = updateRatingStats(ratingRequest.getTraceId(), ratingRequest.getRatingType());

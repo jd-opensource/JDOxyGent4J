@@ -6,11 +6,16 @@ import com.github.f4b6a3.uuid.UuidCreator;
 import com.jd.oxygent.core.Config;
 import com.jd.oxygent.core.EvaluationManager;
 import com.jd.oxygent.core.Mas;
+import com.jd.oxygent.core.MasFactoryBean;
+import com.jd.oxygent.core.oxygent.config.Prompts;
 import com.jd.oxygent.core.oxygent.liveprompt.DynamicAgentManager;
 import com.jd.oxygent.core.oxygent.liveprompt.PromptManager;
 import com.jd.oxygent.core.oxygent.liveprompt.PromptOptimizer;
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
-import com.jd.oxygent.core.oxygent.samples.server.masprovider.MasFactoryRegistry;
+import com.jd.oxygent.core.oxygent.oxy.agents.ReActAgent;
+import com.jd.oxygent.core.oxygent.oxy.agents.SkillAgent;
+import com.jd.oxygent.core.oxygent.oxy.llms.HttpLlm;
+import com.jd.oxygent.core.oxygent.samples.server.masprovider.engine.annotation.OxySpaceBean;
 import com.jd.oxygent.core.oxygent.samples.server.utils.FileValidationUtil;
 import com.jd.oxygent.core.oxygent.samples.server.utils.RecursivePackageInstantiator;
 import com.jd.oxygent.core.oxygent.samples.server.vo.AgentNodeConverter;
@@ -27,9 +32,11 @@ import com.jd.oxygent.core.oxygent.schemas.memory.Memory;
 import com.jd.oxygent.core.oxygent.schemas.memory.Message;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
+import com.jd.oxygent.core.oxygent.tools.PresetTools;
 import com.jd.oxygent.core.oxygent.utils.ClassModelDumpUtils;
 import com.jd.oxygent.core.oxygent.utils.CommonUtils;
 import com.jd.oxygent.core.oxygent.utils.DataUtils;
+import com.jd.oxygent.core.oxygent.utils.EnvUtils;
 import com.jd.oxygent.core.oxygent.utils.StringUtils;
 import com.jd.oxygent.web.adapter.FileItemAdapter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -90,7 +97,11 @@ import static com.jd.oxygent.core.oxygent.samples.server.ServerConstants.RESTRIC
 @RequestMapping("/")
 public class RouteController {
 
-    private final Mas mas = MasFactoryRegistry.getFactory().createMas();
+    @Autowired
+    private MasFactoryBean masFactoryBean;
+
+    private Mas mas;
+
     private final EvaluationManager evaluationManager = EvaluationManager.getInstance();
     private final PromptManager promptManager = PromptManager.getInstance();
 
@@ -102,8 +113,14 @@ public class RouteController {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
-    @Autowired
-    Config config;
+    private Mas getMas() {
+        if (mas == null) {
+            List<BaseOxy> oxySpaceList = getDefaultOxySpace();
+            masFactoryBean.setOxySpace("app", oxySpaceList);
+            mas = masFactoryBean.getObject();
+        }
+        return mas;
+    }
 
     /**
      * Redirect clients to the packaged web frontend.
@@ -141,7 +158,7 @@ public class RouteController {
         try {
 
             // Convert to a structure with path
-            OrganizationWrapper organizedWithPath = AgentNodeConverter.convertToOrganization(mas.getAgentOrganization());
+            OrganizationWrapper organizedWithPath = AgentNodeConverter.convertToOrganization(getMas().getAgentOrganization());
 
             return ResponseEntity.ok(WebResponse.success(organizedWithPath).toMap());
         } catch (Exception e) {
@@ -162,7 +179,8 @@ public class RouteController {
     @GetMapping("/get_first_query")
     public ResponseEntity<Map<String, Object>> getFirstQuery() {
         try {
-            String firstQuery = mas.getFirstQuery() != null && !mas.getFirstQuery().isEmpty() ? mas.getFirstQuery() : Config.getServer().getFirstQuery();
+            
+            String firstQuery = getMas().getFirstQuery() != null && !getMas().getFirstQuery().isEmpty() ? getMas().getFirstQuery() : Config.getServer().getFirstQuery();
             Map<String, Object> data = Map.of("first_query", firstQuery);
             return ResponseEntity.ok(WebResponse.success(data).toMap());
         } catch (Exception e) {
@@ -193,7 +211,7 @@ public class RouteController {
     @GetMapping("/get_description")
     public ResponseEntity<Map<String, Object>> getDescription() {
         try {
-            String desc = mas.getOxyByName(mas.getMasterAgentName()).getDesc();
+            String desc = getMas().getOxyByName(getMas().getMasterAgentName()).getDesc();
             Map<String, Object> data = Map.of("description", desc);
             return ResponseEntity.ok(WebResponse.success(data).toMap());
         } catch (Exception e) {
@@ -327,10 +345,10 @@ public class RouteController {
      * Convert request into payload.
      */
     private Map<String, Object> requestToPayload(Map<String, Object> payload, Map<String, String> headers) throws Exception {
-
+        
         // Apply filter
-        if (mas.getFuncFilter()!= null) {
-            payload = mas.getFuncFilter().apply(payload);
+        if (getMas().getFuncFilter()!= null) {
+            payload = getMas().getFuncFilter().apply(payload);
         }
 
         // Set default query
@@ -387,18 +405,19 @@ public class RouteController {
     @RequestMapping(value = "/chat", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<?> chat(@RequestBody Map<String, Object> payload, @RequestHeader Map<String, String> headers) {
         try {
+            
             requestToPayload(payload, headers);
 
             // Apply interceptor
-            if (mas.getFuncInterceptor() != null) {
-                Object interceptedResponse = mas.getFuncInterceptor().apply(payload);
+            if (getMas().getFuncInterceptor() != null) {
+                Object interceptedResponse = getMas().getFuncInterceptor().apply(payload);
                 if (interceptedResponse != null) {
                     return ResponseEntity.ok(interceptedResponse);
                 }
             }
 
             // Execute chat
-            OxyResponse oxyResponse = mas.chatWithAgent(payload, null);
+            OxyResponse oxyResponse = getMas().chatWithAgent(payload, null);
 
             return ResponseEntity.ok(oxyResponse.getOutput());
         } catch (Exception e) {
@@ -444,8 +463,8 @@ public class RouteController {
             requestToPayload(payload, safeHeaders);
 
             // Apply interceptor
-            if (mas.getFuncInterceptor()!= null) {
-                Object interceptedResponse = mas.getFuncInterceptor().apply(payload);
+            if (getMas().getFuncInterceptor()!= null) {
+                Object interceptedResponse = getMas().getFuncInterceptor().apply(payload);
                 if (interceptedResponse != null) {
                     emitter.send(interceptedResponse);
                     emitter.complete();
@@ -456,12 +475,12 @@ public class RouteController {
             String currentTraceId = payload.getOrDefault("current_trace_id", "").toString();
             log.info("SSE connection established. trace_id: {}", currentTraceId);
 
-            String redisKey = mas.getMessagePrefix() + ":" + mas.getName() + ":" + currentTraceId;
+            String redisKey = getMas().getMessagePrefix() + ":" + getMas().getName() + ":" + currentTraceId;
 
             // Execute chat asynchronously
             CompletableFuture<OxyResponse> task = CompletableFuture.supplyAsync(() -> {
                         try {
-                            return mas.chatWithAgent(payload, redisKey);
+                            return getMas().chatWithAgent(payload, redisKey);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -470,13 +489,13 @@ public class RouteController {
 
             // Handle task completion
             task.whenComplete((result, throwable) -> {
-                this.mas.getActiveTasks().remove(currentTraceId);
+                this.getMas().getActiveTasks().remove(currentTraceId);
                 if (throwable != null) {
                     log.error("Chat task failed", throwable);
                     emitter.completeWithError(throwable);
                 }
             });
-            this.mas.getActiveTasks().put(currentTraceId, task);
+            this.getMas().getActiveTasks().put(currentTraceId, task);
             // Start event stream
             CompletableFuture.runAsync(() -> {
                 try {
@@ -509,13 +528,13 @@ public class RouteController {
      * @param headers HTTP request headers
      * @return ResponseEntity containing confirmation WebResponse
      */
-    @RequestMapping(value = "/async/chat", method = {RequestMethod.POST})
+    @RequestMapping(value = "/async/chat", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<Map<String, Object>> asyncChat(@RequestBody Map<String, Object> payload, @RequestHeader Map<String, String> headers) {
         try {
             requestToPayload(payload, headers);
             // Apply interceptor
-            if (mas.getFuncInterceptor() != null) {
-                Object interceptedResponse = mas.getFuncInterceptor().apply(payload);
+            if (getMas().getFuncInterceptor() != null) {
+                Object interceptedResponse = getMas().getFuncInterceptor().apply(payload);
                 if (interceptedResponse != null) {
                     return ResponseEntity.ok((Map<String, Object>) interceptedResponse);
                 }
@@ -526,12 +545,12 @@ public class RouteController {
             }
             String currentTraceId = currentTraceIdTemp;
             log.info("Async task created. trace_id: {}", currentTraceId);
-            String redisKey = mas.getMessagePrefix() + ":" + mas.getName() + ":" + currentTraceId;
+            String redisKey = getMas().getMessagePrefix() + ":" + getMas().getName() + ":" + currentTraceId;
             // Execute chat asynchronously
             CompletableFuture<OxyResponse> task = CompletableFuture.supplyAsync(
                     () -> {
                         try {
-                            return mas.chatWithAgent(payload, redisKey);
+                            return getMas().chatWithAgent(payload, redisKey);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -539,12 +558,12 @@ public class RouteController {
             );
             // Handle task completion
             task.whenComplete((result, throwable) -> {
-                this.mas.getActiveTasks().remove(currentTraceId);
+                this.getMas().getActiveTasks().remove(currentTraceId);
                 if (throwable != null) {
                     log.error("Async chat task failed", throwable);
                 }
             });
-            this.mas.getActiveTasks().put(currentTraceId, task);
+            this.getMas().getActiveTasks().put(currentTraceId, task);
             return ResponseEntity.ok(WebResponse.success(currentTraceId).toMap());
         } catch (Exception e) {
             log.error("Async chat failed", e);
@@ -558,8 +577,8 @@ public class RouteController {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         try {
             log.info("asyncTrace trace_id: {}", currentTraceId);
-            String redisKey = mas.getMessagePrefix() + ":" + mas.getName() + ":" + currentTraceId;
-            CompletableFuture<OxyResponse> task = (CompletableFuture<OxyResponse>) this.mas.getActiveTasks().get(currentTraceId);
+            String redisKey = getMas().getMessagePrefix() + ":" + getMas().getName() + ":" + currentTraceId;
+            CompletableFuture<OxyResponse> task = (CompletableFuture<OxyResponse>) this.getMas().getActiveTasks().get(currentTraceId);
             // Start event stream
             CompletableFuture.runAsync(() -> {
                 try {
@@ -585,14 +604,14 @@ public class RouteController {
         try {
             while (true) {
                 // Read messages from Redis
-                Object rpop = mas.getRedisClient().brpop(redisKey);
+                Object rpop = getMas().getRedisClient().brpop(redisKey);
                 if (rpop == null) {
                     Thread.sleep(100);
                     continue;
                 }
 
                 // Unpack message
-                SSEMessage<Map<String, Object>> sseMessage = mas.unpackMessage(Base64.getDecoder().decode((String) rpop));
+                SSEMessage<Map<String, Object>> sseMessage = getMas().unpackMessage(Base64.getDecoder().decode((String) rpop));
                 if (sseMessage != null && sseMessage.getData() != null) {
                     Map<String, Object> msgMap = sseMessage.getData();
                     // Handle tool_call message
@@ -629,8 +648,8 @@ public class RouteController {
             }
         } catch (InterruptedException e) {
             log.info("SSE connection terminated. trace_id: {}", currentTraceId);
-            if (this.mas.getActiveTasks().containsKey(currentTraceId)) {
-                ((CompletableFuture<?>) this.mas.getActiveTasks().get(currentTraceId)).cancel(true);
+            if (this.getMas().getActiveTasks().containsKey(currentTraceId)) {
+                ((CompletableFuture<?>) this.getMas().getActiveTasks().get(currentTraceId)).cancel(true);
             }
             emitter.complete();
             Thread.currentThread().interrupt();
@@ -653,7 +672,7 @@ public class RouteController {
             Map<String, Object> query = new HashMap<>();
             query.put("query", Map.of("term", Map.of("_id", itemId)));
 
-            Map<String, Object> esResponse = mas.getEsClient().search(com.jd.oxygent.core.Config.getAppName() + "_node", query);
+            Map<String, Object> esResponse = getMas().getEsClient().search(Config.getAppName() + "_node", query);
 
             String traceId;
             Map<String, Object> nodeData = null;
@@ -675,7 +694,7 @@ public class RouteController {
                     "sort", List.of(Map.of("create_time", Map.of("order", "asc")))
             );
 
-            esResponse = mas.getEsClient().search(com.jd.oxygent.core.Config.getAppName() + "_node", traceQuery);
+            esResponse = getMas().getEsClient().search(Config.getAppName() + "_node", traceQuery);
 
             List<String> nodeIds = new ArrayList<>();
             hits = (List<Map<String, Object>>) ((Map<String, Object>) esResponse.get("hits")).get("hits");
@@ -694,7 +713,7 @@ public class RouteController {
                 // Re-fetch node_id data
                 itemId = nodeIds.get(0);
                 query = Map.of("query", Map.of("term", Map.of("_id", itemId)));
-                esResponse = mas.getEsClient().search(com.jd.oxygent.core.Config.getAppName() + "_node", query);
+                esResponse = getMas().getEsClient().search(Config.getAppName() + "_node", query);
                 hits = (List<Map<String, Object>>) ((Map<String, Object>) esResponse.get("hits")).get("hits");
                 nodeData = (Map<String, Object>) hits.get(0).get("_source");
             }
@@ -781,7 +800,7 @@ public class RouteController {
         try {
             // Check whether node_id
             Map<String, Object> query = Map.of("query", Map.of("term", Map.of("_id", itemId)));
-            Map<String, Object> esResponse = mas.getEsClient().search(com.jd.oxygent.core.Config.getAppName() + "_node", query);
+            Map<String, Object> esResponse = getMas().getEsClient().search(Config.getAppName() + "_node", query);
 
             String traceId;
             List<Map<String, Object>> hits = (List<Map<String, Object>>) ((Map<String, Object>) esResponse.get("hits")).get("hits");
@@ -800,7 +819,7 @@ public class RouteController {
                     "sort", List.of(Map.of("create_time", Map.of("order", "asc")))
             );
 
-            esResponse = mas.getEsClient().search(com.jd.oxygent.core.Config.getAppName() + "_node", traceQuery);
+            esResponse = getMas().getEsClient().search(Config.getAppName() + "_node", traceQuery);
 
             List<Map<String, Object>> nodes = new ArrayList<>();
             hits = (List<Map<String, Object>>) ((Map<String, Object>) esResponse.get("hits")).get("hits");
@@ -983,15 +1002,15 @@ public class RouteController {
     @PostMapping("/feedback")
     public ResponseEntity<Map<String, Object>> feedback(@RequestBody Map<String, String> payload) {
         String channelId = payload.getOrDefault("channel_id", "");
-        if (!mas.feedbackDict.containsKey(channelId)) {
+        if (!getMas().feedbackDict.containsKey(channelId)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(WebResponse.error(HttpStatus.BAD_REQUEST.value(), "illegal channel_id: " + channelId).toMap());
         }
-        LinkedBlockingQueue<String> feedbackQueue = mas.feedbackDict.get(channelId);
+        LinkedBlockingQueue<String> feedbackQueue = getMas().feedbackDict.get(channelId);
         String data = payload.getOrDefault("data", "");
         if (feedbackQueue == null) {
             feedbackQueue = new LinkedBlockingQueue<>();
-            mas.feedbackDict.put(channelId, feedbackQueue);
+            getMas().feedbackDict.put(channelId, feedbackQueue);
         }
         try {
             feedbackQueue.put(data);
@@ -1005,11 +1024,11 @@ public class RouteController {
     /**
      * Get detailed agent information for frontend display.
      *
-     * @return Mas.feedbackDict.get(channelId)
+     * @return getMas().feedbackDict.get(channelId)
      */
     @PostMapping("/get_agents")
     public ResponseEntity<Map<String, Object>> getAgents(@RequestBody Map<String, String> payload) {
-        return ResponseEntity.ok(WebResponse.success(mas.getAgentOrganization()).toMap());
+        return ResponseEntity.ok(WebResponse.success(getMas().getAgentOrganization()).toMap());
     }
 
     /**
@@ -1019,7 +1038,8 @@ public class RouteController {
     public ResponseEntity<Map<String, Object>> rating(@RequestBody Map<String, Object> requestBody, HttpServletRequest request) {
         try {
             RatingRequest ratingRequest = objectMapper.convertValue(requestBody, RatingRequest.class);
-            RatingResponse response = evaluationManager.createRating(ratingRequest, request, null);
+            ratingRequest.setUserIp(CommonUtils.getClientIp(request));
+            RatingResponse response = evaluationManager.createRating(ratingRequest);
             return ResponseEntity.ok(WebResponse.success(response).toMap());
         } catch (Exception e) {
             log.error("Rating failed", e);
@@ -1187,7 +1207,7 @@ public class RouteController {
                     "size", 1
             );
 
-            Map<String, Object> traceResponse = mas.getEsClient().search(
+            Map<String, Object> traceResponse = getMas().getEsClient().search(
                     Config.getAppName() + "_trace",
                     query
             );
@@ -1656,5 +1676,47 @@ public class RouteController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(WebResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Failed to get prompt history: " + e.getMessage()).toMap());
         }
+    }
+
+    @OxySpaceBean(value = "myOxySpace", defaultStart = true, query = "what skills do you have?")
+    public List<BaseOxy> getDefaultOxySpace() {
+        return Arrays.asList(
+                HttpLlm.builder()
+                        .name("default_llm")
+                        .apiKey(EnvUtils.getEnv("OXY_LLM_API_KEY"))
+                        .baseUrl(EnvUtils.getEnv("OXY_LLM_BASE_URL"))
+                        .modelName(EnvUtils.getEnv("OXY_LLM_MODEL_NAME"))
+                        .llmParams(Map.of("temperature", 0.01))
+                        .timeout(600)
+                        .build(),
+                PresetTools.FILE_TOOLS,
+                PresetTools.SHELL_TOOLS,
+                PresetTools.SSH_TOOLS,
+                SkillAgent.builder()
+                        .name("skill_agent")
+                        .isMaster(true)
+                        .prompt(Prompts.SYSTEM_PROMPT_SKILLS) // must be set
+                        .desc("Agent to discover and use skills")
+                        .tools(List.of("file_tools",
+                                "shell_tools",
+                                "ssh_tool"
+                        ))
+                        .skills(List.of(".oxygent/skills",
+                                "D:/workspace/skills",
+                                "classpath:skills",
+                                "classpath:com/jd/oxygent/core/oxygent/preset_skills/skill_creator",
+                                Path.of(System.getProperty("user.home"), "skills").toString()
+                        ))
+                        .trustMode(true)
+                        .build(), // Supports absolute paths, project root relative paths, classpath resources, and paths within JAR files.
+                ReActAgent.builder()
+                        .isMaster(true) // Set as master agent
+                        .name("master_agent")
+                        .prompt(Prompts.SYSTEM_PROMPT_SKILLS) // must be set
+                        .llmModel("default_llm")
+                        .subAgents(Arrays.asList("skill_agent")) // Sub-agent list
+                        .trustMode(true)
+                        .build()
+        );
     }
 }
