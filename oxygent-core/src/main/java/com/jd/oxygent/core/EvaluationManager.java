@@ -2,6 +2,7 @@ package com.jd.oxygent.core;
 
 import com.jd.oxygent.core.oxygent.infra.databases.BaseEs;
 import com.jd.oxygent.core.oxygent.infra.impl.databases.es.LocalEs;
+import com.jd.oxygent.core.oxygent.samples.server.masprovider.factory.impl.platform.spring.ApplicationContextHolder;
 import com.jd.oxygent.core.oxygent.schemas.evaluation.ConversationRating;
 import com.jd.oxygent.core.oxygent.schemas.evaluation.ConversationWithRating;
 import com.jd.oxygent.core.oxygent.schemas.evaluation.RatingRequest;
@@ -43,7 +44,6 @@ public class EvaluationManager implements InitializingBean {
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS");
 
-    @Autowired
     private BaseEs esClient;
 
     private String appName;
@@ -56,6 +56,7 @@ public class EvaluationManager implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() {
+        esClient = ApplicationContextHolder.getBean(BaseEs.class);
         if (esClient == null) {
             esClient = new LocalEs();
         }
