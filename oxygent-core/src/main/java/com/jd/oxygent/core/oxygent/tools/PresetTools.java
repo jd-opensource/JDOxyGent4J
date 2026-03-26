@@ -15,6 +15,7 @@
  */
 package com.jd.oxygent.core.oxygent.tools;
 
+import com.jd.oxygent.core.oxygent.function_hubs.*;
 import com.jd.oxygent.core.oxygent.oxy.function_tools.FunctionHub;
 
 /**
@@ -128,5 +129,24 @@ public final class PresetTools {
      * System tool instance.
      */
     public static final SystemTools SYSTEM_TOOLS = new SystemTools();
-
+    /**
+     * Baidu search tool instance.
+     */
+    public static final BaiduSearchTools BAIDU_SEARCH_TOOLS = new BaiduSearchTools();
+    /**
+     * Document tool instance.
+     */
+    public static final DocumentTools DOCUMENT_TOOLS = new DocumentTools();
+    /**
+     * Shortest path tool instance.
+     */
+    public static final ShortestPathTools SHORTEST_PATH_TOOLS = new ShortestPathTools();
+    /**
+     * Sql tool instance.
+     */
+    public static final SqlTools SQL_TOOLS = new SqlTools();
+    /**
+     * Train ticket tool instance.
+     */
+    public static final TrainTicketTools TRAIN_TICKET_TOOLS = new TrainTicketTools();
 }

@@ -69,6 +69,10 @@
         <commons.version>1.11.0</commons.version>
         <!-- Jython -->
         <jython.version>2.7.3</jython.version>
+        <!-- JGraphT -->
+        <jgrapht.version>1.5.2</jgrapht.version>
+        <!-- MySQL -->
+        <mysql.version>8.0.33</mysql.version>
     </properties>
 
     <dependencyManagement>
@@ -254,6 +258,19 @@
                 <groupId>org.python</groupId>
                 <artifactId>jython-standalone</artifactId>
                 <version>${jython.version}</version>
+            </dependency>
+
+            <!-- JGraphT -->
+            <dependency>
+                <groupId>org.jgrapht</groupId>
+                <artifactId>jgrapht-core</artifactId>
+                <version>${jgrapht.version}</version>
+            </dependency>
+            <!-- MySQL -->
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>${mysql.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
