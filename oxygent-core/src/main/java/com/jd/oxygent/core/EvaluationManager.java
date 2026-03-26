@@ -2,16 +2,17 @@ package com.jd.oxygent.core;
 
 import com.jd.oxygent.core.oxygent.infra.databases.BaseEs;
 import com.jd.oxygent.core.oxygent.infra.impl.databases.es.LocalEs;
-import com.jd.oxygent.core.oxygent.samples.server.masprovider.factory.impl.platform.spring.ApplicationContextHolder;
 import com.jd.oxygent.core.oxygent.schemas.evaluation.ConversationRating;
 import com.jd.oxygent.core.oxygent.schemas.evaluation.ConversationWithRating;
 import com.jd.oxygent.core.oxygent.schemas.evaluation.RatingRequest;
 import com.jd.oxygent.core.oxygent.schemas.evaluation.RatingResponse;
 import com.jd.oxygent.core.oxygent.schemas.evaluation.RatingStats;
 import com.jd.oxygent.core.oxygent.schemas.evaluation.RatingType;
-import com.jd.oxygent.core.oxygent.utils.CommonUtils;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -22,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Conversation evaluation manager.
@@ -37,33 +37,31 @@ import java.util.stream.Collectors;
  * @since 1.0.10.4
  */
 @Slf4j
-public class EvaluationManager {
-    private static EvaluationManager instance;
+@Component
+@DependsOn("config")
+public class EvaluationManager implements InitializingBean {
+
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS");
 
+    @Autowired
     private BaseEs esClient;
 
     private String appName;
     private String ratingIndex;
     private String ratingStatsIndex;
 
-    public static EvaluationManager getInstance() {
-        synchronized (EvaluationManager.class) {
-            if (instance == null) {
-                instance = new EvaluationManager();
-            }
-        }
-        instance.esClient = ApplicationContextHolder.getBean(BaseEs.class);
-        if (instance.esClient == null) {
-            instance.esClient = new LocalEs();
-        }
-        instance.appName = Config.getAppName();
-        instance.ratingIndex = instance.appName + "_rating";
-        instance.ratingStatsIndex = instance.appName + "_rating_stats";
-        return instance;
+    public EvaluationManager() {
+        afterPropertiesSet();
     }
 
-    private EvaluationManager() {
+    @Override
+    public void afterPropertiesSet() {
+        if (esClient == null) {
+            esClient = new LocalEs();
+        }
+        appName = Config.getAppName();
+        ratingIndex = appName + "_rating";
+        ratingStatsIndex = appName + "_rating_stats";
     }
 
     private RatingStats createEmptyStats(String traceId) {
@@ -523,7 +521,7 @@ public class EvaluationManager {
         }
 
         log.debug("Loading ratings for " + allTraceIds.size() + " traces");
-        Map<String, RatingStats> ratingsMap = EvaluationManager.getInstance().getRatingsForTraces(allTraceIds);
+        Map<String, RatingStats> ratingsMap = getRatingsForTraces(allTraceIds);
 
         // Calculate rating stats per group
         for (Map<String, Object> metadata : groupsMetadata) {
@@ -613,7 +611,7 @@ public class EvaluationManager {
             traceDetailsMap.put(traceId, source);
         }
 
-        Map<String, List<ConversationRating>> ratingHistoriesMap = EvaluationManager.getInstance().getRatingHistoriesForTraces(pageTraceIds);
+        Map<String, List<ConversationRating>> ratingHistoriesMap = getRatingHistoriesForTraces(pageTraceIds);
 
         // Build response
         List<Map<String, Object>> conversationGroups = new ArrayList<>();

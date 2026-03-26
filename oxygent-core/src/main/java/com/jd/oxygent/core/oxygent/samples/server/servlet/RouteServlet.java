@@ -46,6 +46,7 @@ import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
 import com.jd.oxygent.core.oxygent.utils.ClassModelDumpUtils;
 import com.jd.oxygent.core.oxygent.utils.CommonUtils;
 import com.jd.oxygent.core.oxygent.utils.DataUtils;
+import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -57,6 +58,7 @@ import org.apache.tomcat.util.http.fileupload.FileUpload;
 import org.apache.tomcat.util.http.fileupload.FileUploadBase;
 import org.apache.tomcat.util.http.fileupload.disk.DiskFileItemFactory;
 import org.apache.tomcat.util.http.fileupload.servlet.ServletRequestContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 
 import java.io.BufferedReader;
@@ -105,9 +107,10 @@ import static com.jd.oxygent.core.oxygent.samples.server.ServerConstants.RESTRIC
 public class RouteServlet extends HttpServlet {
 
     private final Mas mas = MasFactoryRegistry.getFactory().createMas();
-    private final EvaluationManager evaluationManager = EvaluationManager.getInstance();
-    private final PromptManager promptManager = PromptManager.getInstance();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private EvaluationManager evaluationManager = new EvaluationManager();
+
+    private final PromptManager promptManager = new PromptManager();
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
@@ -348,7 +351,7 @@ public class RouteServlet extends HttpServlet {
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
         try (PrintWriter writer = response.getWriter()) {
-            writer.write(objectMapper.writeValueAsString(data));
+            writer.write(JsonUtils.writeValueAsString(data));
         } catch (Exception e) {
             log.error("Send JSON response failed", e);
         }
@@ -372,7 +375,7 @@ public class RouteServlet extends HttpServlet {
                 sb.append(line);
             }
         }
-        return objectMapper.readValue(sb.toString(), Map.class);
+        return JsonUtils.readValue(sb.toString(), Map.class);
     }
 
     /**
@@ -383,7 +386,7 @@ public class RouteServlet extends HttpServlet {
         if (paramValue == null || paramValue.trim().isEmpty()) {
             return Map.of();
         }
-        return objectMapper.readValue(paramValue, Map.class);
+        return JsonUtils.readValue(paramValue, Map.class);
     }
 
     /**
@@ -420,13 +423,13 @@ public class RouteServlet extends HttpServlet {
      */
     private void saveScript(HttpServletRequest request, HttpServletResponse response) throws IOException {
         try {
-            ScriptRequest script = objectMapper.readValue(readRequestBodyAsString(request), ScriptRequest.class);
+            ScriptRequest script = JsonUtils.readValue(readRequestBodyAsString(request), ScriptRequest.class);
 
             String scriptSaveDir = Paths.get(Config.getXfile().getSaveDir(), "script").toString();
             Files.createDirectories(Paths.get(scriptSaveDir));
 
             Path filePath = Paths.get(scriptSaveDir, script.getName() + ".json");
-            String jsonContent = objectMapper.writeValueAsString(script.getContents());
+            String jsonContent = JsonUtils.writeValueAsString(script.getContents());
             Files.write(filePath, jsonContent.getBytes());
 
             Map<String, Object> data = Map.of("script_id", script.getName() + ".json");
@@ -467,7 +470,7 @@ public class RouteServlet extends HttpServlet {
             }
 
             String content = Files.readString(jsonPath);
-            List<Object> contents = objectMapper.readValue(content, List.class);
+            List<Object> contents = JsonUtils.readValue(content, List.class);
 
             Map<String, Object> data = Map.of("contents", contents);
             sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(data).toMap());
@@ -525,7 +528,7 @@ public class RouteServlet extends HttpServlet {
                     response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing payload parameter");
                     return;
                 }
-                payload = objectMapper.readValue(payloadJson, Map.class);
+                payload = JsonUtils.readValue(payloadJson, Map.class);
             } else {
                 payload = readRequestBody(request);
             }
@@ -731,7 +734,7 @@ public class RouteServlet extends HttpServlet {
                     // Process input data
                     if (nodeData.containsKey("input")) {
                         String inputStr = nodeData.getOrDefault("input", "").toString();
-                        Map<String, Object> input = objectMapper.readValue(inputStr.replace("\r", "\\r").replace("\n", "\\n"), Map.class);
+                        Map<String, Object> input = JsonUtils.readValue(inputStr.replace("\r", "\\r").replace("\n", "\\n"), Map.class);
                         nodeData.put("input", input);
                     }
 
@@ -877,7 +880,7 @@ public class RouteServlet extends HttpServlet {
      */
     private void call(HttpServletRequest request, HttpServletResponse response) throws IOException {
         try {
-            ItemRequest item = objectMapper.readValue(readRequestBodyAsString(request), ItemRequest.class);
+            ItemRequest item = JsonUtils.readValue(readRequestBodyAsString(request), ItemRequest.class);
 
             // Process environment variables pattern matching
             List<Map<String, Object>> trees = Arrays.asList(item.getClassAttr(),
@@ -1093,7 +1096,7 @@ public class RouteServlet extends HttpServlet {
      */
     private void sendSseEvent(HttpServletResponse response, String eventName, Object data) throws IOException {
         response.getWriter().write("event: " + eventName + "\n");
-        response.getWriter().write("data: " + objectMapper.writeValueAsString(data) + "\n\n");
+        response.getWriter().write("data: " + JsonUtils.writeValueAsString(data) + "\n\n");
         response.getWriter().flush();
     }
 
@@ -1270,7 +1273,7 @@ public class RouteServlet extends HttpServlet {
             Optional<RatingStats> stats = evaluationManager.getRatingStats(traceId);
             Map<String, Object> data = Map.of(
                     "trace_id", traceId,
-                    "stats", stats.isPresent() ? objectMapper.convertValue(stats, Map.class) : null,
+                    "stats", stats.isPresent() ? JsonUtils.convertValue(stats, Map.class) : null,
                     "found", stats.isPresent()
             );
             sendJsonResponse(response, HttpServletResponse.SC_OK, WebResponse.success(data).toMap());

@@ -320,7 +320,7 @@ public class RemoteEs extends BaseDB implements BaseEs {
             // Execute request
             boolean exists = esConfiguration.getClient().indices().exists(getIndexRequest, RequestOptions.DEFAULT);
             if (exists) {
-                log.info("Index already exists: {}", indexName);
+                log.debug("Index already exists: {}", indexName);
                 return true;
             }
 

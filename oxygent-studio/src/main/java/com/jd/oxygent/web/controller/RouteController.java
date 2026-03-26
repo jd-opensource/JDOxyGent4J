@@ -102,7 +102,8 @@ public class RouteController {
 
     private Mas mas;
 
-    private final EvaluationManager evaluationManager = EvaluationManager.getInstance();
+    @Autowired
+    private EvaluationManager evaluationManager;
     private final PromptManager promptManager = PromptManager.getInstance();
 
     @Autowired
