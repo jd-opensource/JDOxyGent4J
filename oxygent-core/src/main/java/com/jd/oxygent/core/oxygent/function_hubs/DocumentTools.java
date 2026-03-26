@@ -32,7 +32,9 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xwpf.usermodel.*;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -416,37 +418,30 @@ public class DocumentTools extends FunctionHub {
                 return createErrorResponse("至少需要 2 个 PDF 文件才能合并");
             }
 
-            PDDocument mergedDoc = new PDDocument();
-            int totalPages = 0;
+            // 使用 PDFMergerUtility 合并 PDF，这是 PDFBox 提供的官方合并工具
+            org.apache.pdfbox.multipdf.PDFMergerUtility merger = new org.apache.pdfbox.multipdf.PDFMergerUtility();
+            merger.setDestinationFileName(outputPath);
 
+            // 添加所有源文件
             for (String pdfPath : pdfPaths) {
-                try {
-                    PDDocument doc = PDDocument.load(new File(pdfPath));
-                    int pageCount = doc.getNumberOfPages();
-
-                    // 插入所有页面
-                    for (int i = 0; i < pageCount; i++) {
-                        mergedDoc.addPage(doc.getPage(i));
-                    }
-                    totalPages += pageCount;
-                    doc.close();
-
-                } catch (Exception e) {
-                    mergedDoc.close();
-                    return createErrorResponse("合并文件 " + pdfPath + " 时出错：" + e.getMessage());
-                }
+                merger.addSource(new File(pdfPath));
             }
 
-            // 保存合并后的文档
-            mergedDoc.save(outputPath);
-            mergedDoc.close();
+            // 执行合并
+            merger.mergeDocuments(null);
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
             result.put("message", "成功合并 " + pdfPaths.size() + " 个 PDF 文件");
             result.put("output_path", outputPath);
-            result.put("total_pages", totalPages);
             result.put("source_files", pdfPaths);
+
+            // 统计总页数
+            int totalPages = 0;
+            try (PDDocument doc = PDDocument.load(new File(outputPath))) {
+                totalPages = doc.getNumberOfPages();
+            }
+            result.put("total_pages", totalPages);
 
             return JsonUtils.toJSONString(result);
 
@@ -708,28 +703,20 @@ public class DocumentTools extends FunctionHub {
                 return createErrorResponse("文件不存在：" + path);
             }
 
-            // 注意：需要添加 poi-ooxml 依赖
-            // 这里使用反射避免硬依赖
-            try {
-                Class<?> xwpfDocClass = Class.forName("org.apache.poi.xwpf.usermodel.XWPFDocument");
-                Object doc = xwpfDocClass.getConstructor(java.io.FileInputStream.class)
-                        .newInstance(new java.io.FileInputStream(path));
+            // 使用 Apache POI 读取 Word 文档
+            try (FileInputStream fis = new FileInputStream(path);
+                 XWPFDocument doc = new XWPFDocument(fis)) {
 
                 // 提取段落
                 List<Map<String, Object>> paragraphs = new ArrayList<>();
-                Object paragraphsObj = xwpfDocClass.getMethod("getParagraphs").invoke(doc);
-                java.util.List<?> paraList = (java.util.List<?>) paragraphsObj;
-
                 int idx = 0;
-                for (Object para : paraList) {
+                for (XWPFParagraph para : doc.getParagraphs()) {
                     if (idx >= maxParagraphs) break;
-                    String text = (String) para.getClass().getMethod("getText").invoke(para);
+                    String text = para.getText();
                     if (text != null && !text.trim().isEmpty()) {
                         Map<String, Object> paraMap = new LinkedHashMap<>();
                         paraMap.put("index", ++idx);
                         paraMap.put("text", text.trim());
-                        Object style = para.getClass().getMethod("getStyle").invoke(para);
-                        paraMap.put("style", style != null ? style.toString() : "Normal");
                         paragraphs.add(paraMap);
                     }
                 }
@@ -737,25 +724,17 @@ public class DocumentTools extends FunctionHub {
                 // 提取表格
                 List<Map<String, Object>> tablesData = new ArrayList<>();
                 if (includeTables) {
-                    Object tablesObj = xwpfDocClass.getMethod("getTables").invoke(doc);
-                    java.util.List<?> tableList = (java.util.List<?>) tablesObj;
                     int tableIdx = 0;
-
-                    for (Object table : tableList) {
+                    for (org.apache.poi.xwpf.usermodel.XWPFTable table : doc.getTables()) {
                         List<List<String>> tableContent = new ArrayList<>();
-                        Object rowsObj = table.getClass().getMethod("getRows").invoke(table);
-                        java.util.List<?> rowList = (java.util.List<?>) rowsObj;
-
-                        for (Object row : rowList) {
+                        for (org.apache.poi.xwpf.usermodel.XWPFTableRow row : table.getRows()) {
                             List<String> rowData = new ArrayList<>();
-                            Object cellsObj = row.getClass().getMethod("getTableCells").invoke(row);
-                            java.util.List<?> cellList = (java.util.List<?>) cellsObj;
-
-                            for (Object cell : cellList) {
-                                String cellText = (String) cell.getClass().getMethod("getText").invoke(cell);
-                                rowData.add(cellText != null ? cellText.trim() : "");
+                            for (org.apache.poi.xwpf.usermodel.XWPFTableCell cell : row.getTableCells()) {
+                                String cellText = cell.getText();
+                                if (cellText != null && !cellText.trim().isEmpty()) {
+                                    rowData.add(cellText.trim());
+                                }
                             }
-
                             if (!rowData.isEmpty()) {
                                 tableContent.add(rowData);
                             }
@@ -794,11 +773,7 @@ public class DocumentTools extends FunctionHub {
                 result.put("paragraphs", paragraphs);
                 result.put("tables", tablesData);
 
-                ((java.io.Closeable) doc).close();
                 return JsonUtils.toJSONString(result);
-
-            } catch (ClassNotFoundException e) {
-                return createErrorResponse("poi-ooxml 未安装，请运行：mvn install org.apache.poi:poi-ooxml");
             }
 
         } catch (Exception e) {
@@ -808,7 +783,7 @@ public class DocumentTools extends FunctionHub {
     }
 
     /**
-     *     提取Word文档纯文本
+     *     提取 Word 文档纯文本
      *
      *     快速提取文档的所有文本内容，忽略格式和结构。
      * @param path Word文件路径
@@ -827,45 +802,33 @@ public class DocumentTools extends FunctionHub {
                 return createErrorResponse("文件不存在：" + path);
             }
 
-            // 使用反射避免硬依赖 poi-ooxml
+            // 使用 Apache POI 读取 Word 文档
+            FileInputStream fis = null;
+            XWPFDocument doc = null;
             try {
-                Class<?> xwpfDocClass = Class.forName("org.apache.poi.xwpf.usermodel.XWPFDocument");
-                Object doc = xwpfDocClass.getConstructor(java.io.FileInputStream.class)
-                        .newInstance(new java.io.FileInputStream(path));
+                fis = new FileInputStream(path);
+                doc = new XWPFDocument(fis);
 
                 List<String> fullText = new ArrayList<>();
 
                 // 提取段落文本
-                Object paragraphsObj = xwpfDocClass.getMethod("getParagraphs").invoke(doc);
-                java.util.List<?> paraList = (java.util.List<?>) paragraphsObj;
-
-                for (Object para : paraList) {
-                    String text = (String) para.getClass().getMethod("getText").invoke(para);
+                for (XWPFParagraph para : doc.getParagraphs()) {
+                    String text = para.getText();
                     if (text != null && !text.trim().isEmpty()) {
                         fullText.add(text.trim());
                     }
                 }
 
                 // 提取表格文本
-                Object tablesObj = xwpfDocClass.getMethod("getTables").invoke(doc);
-                java.util.List<?> tableList = (java.util.List<?>) tablesObj;
-
-                for (Object table : tableList) {
-                    Object rowsObj = table.getClass().getMethod("getRows").invoke(table);
-                    java.util.List<?> rowList = (java.util.List<?>) rowsObj;
-
-                    for (Object row : rowList) {
+                for (XWPFTable table : doc.getTables()) {
+                    for (XWPFTableRow row : table.getRows()) {
                         List<String> rowTexts = new ArrayList<>();
-                        Object cellsObj = row.getClass().getMethod("getTableCells").invoke(row);
-                        java.util.List<?> cellList = (java.util.List<?>) cellsObj;
-
-                        for (Object cell : cellList) {
-                            String cellText = (String) cell.getClass().getMethod("getText").invoke(cell);
+                        for (XWPFTableCell cell : row.getTableCells()) {
+                            String cellText = cell.getText();
                             if (cellText != null && !cellText.trim().isEmpty()) {
                                 rowTexts.add(cellText.trim());
                             }
                         }
-
                         if (!rowTexts.isEmpty()) {
                             fullText.add(String.join(" | ", rowTexts));
                         }
@@ -881,11 +844,9 @@ public class DocumentTools extends FunctionHub {
                 result.put("length", resultText.length());
                 result.put("line_count", fullText.size());
 
-                ((java.io.Closeable) doc).close();
                 return JsonUtils.toJSONString(result);
-
-            } catch (ClassNotFoundException e) {
-                return createErrorResponse("poi-ooxml 未安装，请运行：mvn install org.apache.poi:poi-ooxml");
+            } finally {
+                if (fis != null) fis.close();
             }
 
         } catch (Exception e) {
