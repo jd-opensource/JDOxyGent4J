@@ -299,8 +299,6 @@ public class Config {
         private boolean isShowInTerminal = false;
         private boolean isSendFullArguments = false;
         private Integer streamBatchSize = 256;
-        private Integer numberOfShards;
-        private Integer numberOfReplicas;
     }
 
     @Data
