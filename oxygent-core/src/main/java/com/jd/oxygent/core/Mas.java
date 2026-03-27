@@ -558,11 +558,11 @@ public class Mas {
 
     public static void getEsSetting(Map mappings) {
         Map setting = new HashMap();
-        if (Config.getEsSettings().getNumberOfShards() != null) {
-            setting.put("number_of_shards", Config.getEsSettings().getNumberOfShards());
+        if (Config.getEs().getNumberOfShards() != null) {
+            setting.put("number_of_shards", Config.getEs().getNumberOfShards());
         }
-        if (Config.getEsSettings().getNumberOfReplicas() != null) {
-            setting.put("number_of_replicas", Config.getEsSettings().getNumberOfReplicas());
+        if (Config.getEs().getNumberOfReplicas() != null) {
+            setting.put("number_of_replicas", Config.getEs().getNumberOfReplicas());
         }
         if (!setting.isEmpty()) {
             mappings.put("settings", setting);

@@ -79,7 +79,6 @@ public class Config {
     private static RedisConfig redis = new RedisConfig();
     private static MessageConfig message = new MessageConfig();
     private static EsConfig es = new EsConfig();
-    private static EsSettingsConfig esSettings = new EsSettingsConfig();
     private static ServerConfig server = new ServerConfig();
     private static AgentConfig agent = new AgentConfig();
     private static FileConfig xfile = new FileConfig();
@@ -134,8 +133,6 @@ public class Config {
                             config -> message = config);
                     loadConfigSafely(defaultConf, "es", EsConfig.class, () -> es = new EsConfig(),
                             config -> es = config);
-                    loadConfigSafely(defaultConf, "es_settings", EsSettingsConfig.class, () -> esSettings = new EsSettingsConfig(),
-                            config -> esSettings = config);
                     loadConfigSafely(defaultConf, "server", ServerConfig.class, () -> server = new ServerConfig(),
                             config -> server = config);
                     loadConfigSafely(defaultConf, "agent", AgentConfig.class, () -> agent = new AgentConfig(),
@@ -148,7 +145,7 @@ public class Config {
                             config -> oxy = config);
                     loadConfigSafely(defaultConf, "tool", ToolConfig.class, () -> tool = new ToolConfig(),
                             config -> tool = config);
-                    loadConfigSafely(defaultConf, "livePrompt", LivePromptConfig.class, () -> livePrompt = new LivePromptConfig(),
+                    loadConfigSafely(defaultConf, "live_prompt", LivePromptConfig.class, () -> livePrompt = new LivePromptConfig(),
                             config -> livePrompt = config);
 
                     setServerWorker();
@@ -180,6 +177,7 @@ public class Config {
         agent = Objects.requireNonNullElse(agent, new AgentConfig());
         xfile = Objects.requireNonNullElse(xfile, new FileConfig());
         vearch = Objects.requireNonNullElse(vearch, new VearchConfig());
+        livePrompt = Objects.requireNonNullElse(livePrompt, new LivePromptConfig());
     }
 
     public static void loadConfigPath(String configFilePath, String configFileEnv) {
@@ -266,10 +264,6 @@ public class Config {
         private List<String> hosts = new ArrayList();
         private String user = "";
         private String password = "";
-    }
-
-    @Data
-    public static class EsSettingsConfig {
         private Integer numberOfShards;
         private Integer numberOfReplicas;
     }
@@ -305,6 +299,8 @@ public class Config {
         private boolean isShowInTerminal = false;
         private boolean isSendFullArguments = false;
         private Integer streamBatchSize = 256;
+        private Integer numberOfShards;
+        private Integer numberOfReplicas;
     }
 
     @Data
@@ -415,14 +411,6 @@ public class Config {
 
     public void setEs(EsConfig es) {
         Config.es = es;
-    }
-
-    public static EsSettingsConfig getEsSettings() {
-        return esSettings;
-    }
-
-    public static void setEsSettings(EsSettingsConfig esSettings) {
-        Config.esSettings = esSettings;
     }
 
     public static ServerConfig getServer() {

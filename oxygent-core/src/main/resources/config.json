@@ -37,7 +37,9 @@
             "${ES_HOST_3}"
           ],
           "user": "${ES_TEST_USER}",
-          "password": "${ES_TEST_PASSWORD}"
+          "password": "${ES_TEST_PASSWORD}",
+          "number_of_shards": 2,
+          "number_of_replicas": 1
         },
         "redis": {
           "host": "127.0.0.1",
@@ -77,7 +79,7 @@
         },
         "live_prompt": {
             "is_active": false,
-            "es_polling_interval": 2
+            "es_polling_interval": 3
         }
     },
     "dev": {},
