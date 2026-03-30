@@ -380,7 +380,6 @@ public class Mas {
         ));
 
         mapping.put("properties", properties);
-        getEsSetting(mapping);
         Map<String, Object> root = new HashMap<>();
         root.put("mappings", mapping);
         getEsSetting(root);
@@ -426,7 +425,6 @@ public class Mas {
 
         Map<String, Object> mappings = new HashMap<>();
         mappings.put("properties", properties);
-        // If you need the outer "mappings" wrapper
         Map<String, Object> root = new HashMap<>();
         root.put("mappings", mappings);
         getEsSetting(root);
@@ -456,7 +454,6 @@ public class Mas {
 
         Map<String, Object> mappings = new HashMap<>();
         mappings.put("properties", properties);
-
         Map<String, Object> root = new HashMap<>();
         root.put("mappings", mappings);
         getEsSetting(root);
@@ -490,7 +487,6 @@ public class Mas {
 
         Map<String, Object> mappings = new HashMap<>();
         mappings.put("properties", properties);
-
         Map<String, Object> root = new HashMap<>();
         root.put("mappings", mappings);
         getEsSetting(root);
@@ -525,7 +521,6 @@ public class Mas {
 
         Map<String, Object> mappings = new HashMap<>();
         mappings.put("properties", properties);
-
         Map<String, Object> root = new HashMap<>();
         root.put("mappings", mappings);
         getEsSetting(root);
@@ -548,11 +543,9 @@ public class Mas {
 
         Map<String, Object> mappings = new HashMap<>();
         mappings.put("properties", properties);
-
         Map<String, Object> root = new HashMap<>();
         root.put("mappings", mappings);
         getEsSetting(root);
-
         return root;
     }
 
