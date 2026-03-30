@@ -12,6 +12,7 @@ import com.jd.oxygent.core.oxygent.utils.EnvUtils;
 import lombok.extern.slf4j.Slf4j;
 
 
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,19 +28,25 @@ import java.util.*;
 @RestController
 @RequestMapping("/react")
 @Slf4j
-public class ReactAgentController {
+public class ReactAgentController implements InitializingBean {
 
     @Autowired
     private MasFactoryBean masFactoryBean;
 
+    private Mas mas;
+
+    @Override
+    public void afterPropertiesSet() {
+        if (mas == null) {
+            List<BaseOxy> oxySpaceList = getDefaultOxySpace();
+            masFactoryBean.setOxySpace("app", oxySpaceList);
+            mas = masFactoryBean.getObject();
+        }
+    }
+
     @RequestMapping(value = "/chatWithAgent", method = {RequestMethod.GET, RequestMethod.POST})
     @ResponseBody
     public OxyResponse chatWithAgent(@RequestParam(required = false) String query, @RequestParam(required = false) String pin) throws Exception {
-
-        List<BaseOxy> oxySpaceList = getDefaultOxySpace();
-        masFactoryBean.setOxySpace("app", oxySpaceList);
-        Mas mas = masFactoryBean.getObject();
-
         if (query == null) {
             query = "What time is it now? Please save it into time.txt.";
         }
