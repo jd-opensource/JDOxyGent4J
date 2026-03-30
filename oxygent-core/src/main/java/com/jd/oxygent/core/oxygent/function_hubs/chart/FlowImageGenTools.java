@@ -16,6 +16,7 @@ package com.jd.oxygent.core.oxygent.function_hubs.chart;
  * limitations under the License.
  */
 import com.jd.oxygent.core.oxygent.oxy.function_tools.FunctionHub;
+import com.jd.oxygent.core.oxygent.samples.server.utils.BrowserOpener;
 import com.jd.oxygent.core.oxygent.tools.ParamMetaAuto;
 import com.jd.oxygent.core.oxygent.tools.Tool;
 import com.jd.oxygent.core.oxygent.utils.JsonUtils;
@@ -37,19 +38,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 流程图生成工具类
- * 根据文本描述生成 Mermaid 流程图并返回 HTML 文件路径
+ * Flowchart generation tools class
+ * Generates Mermaid flowcharts from text descriptions and returns HTML file paths
  */
 public class FlowImageGenTools extends FunctionHub {
 
     private static final Logger logger = Logger.getLogger(FlowImageGenTools.class.getName());
 
-    // API 配置
+    // API configuration
     private final String apiBaseUrl = System.getenv("OPENAI_BASE_URL");
     private final String apiKey = System.getenv("OPENAI_API_KEY");
     private final String modelName = System.getenv("OPENAI_MODEL_NAME");
 
-    // 默认提示词模板
+    // Default prompt template
     private static final String DEFAULT_PROMPT_TEMPLATE = """
         你是一个专业的流程图设计师，请根据以下解析出的步骤结构生成一个简洁清晰的 Mermaid 流程图代码。
         
@@ -97,14 +98,14 @@ public class FlowImageGenTools extends FunctionHub {
 
     public FlowImageGenTools() {
         super("flow_image_gen_tools");
-        this.setDesc("根据文本描述生成 Mermaid 流程图并返回 HTML 文件路径");
+        this.setDesc("Generate Mermaid flowcharts from text descriptions and return HTML file paths");
     }
 
     /**
-     *     根据文本描述生成 Mermaid 流程图并在浏览器中打开
-     * @param description 流程图的文本描述
-     * @param outputPath 输出的 HTML 文件路径，默认为 "flowchart.html"
-     * @return 生成的 HTML 文件的路径
+     *     Generate Mermaid flowchart from text description and open in browser
+     * @param description Text description of the flowchart
+     * @param outputPath Output HTML file path, defaults to "flowchart.html"
+     * @return Path to the generated HTML file
      */
     @Tool(
             name = "generateFlowChart",
@@ -116,49 +117,49 @@ public class FlowImageGenTools extends FunctionHub {
     )
     public String generateFlowChart(String description, String outputPath) {
         try {
-            // 处理输出路径
+            // Process output path
             String finalOutputPath = processOutputPath(outputPath);
 
-            // 确保输出目录存在
+            // Ensure output directory exists
             Path outputDir = Paths.get(finalOutputPath).getParent();
             if (outputDir != null && !Files.exists(outputDir)) {
                 Files.createDirectories(outputDir);
             }
 
-            // 调用 API 生成 Mermaid 代码
+            // Call API to generate Mermaid code
             String mermaidCode = callOpenAIApi(description);
 
-            // 创建 HTML 文件并渲染流程图
+            // Create HTML file and render flowchart
             boolean success = createHtmlWithMermaid(mermaidCode, finalOutputPath);
 
             if (success) {
-                // 自动在浏览器中打开生成的文件
+                // Automatically open generated file in browser
                 openInBrowser(finalOutputPath);
-                return "✅ 流程图已生成并在浏览器中打开：" + finalOutputPath;
+                return "✅ Flowchart generated and opened in browser: " + finalOutputPath;
             } else {
-                return "❌ 生成流程图时出错";
+                return "❌ Error generating flowchart";
             }
 
         } catch (Exception e) {
-            logger.severe("generateFlowChart 函数执行出错：" + e.getMessage());
-            return "❌ 生成流程图时出错：" + e.getMessage();
+            logger.severe("Error executing generateFlowChart function: " + e.getMessage());
+            return "❌ Error generating flowchart: " + e.getMessage();
         }
     }
 
     /**
-     * 处理输出路径
+     * Process output path
      */
     private String processOutputPath(String outputPath) throws IOException {
         if (outputPath == null || outputPath.trim().isEmpty()) {
-            // 生成带时间戳的默认文件名
+            // Generate default filename with timestamp
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String filename = "flowchart_" + timestamp + ".html";
 
-            // 使用项目根目录下的 output 文件夹
+            // Use output folder under project root directory
             String currentDir = System.getProperty("user.dir");
             String projectRoot = currentDir;
 
-            // 如果当前在 examples/other 目录，需要回到项目根目录
+            // If currently in examples/other directory, need to go back to project root
             if (currentDir.endsWith("examples/other") || currentDir.endsWith("examples\\other")) {
                 projectRoot = Paths.get(currentDir).getParent().getParent().toString();
             }
@@ -170,7 +171,7 @@ public class FlowImageGenTools extends FunctionHub {
         } else {
             Path path = Paths.get(outputPath);
             if (!path.isAbsolute()) {
-                // 处理相对路径
+                // Handle relative path
                 String currentDir = System.getProperty("user.dir");
 
                 if (currentDir.endsWith("examples/other") || currentDir.endsWith("examples\\other")) {
@@ -187,19 +188,19 @@ public class FlowImageGenTools extends FunctionHub {
     }
 
     /**
-     * 调用 OpenAI API 生成 Mermaid 代码
+     * Call OpenAI API to generate Mermaid code
      */
     private String callOpenAIApi(String description) {
-        // 检查 API 配置
+        // Check API configuration
         if (apiKey == null || apiKey.isEmpty() || apiBaseUrl == null || apiBaseUrl.isEmpty() || modelName == null || modelName.isEmpty()) {
-            logger.warning("API 配置不完整，使用示例流程图");
+            logger.warning("API configuration incomplete, using sample flowchart");
             return generateSampleMermaid(description);
         }
 
         try {
             String prompt = String.format(DEFAULT_PROMPT_TEMPLATE, description);
 
-            // 构建请求体
+            // Build request body
             List<Map<String, String>> messages = new ArrayList<>();
 
             Map<String, String> message = new LinkedHashMap<>();
@@ -214,7 +215,7 @@ public class FlowImageGenTools extends FunctionHub {
                                 requestData.put("max_tokens", 2000);
                                 requestData.put("stream", false);
 
-            // 发送 HTTP 请求
+            // Send HTTP request
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiBaseUrl + "/chat/completions"))
@@ -223,21 +224,21 @@ public class FlowImageGenTools extends FunctionHub {
                     .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.toJSONString(requestData)))
                     .build();
 
-            logger.info("正在调用 OpenAI 兼容 API 生成流程图代码...");
-            logger.info("请求 URL: " + apiBaseUrl + "/chat/completions");
-            logger.info("请求模型：" + modelName);
+            logger.info("Calling OpenAI compatible API to generate flowchart code...");
+            logger.info("Request URL: " + apiBaseUrl + "/chat/completions");
+            logger.info("Request model: " + modelName);
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            logger.info("API 响应状态：" + response.statusCode());
+            logger.info("API response status: " + response.statusCode());
 
             if (response.statusCode() != 200) {
-                logger.warning("API 请求失败，状态码：" + response.statusCode());
-                logger.warning("响应内容：" + response.body());
+                logger.warning("API request failed, status code: " + response.statusCode());
+                logger.warning("Response content: " + response.body());
                 return generateSampleMermaid(description);
             }
 
-            // 解析响应
+            // Parse response
             Map<String, Object> result = JsonUtils.readValue(response.body(), Map.class);
 
             if (result.containsKey("choices") && ((List<?>) result.get("choices")).size() > 0) {
@@ -245,33 +246,33 @@ public class FlowImageGenTools extends FunctionHub {
                 Map<String, Object> messageData = (Map<String, Object>) choice.get("message");
                 String content = (String) messageData.get("content");
 
-                logger.info("API 调用成功，内容长度：" + content.length());
+                logger.info("API call successful, content length: " + content.length());
 
-                // 提取 Mermaid 代码
+                // Extract Mermaid code
                 String mermaidCode = extractMermaidCode(content);
                 if (mermaidCode == null || mermaidCode.isEmpty()) {
-                    logger.warning("未能从 API 响应中提取有效的 Mermaid 代码，将使用示例流程图");
+                    logger.warning("Failed to extract valid Mermaid code from API response, will use sample flowchart");
                     return generateSampleMermaid(description);
                 }
 
-                logger.info("成功提取 Mermaid 代码");
+                logger.info("Successfully extracted Mermaid code");
                 return mermaidCode;
             } else {
-                logger.warning("无法识别的 API 响应格式：" + result);
+                logger.warning("Unrecognized API response format: " + result);
                 return generateSampleMermaid(description);
             }
 
         } catch (Exception e) {
-            logger.severe("调用 API 时出错：" + e.getMessage());
+            logger.severe("Error calling API: " + e.getMessage());
             return generateSampleMermaid(description);
         }
     }
 
     /**
-     * 从 API 响应中提取 Mermaid 代码
+     * Extract Mermaid code from API response
      */
     private String extractMermaidCode(String content) {
-        // 尝试提取 ```mermaid ... ``` 格式的代码块
+        // Try to extract ```mermaid ... ``` format code block
         if (content.contains("```mermaid") && content.contains("```")) {
             int startIndex = content.indexOf("```mermaid") + 11;
             int endIndex = content.indexOf("```", startIndex);
@@ -280,7 +281,7 @@ public class FlowImageGenTools extends FunctionHub {
             }
         }
 
-        // 如果没有明确的标记，尝试提取看起来像 Mermaid 代码的部分
+        // If no explicit markers, try to extract parts that look like Mermaid code
         Pattern pattern = Pattern.compile("(?i)(graph\\s+|flowchart\\s+|sequencediagram|classDiagram).*", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(content);
 
@@ -308,13 +309,13 @@ public class FlowImageGenTools extends FunctionHub {
     }
 
     /**
-     * 生成示例 Mermaid 流程图
+     * Generate sample Mermaid flowchart
      */
     private String generateSampleMermaid(String description) {
         List<String> steps = parseDescriptionToSteps(description);
 
         if (steps.isEmpty()) {
-            // 返回默认的软件开发流程图
+            // Return default software development flowchart
             return """
                 flowchart TD
                     A[需求分析] --> B[系统设计]
@@ -344,7 +345,7 @@ public class FlowImageGenTools extends FunctionHub {
     }
 
     /**
-     * 解析描述文本，提取流程步骤
+     * Parse description text and extract process steps
      */
     private List<String> parseDescriptionToSteps(String description) {
         if (description == null || description.trim().isEmpty()) {
@@ -353,7 +354,7 @@ public class FlowImageGenTools extends FunctionHub {
 
         List<String> steps = new ArrayList<>();
 
-        // 优先方法：识别编号格式的步骤描述
+        // Priority method: Identify numbered format step descriptions
         String[] numberedPatterns = {
                 "(?:^|\\n)\\s*(\\d+)[.、]\\s*([^\\n\\d]+?)(?=\\s*\\d+[.、]|\\s*$)",
                 "(?:^|\\n)\\s*第 ([一二三四五六七八九十]+) 步 [：:]?\\s*([^\\n]+?)(?=\\s*第 [一二三四五六七八九十]+ 步 |\\s*$)",
@@ -383,7 +384,7 @@ public class FlowImageGenTools extends FunctionHub {
             }
         }
 
-        // 方法 1: 按箭头分割
+        // Method 1: Split by arrow
         if (description.contains("→") || description.contains("->")) {
             String text = description.replace("→", "->").replace(" ", "");
             String[] parts = text.split("->");
@@ -393,7 +394,7 @@ public class FlowImageGenTools extends FunctionHub {
                 }
             }
         }
-        // 方法 2: 按中文标点分割
+        // Method 2: Split by Chinese punctuation
         else if (description.matches(".*[，、；和].*")) {
             String[] parts = description.split("[，、；和]");
             for (String part : parts) {
@@ -724,10 +725,9 @@ public class FlowImageGenTools extends FunctionHub {
      */
     private void openInBrowser(String filePath) {
         try {
-            Desktop desktop = Desktop.getDesktop();
             File file = new File(filePath);
             if (file.exists()) {
-                desktop.browse(file.toURI());
+                BrowserOpener.open(file.toURI().toString());
                 logger.info("已在浏览器中打开：" + filePath);
             }
         } catch (Exception e) {

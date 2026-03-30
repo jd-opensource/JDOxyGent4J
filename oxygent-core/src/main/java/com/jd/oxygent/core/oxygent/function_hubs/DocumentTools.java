@@ -43,8 +43,8 @@ import java.util.*;
 import java.util.logging.Logger;
 
 /**
- * 文档处理工具中心，管理所有文档相关操作
- * 支持 PDF、Word、Excel 等文档格式的处理
+ * Document processing tool hub, managing all document-related operations
+ * Supports processing of PDF, Word, Excel and other document formats
  */
 public class DocumentTools extends FunctionHub {
 
@@ -57,7 +57,7 @@ public class DocumentTools extends FunctionHub {
     }
 
     /**
-     * 检查依赖库是否安装
+     * Check if dependency libraries are installed
      */
     private void checkDependencies() {
         List<String> missing = new ArrayList<>();
@@ -69,7 +69,7 @@ public class DocumentTools extends FunctionHub {
             missing.add("Apache PDFBox");
         }
 
-        // 检查 POI
+        // Check POI
         try {
             Class.forName("org.apache.poi.ss.usermodel.Workbook");
         } catch (ClassNotFoundException e) {
@@ -78,23 +78,23 @@ public class DocumentTools extends FunctionHub {
 
         if (!missing.isEmpty()) {
             logger.warning(String.format(
-                    "部分文档处理库未安装：%s。这些依赖是可选的，但使用文档处理功能时需要安装。",
+                    "Some document processing libraries are not installed: %s. These dependencies are optional, but required when using document processing features.",
                     String.join(", ", missing)
             ));
         }
     }
 
     /**
-     *     提取PDF文本内容
+     *     Extract PDF text content
      *
-     *     技术实现：
-     *     - 使用PyMuPDF (fitz)进行高效文本提取
-     *     - 支持多种PDF编码格式
-     *     - 自动处理页面旋转和布局
-     * @param path PDF文件路径
-     * @param pageRange 页码范围字符串
-     * @param maxCharsPerPage 单页最大字符数
-     * @return JSON格式的提取结果，包含文本内容和元数据
+     *     Technical implementation:
+     *     - Uses PyMuPDF (fitz) for efficient text extraction
+     *     - Supports multiple PDF encoding formats
+     *     - Automatically handles page rotation and layout
+     * @param path PDF file path
+     * @param pageRange Page range string
+     * @param maxCharsPerPage Maximum characters per page
+     * @return JSON format extraction result, containing text content and metadata
      */
     @Tool(
             name = "extractPdfText",
@@ -108,21 +108,21 @@ public class DocumentTools extends FunctionHub {
     public String extractPdfText(String path, String pageRange, int maxCharsPerPage) {
         try {
             if (!Files.exists(Paths.get(path))) {
-                return createErrorResponse("文件不存在：" + path);
+                return createErrorResponse("File does not exist: " + path);
             }
 
             PDDocument doc = PDDocument.load(new File(path));
             int totalPages = doc.getNumberOfPages();
 
-            // 解析页码范围
+            // Parse page range
             List<Integer> pages = parsePageRange(pageRange, totalPages);
 
             if (pages.isEmpty()) {
                 doc.close();
-                return createErrorResponse("无效的页码范围或页码超出文档范围");
+                return createErrorResponse("Invalid page range or page numbers exceed document range");
             }
 
-            // 提取文本
+            // Extract text
             List<Map<String, Object>> results = new ArrayList<>();
             PDFTextStripper stripper = new PDFTextStripper();
 
@@ -131,16 +131,16 @@ public class DocumentTools extends FunctionHub {
                 stripper.setEndPage(pageNum + 1);
                 String text = stripper.getText(doc).trim();
 
-                // 限制单页文本长度
+                // Limit single page text length
                 if (text.length() > maxCharsPerPage) {
-                    text = text.substring(0, maxCharsPerPage) + "\n...(已截断，原文本长度：" + text.length() + "字符)";
+                    text = text.substring(0, maxCharsPerPage) + "\n...(truncated, original text length: " + text.length() + " characters)";
                 }
 
                 Map<String, Object> pageResult = new LinkedHashMap<>();
                 pageResult.put("page_number", pageNum + 1);
                 pageResult.put("text", text);
                 pageResult.put("char_count", text.length());
-                // PDFBox 不直接提供图像检测，这里简化处理
+                // PDFBox does not directly provide image detection, simplified handling here
                 pageResult.put("has_images", false);
 
                 results.add(pageResult);
@@ -158,27 +158,27 @@ public class DocumentTools extends FunctionHub {
             return JsonUtils.toJSONString(response);
 
         } catch (InvalidPasswordException e) {
-            return createErrorResponse("PDF 文件已加密，无法读取");
+            return createErrorResponse("PDF file is encrypted, cannot read");
         } catch (IOException e) {
-            logger.severe("PDF 文本提取失败：" + e.getMessage());
-            return createErrorResponse("提取失败：" + e.getMessage());
+            logger.severe("PDF text extraction failed: " + e.getMessage());
+            return createErrorResponse("Extraction failed: " + e.getMessage());
         } catch (Exception e) {
-            logger.severe("PDF 文本提取失败：" + e.getMessage());
-            return createErrorResponse("提取失败：" + e.getMessage());
-        }
+              logger.severe("PDF text extraction failed: " + e.getMessage());
+              return createErrorResponse("Extraction failed: " + e.getMessage());
+          }
     }
 
     /**
-     *     从PDF提取表格数据
+     *     Extract table data from PDF
      *
-     *     技术特点：
-     *     - 使用pdfplumber的表格识别引擎
-     *     - 支持合并单元格的处理
-     *     - 自动识别表头
-     *     - 处理跨页表格
-     * @param path  PDF文件路径
-     * @param pageRange 页码范围
-     * @return 包含所有表格数据的JSON结构
+     *     Technical features:
+     *     - Uses pdfplumber's table recognition engine
+     *     - Supports merged cell processing
+     *     - Automatically identifies table headers
+     *     - Handles cross-page tables
+     * @param path  PDF file path
+     * @param pageRange Page range
+     * @return JSON structure containing all table data
      */
     @Tool(
             name = "extractPdfTables",
@@ -200,25 +200,25 @@ public class DocumentTools extends FunctionHub {
 
             if (pages.isEmpty()) {
                 doc.close();
-                return createErrorResponse("无效的页码范围或页码超出文档范围");
+            return createErrorResponse("Invalid page range or page numbers exceed document range");
             }
 
             List<Map<String, Object>> allTables = new ArrayList<>();
 
-            // 这里使用简化的实现，基于文本分析识别表格
+            // Here uses simplified implementation, based on text analysis to identify tables
             for (Integer pageNum : pages) {
                 PDFTextStripper stripper = new PDFTextStripper();
                 stripper.setStartPage(pageNum + 1);
                 stripper.setEndPage(pageNum + 1);
                 String text = stripper.getText(doc);
 
-                // 简化的表格识别：按行分割
+                // Simplified table recognition: split by rows
                 String[] lines = text.split("\\n");
                 List<List<String>> tableRows = new ArrayList<>();
 
                 for (String line : lines) {
                     if (line.contains("\t") || line.trim().matches("(.*\\|+.*)+")) {
-                        // 可能是表格行
+                        // Possibly a table row
                         String[] cells = line.split("[\\t|]+");
                         List<String> rowData = new ArrayList<>();
                         for (String cell : cells) {
@@ -255,24 +255,24 @@ public class DocumentTools extends FunctionHub {
             return JsonUtils.toJSONString(result);
 
         } catch (Exception e) {
-            logger.severe("PDF 表格提取失败：" + e.getMessage());
-            return createErrorResponse("提取失败：" + e.getMessage());
+            logger.severe("PDF table extraction failed: " + e.getMessage());
+            return createErrorResponse("Extraction failed: " + e.getMessage());
         }
     }
 
     /**
-     *     提取PDF中的图像
+     *     Extract images from PDF
      *
-     *     功能特点：
-     *     - 自动创建输出目录
-     *     - 保持原始图像格式和质量
-     *     - 可过滤小尺寸图片（如图标、装饰线等）
-     *     - 返回每个图像的详细信息
-     * @param path PDF文件路径
-     * @param outputDir 输出目录
-     * @param pageRange 页码范围
-     * @param minSize 最小图像大小（字节）
-     * @return 包含所有提取图像信息的JSON
+     *     Features:
+     *     - Automatically creates output directory
+     *     - Preserves original image format and quality
+     *     - Can filter small images (like icons, decorative lines, etc.)
+     *     - Returns detailed information for each image
+     * @param path PDF file path
+     * @param outputDir Output directory
+     * @param pageRange Page range
+     * @param minSize Minimum image size (bytes)
+     * @return JSON containing all extracted image information
      */
     @Tool(
             name = "extractPdfImages",
@@ -290,7 +290,7 @@ public class DocumentTools extends FunctionHub {
                 return createErrorResponse("文件不存在：" + path);
             }
 
-            // 创建输出目录
+            // Create output directory
             Path outputPath = Paths.get(outputDir);
             Files.createDirectories(outputPath);
 
@@ -310,7 +310,7 @@ public class DocumentTools extends FunctionHub {
                 PDPage page = doc.getPage(pageNum);
                 PDResources resources = page.getResources();
 
-                // 遍历所有 XObject 并筛选出图像
+                // Iterate all XObjects and filter out images
                 for (COSName name : resources.getXObjectNames()) {
                     try {
                         PDXObject xObject = resources.getXObject(name);
@@ -334,7 +334,7 @@ public class DocumentTools extends FunctionHub {
                             imageBytes = baos.toByteArray();
                         }
 
-                        // 过滤小图像
+                        // Filter small images
                         if (imageBytes.length < minSize) {
                             continue;
                         }
@@ -357,7 +357,7 @@ public class DocumentTools extends FunctionHub {
                         imageList.add(imgInfo);
 
                     } catch (Exception imgError) {
-                        logger.warning("提取第" + (pageNum + 1) + "页图像失败：" + imgError.getMessage());
+                        logger.warning("Failed to extract image on page " + (pageNum + 1) + ": " + imgError.getMessage());
                     }
                 }
             }
@@ -374,23 +374,23 @@ public class DocumentTools extends FunctionHub {
             return JsonUtils.toJSONString(result);
 
         } catch (Exception e) {
-            logger.severe("PDF 图像提取失败：" + e.getMessage());
-            return createErrorResponse("提取失败：" + e.getMessage());
+            logger.severe("PDF image extraction failed: " + e.getMessage());
+            return createErrorResponse("Extraction failed: " + e.getMessage());
         }
     }
 
     /**
-     *     合并多个PDF文件
+     *     Merge multiple PDF files
      *
-     *     技术特点：
-     *     - 零质量损失的合并
-     *     - 保留原始文档属性
-     *     - 可选保留书签结构
-     *     - 高效处理大文件
+     *     Technical features:
+     *     - Zero quality loss merging
+     *     - Preserves original document properties
+     *     - Optional bookmark structure preservation
+     *     - Efficient large file handling
      *
-     * @param pdfPaths PDF文件路径列表
-     * @param outputPath 输出文件路径
-     * @return 合并操作的结果信息
+     * @param pdfPaths PDF file path list
+     * @param outputPath Output file path
+     * @return Result information of merge operation
      */
     @Tool(
             name = "mergePdfs",
@@ -402,7 +402,7 @@ public class DocumentTools extends FunctionHub {
     )
     public String mergePdfs(List<String> pdfPaths, String outputPath) {
         try {
-            // 验证输入文件
+            // Validate input files
             List<String> missingFiles = new ArrayList<>();
             for (String pdfPath : pdfPaths) {
                 if (!Files.exists(Paths.get(pdfPath))) {
@@ -411,32 +411,32 @@ public class DocumentTools extends FunctionHub {
             }
 
             if (!missingFiles.isEmpty()) {
-                return createErrorResponse("以下文件不存在：" + String.join(", ", missingFiles));
+                return createErrorResponse("The following files do not exist: " + String.join(", ", missingFiles));
             }
 
             if (pdfPaths.size() < 2) {
-                return createErrorResponse("至少需要 2 个 PDF 文件才能合并");
+                return createErrorResponse("At least 2 PDF files are required to merge");
             }
 
-            // 使用 PDFMergerUtility 合并 PDF，这是 PDFBox 提供的官方合并工具
+            // Use PDFMergerUtility to merge PDFs, this is the official merge tool provided by PDFBox
             org.apache.pdfbox.multipdf.PDFMergerUtility merger = new org.apache.pdfbox.multipdf.PDFMergerUtility();
             merger.setDestinationFileName(outputPath);
 
-            // 添加所有源文件
+            // Add all source files
             for (String pdfPath : pdfPaths) {
                 merger.addSource(new File(pdfPath));
             }
 
-            // 执行合并
+            // Execute merge
             merger.mergeDocuments(null);
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
-            result.put("message", "成功合并 " + pdfPaths.size() + " 个 PDF 文件");
+            result.put("message", "Successfully merged " + pdfPaths.size() + " PDF files");
             result.put("output_path", outputPath);
             result.put("source_files", pdfPaths);
 
-            // 统计总页数
+            // Count total pages
             int totalPages = 0;
             try (PDDocument doc = PDDocument.load(new File(outputPath))) {
                 totalPages = doc.getNumberOfPages();
@@ -446,24 +446,24 @@ public class DocumentTools extends FunctionHub {
             return JsonUtils.toJSONString(result);
 
         } catch (Exception e) {
-            logger.severe("PDF 合并失败：" + e.getMessage());
-            return createErrorResponse("合并失败：" + e.getMessage());
+            logger.severe("PDF merge failed: " + e.getMessage());
+            return createErrorResponse("Merge failed: " + e.getMessage());
         }
     }
 
     /**
-     *     拆分PDF文件
+     *     Split PDF file
      *
-     *     功能亮点：
-     *     - 支持灵活的页码范围定义
-     *     - 自动命名输出文件
-     *     - 保持原始PDF质量
-     *     - 支持不连续页码拆分
-     * @param path 源PDF文件路径
-     * @param splitRanges 拆分范围列表
-     * @param outputDir 输出目录
-     * @param namePrefix 文件名前缀
-     * @return 拆分操作的详细结果
+     *     Features:
+     *     - Supports flexible page range definition
+     *     - Automatic output file naming
+     *     - Maintains original PDF quality
+     *     - Supports discontinuous page splitting
+     * @param path Source PDF file path
+     * @param splitRanges Split range list
+     * @param outputDir Output directory
+     * @param namePrefix File name prefix
+     * @return Detailed result of split operation
      */
     @Tool(
             name = "splitPdf",
@@ -527,33 +527,33 @@ public class DocumentTools extends FunctionHub {
             doc.close();
 
             if (outputFiles.isEmpty()) {
-                return createErrorResponse("没有成功拆分任何文件，请检查页码范围是否正确");
+                return createErrorResponse("No files were successfully split, please check if the page range is correct");
             }
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
-            result.put("message", "成功拆分为 " + outputFiles.size() + " 个文件");
+            result.put("message", "Successfully split into " + outputFiles.size() + " files");
             result.put("source_file", path);
             result.put("output_dir", outputPath.toString());
             result.put("files", outputFiles);
 
             return JsonUtils.toJSONString(result);
         } catch (Exception e) {
-            logger.severe("PDF 拆分失败：" + e.getMessage());
-            return createErrorResponse("拆分失败：" + e.getMessage());
+            logger.severe("PDF split failed: " + e.getMessage());
+            return createErrorResponse("Split failed: " + e.getMessage());
         }
     }
 
     /**
-     * 获取PDF元数据和基本信息
+     * Get PDF metadata and basic information
      *
-     *     返回信息包括：
-     *     - 文档属性（标题、作者、主题等）
-     *     - 页面信息（总页数、页面尺寸）
-     *     - 技术信息（PDF版本、是否加密）
-     *     - 内容统计（文本量、图像数量）
-     * @param path PDF文件路径
-     * @return 包含所有元数据的JSON结构
+     *     Returns information including:
+     *     - Document properties (title, author, subject, etc.)
+     *     - Page information (total pages, page sizes)
+     *     - Technical information (PDF version, encryption status)
+     *     - Content statistics (text volume, image count)
+     * @param path PDF file path
+     * @return JSON structure containing all metadata
      */
     @Tool(
             name = "getPdfInfo",
@@ -570,10 +570,10 @@ public class DocumentTools extends FunctionHub {
 
             PDDocument doc = PDDocument.load(new File(path));
 
-            // 获取元数据
+            // Get metadata
             PDDocumentInformation metadata = doc.getDocumentInformation();
 
-            // 统计页面信息
+            // Statistics page information
             List<Map<String, Object>> pageSizes = new ArrayList<>();
             int totalImages = 0;
             int totalTextLength = 0;
@@ -588,11 +588,11 @@ public class DocumentTools extends FunctionHub {
                 pageInfo.put("height", Math.round(rect.getHeight() * 100.0) / 100.0);
                 pageSizes.add(pageInfo);
 
-                // 统计图像
+                // Statistics images
                 try {
                     PDResources resources = page.getResources();
                     if (resources != null) {
-                        // 遍历所有 XObject 并统计图像数量
+                        // Iterate all XObjects and count images
                         for (COSName name : resources.getXObjectNames()) {
                             PDXObject xObject = resources.getXObject(name);
                             if (xObject instanceof PDImageXObject) {
@@ -601,10 +601,10 @@ public class DocumentTools extends FunctionHub {
                         }
                     }
                 } catch (Exception e) {
-                    // 忽略错误
+                    // Ignore errors
                 }
 
-                // 统计文本
+                // Statistics text
                 try {
                     PDFTextStripper stripper = new PDFTextStripper();
                     stripper.setStartPage(pageNum + 1);
@@ -615,7 +615,7 @@ public class DocumentTools extends FunctionHub {
                 }
             }
 
-            // 文件信息
+            // File information
             File file = new File(path);
             long fileSize = file.length();
 
@@ -661,7 +661,7 @@ public class DocumentTools extends FunctionHub {
             }
             info.put("content_statistics", contentStats);
 
-            // 只返回前 5 页尺寸
+            // Only return first 5 page sizes
             info.put("page_sizes", pageSizes.subList(0, Math.min(5, pageSizes.size())));
 
             doc.close();
@@ -669,24 +669,24 @@ public class DocumentTools extends FunctionHub {
             return JsonUtils.toJSONString(info);
 
         } catch (Exception e) {
-            logger.severe("获取 PDF 信息失败：" + e.getMessage());
-            return createErrorResponse("获取信息失败：" + e.getMessage());
+            logger.severe("Failed to get PDF info: " + e.getMessage());
+            return createErrorResponse("Failed to get info: " + e.getMessage());
         }
     }
 
 
     /**
-     *     读取Word文档内容
+     *     Read Word document content
      *
-     *     提取内容：
-     *     - 所有段落文本（保持顺序）
-     *     - 表格数据（结构化格式）
-     *     - 段落样式信息（可选）
-     *     - 文档统计信息
-     * @param path Word文件路径
-     * @param includeTables 是否包含表格
-     * @param maxParagraphs 最大段落数
-     * @return 结构化的文档内容JSON
+     *     Extracted content:
+     *     - All paragraph text (maintaining order)
+     *     - Table data (structured format)
+     *     - Paragraph style information (optional)
+     *     - Document statistics
+     * @param path Word file path
+     * @param includeTables Whether to include tables
+     * @param maxParagraphs Maximum number of paragraphs
+     * @return Structured document content JSON
      */
     @Tool(
             name = "readDocx",
@@ -703,11 +703,11 @@ public class DocumentTools extends FunctionHub {
                 return createErrorResponse("文件不存在：" + path);
             }
 
-            // 使用 Apache POI 读取 Word 文档
+            // Use Apache POI to read Word document
             try (FileInputStream fis = new FileInputStream(path);
                  XWPFDocument doc = new XWPFDocument(fis)) {
 
-                // 提取段落
+                // Extract paragraphs
                 List<Map<String, Object>> paragraphs = new ArrayList<>();
                 int idx = 0;
                 for (XWPFParagraph para : doc.getParagraphs()) {
@@ -721,7 +721,7 @@ public class DocumentTools extends FunctionHub {
                     }
                 }
 
-                // 提取表格
+                // Extract tables
                 List<Map<String, Object>> tablesData = new ArrayList<>();
                 if (includeTables) {
                     int tableIdx = 0;
@@ -752,7 +752,7 @@ public class DocumentTools extends FunctionHub {
                     }
                 }
 
-                // 统计信息
+                // Statistics information
                 StringBuilder totalText = new StringBuilder();
                 for (Map<String, Object> p : paragraphs) {
                     totalText.append(p.get("text")).append(" ");
@@ -777,17 +777,17 @@ public class DocumentTools extends FunctionHub {
             }
 
         } catch (Exception e) {
-            logger.severe("读取 Word 文档失败：" + e.getMessage());
-            return createErrorResponse("读取失败：" + e.getMessage());
+            logger.severe("Failed to read Word document: " + e.getMessage());
+            return createErrorResponse("Read failed: " + e.getMessage());
         }
     }
 
     /**
-     *     提取 Word 文档纯文本
+     *     Extract plain text from Word document
      *
-     *     快速提取文档的所有文本内容，忽略格式和结构。
-     * @param path Word文件路径
-     * @return 纯文本内容
+     *     Quickly extracts all text content from document, ignoring format and structure.
+     * @param path Word file path
+     * @return Plain text content
      */
     @Tool(
             name = "extractDocxText",
@@ -811,7 +811,7 @@ public class DocumentTools extends FunctionHub {
 
                 List<String> fullText = new ArrayList<>();
 
-                // 提取段落文本
+                // Extract paragraph text
                 for (XWPFParagraph para : doc.getParagraphs()) {
                     String text = para.getText();
                     if (text != null && !text.trim().isEmpty()) {
@@ -819,7 +819,7 @@ public class DocumentTools extends FunctionHub {
                     }
                 }
 
-                // 提取表格文本
+                // Extract table text
                 for (XWPFTable table : doc.getTables()) {
                     for (XWPFTableRow row : table.getRows()) {
                         List<String> rowTexts = new ArrayList<>();
@@ -850,24 +850,24 @@ public class DocumentTools extends FunctionHub {
             }
 
         } catch (Exception e) {
-            logger.severe("提取 Word 文本失败：" + e.getMessage());
-            return createErrorResponse("提取失败：" + e.getMessage());
+            logger.severe("Failed to extract Word text: " + e.getMessage());
+            return createErrorResponse("Extraction failed: " + e.getMessage());
         }
     }
 
     /**
-     *     读取Excel表格数据
+     *     Read Excel table data
      *
-     *     功能特点：
-     *     - 支持.xlsx和.xlsm格式
-     *     - 自动识别表头
-     *     - 处理空单元格
-     *     - 支持多工作表
-     * @param path Excel文件路径
-     * @param sheetName 工作表名称
-     * @param maxRows 最大行数
-     * @param hasHeader 是否有表头
-     * @return 结构化的Excel数据JSON
+     *     Features:
+     *     - Supports .xlsx and .xlsm formats
+     *     - Automatically identifies headers
+     *     - Handles empty cells
+     *     - Supports multiple worksheets
+     * @param path Excel file path
+     * @param sheetName Worksheet name
+     * @param maxRows Maximum number of rows
+     * @param hasHeader Whether has header
+     * @return Structured Excel data JSON
      */
     @Tool(
             name = "readExcel",
@@ -887,19 +887,19 @@ public class DocumentTools extends FunctionHub {
 
             Workbook wb = new XSSFWorkbook(new File(path));
 
-            // 获取工作表
+            // Get worksheet
             Sheet ws;
             if (sheetName != null && !sheetName.isEmpty()) {
                 ws = wb.getSheet(sheetName);
                 if (ws == null) {
                     wb.close();
-                    return createErrorResponse("工作表 '" + sheetName + "' 不存在");
+                    return createErrorResponse("Worksheet '" + sheetName + "' does not exist");
                 }
             } else {
                 ws = wb.getSheetAt(0);
             }
 
-            // 读取数据
+            // Read data
             List<List<String>> data = new ArrayList<>();
             int rowCount = 0;
             for (Row row : ws) {
@@ -910,7 +910,7 @@ public class DocumentTools extends FunctionHub {
                     rowData.add(getCellValueAsString(cell));
                 }
 
-                // 跳过完全空的行
+                // Skip completely empty rows
                 if (!rowData.isEmpty()) {
                     data.add(rowData);
                     rowCount++;
@@ -920,10 +920,10 @@ public class DocumentTools extends FunctionHub {
             wb.close();
 
             if (data.isEmpty()) {
-                return createErrorResponse("工作表为空或没有数据");
+                return createErrorResponse("Worksheet is empty or has no data");
             }
 
-            // 分离表头和数据
+            // Separate headers and data
             List<String> headers = hasHeader && !data.isEmpty() ? data.get(0) : new ArrayList<>();
             List<List<String>> rows = hasHeader && data.size() > 1 ?
                     data.subList(1, data.size()) : data;
@@ -945,8 +945,8 @@ public class DocumentTools extends FunctionHub {
             return JsonUtils.toJSONString(result);
 
         } catch (IOException e) {
-            logger.severe("读取 Excel 失败：" + e.getMessage());
-            return createErrorResponse("读取失败：" + e.getMessage());
+            logger.severe("Failed to read Excel: " + e.getMessage());
+            return createErrorResponse("Read failed: " + e.getMessage());
         } catch (InvalidFormatException e) {
             throw new RuntimeException(e);
         }
@@ -954,14 +954,14 @@ public class DocumentTools extends FunctionHub {
 
 
     /**
-     *  列出Excel所有工作表
+     *  List all Excel worksheets
      *
-     *     返回每个工作表的：
-     *     - 名称
-     *     - 是否为活动工作表
-     *     - 大致行列数
-     * @param path Excel文件路径
-     * @return 工作表列表JSON
+     *     Returns for each worksheet:
+     *     - Name
+     *     - Whether it is the active worksheet
+     *     - Approximate row and column count
+     * @param path Excel file path
+     * @return Worksheet list JSON
      */
     @Tool(
             name = "listExcelSheets",

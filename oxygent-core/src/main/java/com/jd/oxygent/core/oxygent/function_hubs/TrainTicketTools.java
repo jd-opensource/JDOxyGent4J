@@ -44,7 +44,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 列车Ticket查询工具
+ * Train ticket query tools
  */
 public class TrainTicketTools extends FunctionHub {
 
@@ -58,21 +58,21 @@ public class TrainTicketTools extends FunctionHub {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class StationData {
-        //station_id
+        // station_id
         private String stationId;
-        //车站名称station_name
+        // station_name
         private String stationName;
-        //车站代码station_code
+        // station_code
         private String stationCode;
-        //拼音
+        // pinyin
         private String stationPinyin;
-        //拼音简写
+        // pinyin abbreviation
         private String stationShort;
-        //station_index
+        // station_index
         private String stationIndex;
-        //车站编号
+        // station number
         private String code;
-        //所属城市
+        // city
         private String city;
     }
 
@@ -81,55 +81,55 @@ public class TrainTicketTools extends FunctionHub {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Ticket {
-        //车次
+        // train number
         private String trainNo;
-        //出发站名
+        // departure station name
         private String fromStationName;
-        //到达站名
+        // arrival station name
         private String toStationName;
-        //出发时间
+        // departure time
         private String startTime;
-        //到达时间
+        // arrival time
         private String arriveTime;
-        //历时
+        // duration
         private String duration;
-        //是否可购买
+        // whether can be purchased
         private String canWebBuy;
 
         // Price information
-        //商务座价格
+        // business seat price
         private String businessSeatPrice;
-        //一等座价格
+        // first class seat price
         private String firstClassPrice;
-        //二等座价格
+        // second class seat price
         private String secondClassPrice;
-        //软卧价格
+        // soft sleeper price
         private String softSleeperPrice;
-        //硬卧价格
+        // hard sleeper price
         private String hardSleeperPrice;
-        //软座价格
+        // soft seat price
         private String softSeatPrice;
-        //硬座价格
+        // hard seat price
         private String hardSeatPrice;
-        //无座价格
+        // no seat price
         private String noSeatPrice;
 
         // Ticket remaining information
-        //商务座余票
+        // business seat remaining
         private String businessSeatNum;
-        //一等座余票
+        // first class seat remaining
         private String firstClassNum;
-        //二等座余票
+        // second class seat remaining
         private String secondClassNum;
-        //软卧余票
+        // soft sleeper remaining
         private String softSleeperNum;
-        //硬卧余票
+        // hard sleeper remaining
         private String hardSleeperNum;
-        //软座余票
+        // soft seat remaining
         private String softSeatNum;
-        //硬座余票
+        // hard seat remaining
         private String hardSeatNum;
-        //无座余票
+        // no seat remaining
         private String noSeatNum;
     }
 
@@ -220,7 +220,7 @@ public class TrainTicketTools extends FunctionHub {
         }
         try {
             try (Playwright playwright = Playwright.create()) {
-                // 创建 API 请求上下文，配置请求头
+                // Create API request context, configure request headers
                 Map<String, String> headers = new HashMap<>();
                 headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
                 headers.put("Accept", "application/json, text/plain, */*");
@@ -237,17 +237,17 @@ public class TrainTicketTools extends FunctionHub {
                                 .setTimeout(30000)  // 30秒超时
                 );
 
-                // 先访问首页，自动获取必要的 Cookie
+                // First visit homepage, automatically get necessary cookies
                 request.get("https://kyfw.12306.cn/otn/leftTicket/init");
 
                 try {
-                    // 等待一下，让 Cookie 生效
+                    // Wait a moment for cookies to take effect
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
 
-                // 发送查询请求 - 使用 RequestOptions 构建参数
+                // Send query request - use RequestOptions to build parameters
                 APIResponse queryResponse = request.get(
                         "https://kyfw.12306.cn/otn/leftTicket/queryG",
                         RequestOptions.create().setQueryParam("leftTicketDTO.train_date", trainDate)
@@ -256,15 +256,15 @@ public class TrainTicketTools extends FunctionHub {
                                 .setQueryParam("purpose_codes", purposeCodes != null ? purposeCodes : "ADULT")
                 );
 
-                // 获取响应内容
+                // Get response content
                 String responseBody = queryResponse.text();
-                // 解析 JSON
+                // Parse JSON
                 JsonNode root = JsonUtils.readTree(responseBody);
-                // 检查返回状态
+                // Check return status
                 if (root.has("status") && !root.get("status").asBoolean()) {
                     return responseBody;
                 }
-                // 解析车次信息
+                // Parse train information
                 if (root.has("data") && root.get("data").has("result")) {
                     JsonNode resultArray = root.get("data").get("result");
                     List<Ticket> tickets = new ArrayList<>();
@@ -325,9 +325,9 @@ public class TrainTicketTools extends FunctionHub {
     }
 
     /**
-     * 从12306网站获取并解析所有火车站数据
-     * @return 以车站代码为键的车站数据字典
-     * @throws Exception 当无法获取或解析车站数据时抛出异常
+     * Fetch and parse all train station data from 12306 website
+     * @return Station data dictionary with station code as key
+     * @throws Exception when unable to fetch or parse station data
      */
     private Map<String, StationData> getStations() throws Exception {
         String mainPageUrl = "https://www.12306.cn/index/";
@@ -355,9 +355,9 @@ public class TrainTicketTools extends FunctionHub {
     }
 
     /**
-     *     将原始车站数据字符串解析为结构化的字典
-     * @param rawData 包含车站信息的竖线分隔字符串
-     * @return 以车站代码为键，车站数据为值的字典
+     *     Parse raw station data string into structured dictionary
+     * @param rawData Pipe-separated string containing station information
+     * @return Dictionary with station code as key and station data as value
      */
     private Map<String, StationData> parseStationsData(String rawData) {
         Map<String, StationData> result = new HashMap<>();

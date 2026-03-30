@@ -16,6 +16,8 @@
 package com.jd.oxygent.core.oxygent.tools;
 
 import com.jd.oxygent.core.oxygent.function_hubs.*;
+import com.jd.oxygent.core.oxygent.function_hubs.chart.FlowImageGenTools;
+import com.jd.oxygent.core.oxygent.function_hubs.chart.OpenChartTools;
 import com.jd.oxygent.core.oxygent.oxy.function_tools.FunctionHub;
 
 /**
@@ -149,4 +151,15 @@ public final class PresetTools {
      * Train ticket tool instance.
      */
     public static final TrainTicketTools TRAIN_TICKET_TOOLS = new TrainTicketTools();
+
+    /**
+     * Flow image generation tool instance.
+     */
+    public static final FlowImageGenTools FLOW_IMAGE_GEN_TOOLS = new FlowImageGenTools();
+    /**
+     * Open chart tool instance.
+     */
+    public static final OpenChartTools OPEN_CHART_TOOLS = new OpenChartTools();
+
+
 }

@@ -43,7 +43,8 @@ public class SqlTools extends FunctionHub {
         String user = System.getenv("SQL_TOOLS_DB_USER");
         String password = System.getenv("SQL_TOOLS_DB_PASSWORD");
         if (dbUrl == null || dbUrl.isEmpty()) {
-            throw new IllegalArgumentException("Could not find the db_url from environment");
+            logger.warning("Could not find the db_url from environment, SQL tools will be disabled");
+            return;
         }
 
         try {
@@ -61,6 +62,12 @@ public class SqlTools extends FunctionHub {
             description = "Use this function to get a list of table names in the database"
     )
     public String listTables() {
+        if (dbConnection == null) {
+            String errorMsg = "Database connection is not initialized. Please check SQL_TOOLS_DB_URL environment variable.";
+            logger.warning(errorMsg);
+            return JsonUtils.toJSONString(Map.of("error", errorMsg));
+        }
+        
         try {
             List<String> tableNames = new ArrayList<>();
             DatabaseMetaData metaData = dbConnection.getMetaData();
@@ -98,6 +105,12 @@ public class SqlTools extends FunctionHub {
             }
     )
     public String runSql(String sql, Integer limit) {
+        if (dbConnection == null) {
+            String errorMsg = "Database connection is not initialized. Please check SQL_TOOLS_DB_URL environment variable.";
+            logger.warning(errorMsg);
+            return JsonUtils.toJSONString(Map.of("error", errorMsg));
+        }
+        
         logger.info("Running SQL: " + sql);
 
         try (Statement statement = dbConnection.createStatement()) {
@@ -144,6 +157,12 @@ public class SqlTools extends FunctionHub {
             }
     )
     public String describeTables(String tableName) {
+        if (dbConnection == null) {
+            String errorMsg = "Database connection is not initialized. Please check SQL_TOOLS_DB_URL environment variable.";
+            logger.warning(errorMsg);
+            return JsonUtils.toJSONString(Map.of("error", errorMsg));
+        }
+        
         try {
             logger.info("Describing table: " + tableName);
             List<Map<String, Object>> tableSchema = new ArrayList<>();

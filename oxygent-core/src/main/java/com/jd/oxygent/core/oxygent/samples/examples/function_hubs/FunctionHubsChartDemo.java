@@ -46,7 +46,7 @@ public class FunctionHubsChartDemo {
      * @return BaseOxy list containing streaming chat agent
      * @throws IllegalArgumentException when configuration parameters are invalid
      */
-    @OxySpaceBean(value = "functionHubsChartDemo", defaultStart = true, query = "hello")
+    @OxySpaceBean(value = "functionHubsChartDemo", defaultStart = true, query = "给我生成一个电商的流程图")
     public static List<BaseOxy> getDefaultOxySpace() {
 
         Config.getMessage().setShowInTerminal(true);

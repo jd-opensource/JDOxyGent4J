@@ -34,13 +34,13 @@ import java.util.*;
 import java.util.logging.Logger;
 
 /**
- * 最短路径工具类
- * 使用图算法解决城市间的最短路径问题
+ * Shortest path tools class
+ * Uses graph algorithms to solve shortest path problems between cities
  */
 public class ShortestPathTools extends FunctionHub {
 
     private static final Logger logger = Logger.getLogger(ShortestPathTools.class.getName());
-    //全局数据存储（column_data）
+    // Global data storage (column_data)
     private final Map<String, List<Object>> columnData = new HashMap<>();
 
     public ShortestPathTools() {
@@ -65,32 +65,32 @@ public class ShortestPathTools extends FunctionHub {
             Workbook workbook = new XSSFWorkbook(new FileInputStream(filePath));
             Sheet sheet = workbook.getSheetAt(sheetName);
 
-            // 读取表头
+            // Read header
             Row headerRow = sheet.getRow(0);
             if (headerRow == null) {
                 workbook.close();
                 return "File is Empty";
             }
 
-            // 获取列名
+            // Get column names
             List<String> columnNames = new ArrayList<>();
             for (Cell cell : headerRow) {
                 columnNames.add(cell.getStringCellValue());
             }
 
-            // 清空旧数据
+            // Clear old data
             columnData.clear();
 
-            // 读取每一列的数据
+            // Read data for each column
             for (String columnName : columnNames) {
                 List<Object> columnValues = new ArrayList<>();
 
-                // 从第 1 行开始读取（跳过表头）
+                // Start reading from row 1 (skip header)
                 for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                     Row row = sheet.getRow(rowIndex);
                     if (row == null) continue;
 
-                    // 找到列索引
+                    // Find column index
                     int columnIndex = -1;
                     for (int i = 0; i < headerRow.getLastCellNum(); i++) {
                         Cell headerCell = headerRow.getCell(i);
@@ -125,7 +125,7 @@ public class ShortestPathTools extends FunctionHub {
             return "File is Empty";
 
         } catch (Exception e) {
-            logger.severe("读取 Excel 文件失败：" + e.getMessage());
+            logger.severe("Failed to read Excel file: " + e.getMessage());
             return "Error: " + e.getMessage();
         }
     }
@@ -141,7 +141,7 @@ public class ShortestPathTools extends FunctionHub {
     public String shortestPath(String startCity, String endCity) {
         try {
             if (columnData.isEmpty()) {
-                return createErrorResponse("请先调用 infoUpdate 加载城市数据");
+                return createErrorResponse("Please call infoUpdate first to load city data");
             }
 
             List<Object> citiesObj = columnData.get("cities");
@@ -151,10 +151,10 @@ public class ShortestPathTools extends FunctionHub {
 
             if (citiesObj == null || startCitiesObj == null ||
                     endCitiesObj == null || distancesObj == null) {
-                return createErrorResponse("数据不完整，缺少必要的列信息");
+                return createErrorResponse("Data incomplete, missing required column information");
             }
 
-            // 转换为字符串列表
+            // Convert to string list
             List<String> cities = new ArrayList<>();
             for (Object obj : citiesObj) {
                 cities.add(obj.toString());
@@ -175,73 +175,73 @@ public class ShortestPathTools extends FunctionHub {
                 try {
                     distances.add(Double.parseDouble(obj.toString()));
                 } catch (NumberFormatException e) {
-                    logger.warning("距离值无效：" + obj);
+                    logger.warning("Invalid distance value: " + obj);
                 }
             }
 
-            // 创建城市到索引的映射
+            // Create city to index mapping
             Map<String, Integer> cityToIndex = new HashMap<>();
             for (int i = 0; i < cities.size(); i++) {
                 cityToIndex.put(cities.get(i), i);
             }
 
-            // 验证起点和终点是否存在
+            // Validate if start and end cities exist
             if (!cityToIndex.containsKey(startCity)) {
-                return createErrorResponse("起点城市不存在：" + startCity);
+                return createErrorResponse("Start city does not exist: " + startCity);
             }
             if (!cityToIndex.containsKey(endCity)) {
-                return createErrorResponse("终点城市不存在：" + endCity);
+                return createErrorResponse("End city does not exist: " + endCity);
             }
 
-            // 创建加权图
+            // Create weighted graph
             Graph<String, DefaultWeightedEdge> graph =
                     new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
 
-            // 添加所有城市节点
+            // Add all city nodes
             cities.forEach(graph::addVertex);
 
-            // 添加边（双向边，因为城市之间的道路是双向的）
+            // Add edges (bidirectional edges, since roads between cities are bidirectional)
             for (int i = 0; i < startCities.size(); i++) {
                 String from = startCities.get(i);
                 String to = endCities.get(i);
                 double distance = distances.get(i);
 
-                // 添加正向边
+                // Add forward edge
                 if (!graph.containsVertex(from) || !graph.containsVertex(to)) {
-                    continue; // 跳过无效边
+                // Skip invalid edge
                 }
 
                 graph.addEdge(from, to);
                 DefaultWeightedEdge edge = graph.getEdge(from, to);
                 graph.setEdgeWeight(edge, distance);
 
-                // 添加反向边
+                // Add reverse edge
                 graph.addEdge(to, from);
                 DefaultWeightedEdge reverseEdge = graph.getEdge(to, from);
                 graph.setEdgeWeight(reverseEdge, distance);
             }
 
-            // 使用 Dijkstra 算法计算最短路径
+            // Use Dijkstra algorithm to calculate shortest path
             long startTime = System.nanoTime();
             DijkstraShortestPath<String, DefaultWeightedEdge> dijkstra =
                     new DijkstraShortestPath<>(graph);
             var pathResult = dijkstra.getPath(startCity, endCity);
             long endTime = System.nanoTime();
 
-            // 构建结果
+            // Build result
             Map<String, Object> result = new LinkedHashMap<>();
 
             if (pathResult.getWeight() == Double.POSITIVE_INFINITY) {
                 result.put("status", "not_optimal");
-                result.put("message", "无法找到从 " + startCity + " 到 " + endCity + " 的路径");
+                result.put("message", "Cannot find path from " + startCity + " to " + endCity);
             } else {
                 result.put("status", "optimal");
                 result.put("distance", pathResult.getWeight());
-                result.put("solve_time", (endTime - startTime) / 1_000_000_000.0); // 转换为秒
+                result.put("solve_time", (endTime - startTime) / 1_000_000_000.0); // Convert to seconds
 
                 List<String> vertices = pathResult.getVertexList();
 
-                // 构建路径段
+                // Build path segments
                 List<List<Integer>> path = new ArrayList<>();
                 List<String> pathCities = new ArrayList<>();
 
@@ -255,37 +255,37 @@ public class ShortestPathTools extends FunctionHub {
                 result.put("path", path);
                 result.put("path_cities", pathCities);
 
-                // 可视化城市路径（简化版本，输出到日志）
+                // Visualize city path (simplified version, output to log)
                 visualizeCityPath(cities, startCities, endCities, distances, vertices);
             }
 
             return JsonUtils.toJSONString(result);
 
         } catch (Exception e) {
-            logger.severe("最短路径计算失败：" + e.getMessage());
-            return createErrorResponse("计算失败：" + e.getMessage());
+            logger.severe("Shortest path calculation failed: " + e.getMessage());
+            return createErrorResponse("Calculation failed: " + e.getMessage());
         }
     }
 
     /**
-     * 可视化城市图和最短路径
-     * Java版本简化为输出到日志，也可以使用图形库实现真正的可视化
+     * Visualize city graph and shortest path
+     * Java version simplified to output to log, can also use graphics library for real visualization
      */
     private void visualizeCityPath(List<String> cities, List<String> startCities,
                                    List<String> endCities, List<Double> distances,
                                    List<String> pathVertices) {
         try {
             StringBuilder sb = new StringBuilder();
-            sb.append("\n=== 最短路径可视化 ===\n");
-            sb.append("路径：").append(String.join(" → ", pathVertices)).append("\n");
-            sb.append("总距离：");
+            sb.append("\n=== Shortest Path Visualization ===\n");
+            sb.append("Path: ").append(String.join(" → ", pathVertices)).append("\n");
+            sb.append("Total Distance: ");
 
             double totalDistance = 0;
             for (int i = 0; i < pathVertices.size() - 1; i++) {
                 String from = pathVertices.get(i);
                 String to = pathVertices.get(i + 1);
 
-                // 查找边的权重
+                // Find edge weight
                 for (int j = 0; j < startCities.size(); j++) {
                     if ((startCities.get(j).equals(from) && endCities.get(j).equals(to)) ||
                             (endCities.get(j).equals(from) && startCities.get(j).equals(to))) {
@@ -301,17 +301,17 @@ public class ShortestPathTools extends FunctionHub {
 
             logger.info(sb.toString());
 
-            // 注意：如果需要生成图像文件，可以使用以下库：
-            // 1. GraphStream - 图的可视化和布局
-            // 2. JFreeChart - 图表绘制
-            // 3. 输出 GeoJSON 给前端用 D3.js/ECharts 渲染
+            // Note: If you need to generate image files, you can use the following libraries:
+            // 1. GraphStream - graph visualization and layout
+            // 2. JFreeChart - chart drawing
+            // 3. Output GeoJSON for frontend rendering with D3.js/ECharts
         } catch (Exception e) {
-            logger.warning("可视化过程中出错：" + e.getMessage());
+            logger.warning("Error during visualization: " + e.getMessage());
         }
     }
 
     /**
-     * 辅助方法：获取单元格的值
+     * Helper method: Get cell value
      */
     private Object getCellValue(Cell cell) {
         if (cell == null) return null;
@@ -333,7 +333,7 @@ public class ShortestPathTools extends FunctionHub {
     }
 
     /**
-     * 辅助方法：创建错误响应
+     * Helper method: Create error response
      */
     private String createErrorResponse(String error) {
         try {

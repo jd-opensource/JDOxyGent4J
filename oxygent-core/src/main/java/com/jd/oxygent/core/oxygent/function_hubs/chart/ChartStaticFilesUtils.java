@@ -22,22 +22,22 @@ import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 /**
- * 静态文件工具类
- * 用于创建和管理静态文件（HTML、CSS、JavaScript）
+ * Static files utility class
+ * Used to create and manage static files (HTML, CSS, JavaScript)
  */
 public class ChartStaticFilesUtils {
 
     private static final Logger logger = Logger.getLogger(ChartStaticFilesUtils.class.getName());
 
     /**
-     * 创建必要的静态文件
+     * Create necessary static files
      *
-     * @param basePath 基础路径
-     * @return 是否成功
+     * @param basePath Base path
+     * @return Whether successful
      */
     public static boolean createStaticFiles(String basePath) {
         try {
-            // 创建目录结构
+            // Create directory structure
             Path baseDir = Paths.get(basePath);
             Path webDir = baseDir.resolve("web");
             Path cssDir = webDir.resolve("css");
@@ -46,7 +46,7 @@ public class ChartStaticFilesUtils {
             Files.createDirectories(cssDir);
             Files.createDirectories(jsDir);
 
-            // 创建 index.html
+            // Create index.html
             String indexHtml = "<!DOCTYPE html>\n" +
                     "<html lang=\"zh-CN\">\n" +
                     "<head>\n" +
@@ -75,9 +75,9 @@ public class ChartStaticFilesUtils {
                     "</html>";
 
             Files.writeString(webDir.resolve("index.html"), indexHtml);
-            logger.info("已创建：" + webDir.resolve("index.html"));
+            logger.info("Created: " + webDir.resolve("index.html"));
 
-            // 创建 style.css
+            // Create style.css
             String styleCss = "body {\n" +
                     "    font-family: Arial, sans-serif;\n" +
                     "    margin: 0;\n" +
@@ -135,9 +135,9 @@ public class ChartStaticFilesUtils {
                     "}";
 
             Files.writeString(cssDir.resolve("style.css"), styleCss);
-            logger.info("已创建：" + cssDir.resolve("style.css"));
+            logger.info("Created: " + cssDir.resolve("style.css"));
 
-            // 创建 app.js
+            // Create app.js
             String appJs = "document.addEventListener('DOMContentLoaded', function() {\n" +
                     "    const generateBtn = document.getElementById('generate-btn');\n" +
                     "    const descriptionInput = document.getElementById('description');\n" +
@@ -182,12 +182,12 @@ public class ChartStaticFilesUtils {
                     "});";
 
             Files.writeString(jsDir.resolve("app.js"), appJs);
-            logger.info("已创建：" + jsDir.resolve("app.js"));
+            logger.info("Created: " + jsDir.resolve("app.js"));
 
             return true;
 
         } catch (IOException e) {
-            logger.severe("创建静态文件时出错：" + e.getMessage());
+            logger.severe("Error creating static files: " + e.getMessage());
             return false;
         }
     }

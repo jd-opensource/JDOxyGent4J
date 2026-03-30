@@ -24,8 +24,8 @@ import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 /**
- * 流程图打开工具类
- * 在浏览器中打开生成的流程图 HTML 文件
+ * Flowchart opening tools class
+ * Opens generated flowchart HTML files in the browser
  */
 public class OpenChartTools extends FunctionHub {
 
@@ -33,27 +33,27 @@ public class OpenChartTools extends FunctionHub {
 
     public OpenChartTools() {
         super("open_chart_tools");
-        this.setDesc("在浏览器中打开生成的流程图 HTML 文件");
+        this.setDesc("Open the generated flowchart HTML file in the browser");
     }
 
     @Tool(
             name = "openHtmlChart",
-            description = "在浏览器中打开生成的流程图 HTML 文件",
+            description = "Open the generated flowchart HTML file in the browser",
             paramMetas = {
-                    @ParamMetaAuto(name = "filePath", type = "String", description = "HTML 文件路径")
+                    @ParamMetaAuto(name = "filePath", type = "String", description = "HTML file path")
             }
     )
     public String openHtmlChart(String filePath) {
         try {
-            // 确保使用绝对路径
+            // Ensure absolute path is used
             String absolutePath = filePath;
             if (!Paths.get(filePath).isAbsolute()) {
                 String currentDir = System.getProperty("user.dir");
 
-                // 如果当前在 examples/other 目录，并且文件路径以 output/开头，需要调整路径
+                // If currently in examples/other directory and file path starts with output/, need to adjust path
                 if ((currentDir.endsWith("examples/other") || currentDir.endsWith("examples\\other"))
                         && filePath.startsWith("output/")) {
-                    // 回到项目根目录来解析路径
+                    // Go back to project root directory to resolve path
                     String projectRoot = Paths.get(currentDir).getParent().getParent().toString();
                     absolutePath = Paths.get(projectRoot, filePath).toString();
                 } else {
@@ -61,23 +61,23 @@ public class OpenChartTools extends FunctionHub {
                 }
             }
 
-            // 检查文件是否存在
+            // Check if file exists
             File file = new File(absolutePath);
             if (!file.exists()) {
-                return "错误：文件不存在：" + absolutePath;
+                return "Error: File does not exist: " + absolutePath;
             }
 
-            logger.info("正在打开文件：" + absolutePath);
+            logger.info("Opening file: " + absolutePath);
 
-            // 在浏览器中打开
+            // Open in browser
             Desktop desktop = Desktop.getDesktop();
             desktop.browse(file.toURI());
 
-            return "已在浏览器中打开流程图：" + absolutePath;
+            return "Flowchart opened in browser: " + absolutePath;
 
         } catch (Exception e) {
-            logger.severe("打开浏览器时出错：" + e.getMessage());
-            return "打开浏览器时出错：" + e.getMessage() + "\n请手动打开生成的文件：" + filePath;
+            logger.severe("Error opening browser: " + e.getMessage());
+            return "Error opening browser: " + e.getMessage() + "\nPlease manually open the generated file: " + filePath;
         }
     }
 }
