@@ -197,4 +197,13 @@ public interface BaseEs {
     Map<String, Object> getMapping(String indexName);
 
     int getHitsTotal(Map<String, Object> response);
+
+    /**
+     * Delete documents prior to a specific time via query (Delete By Query)
+     * Applicable to: Scenarios where the index name is fixed and only legacy data needs to be cleared.
+     * @param indexName
+     * @param daysBefore
+     * @return
+     */
+    Map<String, Object> cleanOldDocs(String indexName, int daysBefore);
 }

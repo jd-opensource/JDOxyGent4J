@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.jd.oxygent.core.oxygent.infra.databases.BaseDB;
 import com.jd.oxygent.core.oxygent.infra.databases.BaseEs;
+import com.jd.oxygent.core.oxygent.utils.DateUtils;
 import com.jd.oxygent.core.oxygent.utils.JsonUtils;
 import com.jd.oxygent.core.oxygent.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -26,21 +27,28 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.indices.GetMappingsRequest;
 import org.elasticsearch.client.indices.GetMappingsResponse;
-import org.elasticsearch.cluster.metadata.MappingMetaData;
+import org.elasticsearch.cluster.metadata.MappingMetadata;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.RangeQueryBuilder;
+import org.elasticsearch.index.reindex.BulkByScrollResponse;
+import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
+import org.elasticsearch.xcontent.XContentType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -293,10 +301,10 @@ public class RemoteEs extends BaseDB implements BaseEs {
             // Execute bulk operation
             AcknowledgedResponse acknowledgedResponse = esConfiguration.getClient().indices().delete(new DeleteIndexRequest(indexName), RequestOptions.DEFAULT);
             if (acknowledgedResponse.isAcknowledged()) {
-                log.info("Index created successfully: {}", indexName);
+                log.info("Index deleted successfully: {}", indexName);
                 return Map.of("acknowledged", true);
             } else {
-                log.warn("Index creation not acknowledged: {}", indexName);
+                log.warn("Index delete not acknowledged: {}", indexName);
                 return Map.of("acknowledged", false);
             }
         } catch (Exception e) {
@@ -370,7 +378,6 @@ public class RemoteEs extends BaseDB implements BaseEs {
 
     public Boolean insertIndex(String indexName, String docId, String jsonDoc) {
         BulkRequest request = new BulkRequest();
-
         try {
             // Parameter validation
             validateIndexName(indexName, "insertIndex");
@@ -538,16 +545,51 @@ public class RemoteEs extends BaseDB implements BaseEs {
             GetMappingsRequest request = new GetMappingsRequest();
             request.indices(indexName);
             GetMappingsResponse response = esConfiguration.getClient().indices().getMapping(request, RequestOptions.DEFAULT);
-            Map<String, MappingMetaData> allMappings = response.mappings();
+            Map<String, MappingMetadata> allMappings = response.mappings();
             if (allMappings != null) {
-                MappingMetaData mappingMetaData = allMappings.get(indexName);
+                MappingMetadata mappingMetaData = allMappings.get(indexName);
                 Map properties = (Map) mappingMetaData.getSourceAsMap().get("properties");
                 log.info(JsonUtils.toJSONString(properties));
                 return properties;
             }
         } catch (Exception e) {
-            log.error("Error while getting mapping for index: {}", indexName, e);
+            e.printStackTrace();
         }
         return null;
+    }
+
+    /**
+     * Delete documents prior to a specific time via query (Delete By Query)
+     * Applicable to: Scenarios where the index name is fixed and only legacy data needs to be cleared.
+     * @param indexName
+     * @param daysBefore
+     * @return
+     */
+    public Map<String, Object> cleanOldDocs(String indexName, int daysBefore) {
+        String thresholdDate = ZonedDateTime.now()
+                .truncatedTo(ChronoUnit.DAYS)
+                .minusDays(daysBefore)
+                .format(DateTimeFormatter.ofPattern(DateUtils.DEFAULT_DATE_TIME_FORMAT2));
+
+        DeleteByQueryRequest request = new DeleteByQueryRequest(indexName);
+
+        RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("create_time")
+                .lt(thresholdDate);
+        request.setQuery(rangeQuery);
+
+        // Performance Optimization: No wait for refresh during execution. While asynchronous execution is preferred, synchronous mode is used here to demonstrate results. Continue execution upon document conflicts.
+        request.setConflicts("proceed");
+
+        BulkByScrollResponse response = null;
+        try {
+            response = esConfiguration.getClient().deleteByQuery(request, RequestOptions.DEFAULT);
+            log.info("delete docs count: " + response.getDeleted());
+            return Map.of(
+                    "result", "delete docs count: " + response.getDeleted()
+            );
+        } catch (IOException e) {
+            log.error("Unknown exception occurred during bulk delete operation: {}", e.getMessage(), e);
+            return handleException(e, "delete");
+        }
     }
 }

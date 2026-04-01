@@ -51,7 +51,7 @@
         <!-- Tomcat Embed -->
         <tomcat-embed.version>10.1.47</tomcat-embed.version>
         <!-- Elasticsearch -->
-        <elasticsearch.version>7.5.2</elasticsearch.version>
+        <elasticsearch.version>7.17.15</elasticsearch.version>
         <httpclient.version>4.5.14</httpclient.version>
         <!-- Apache Commons -->
         <commons-lang3.version>3.18.0</commons-lang3.version>

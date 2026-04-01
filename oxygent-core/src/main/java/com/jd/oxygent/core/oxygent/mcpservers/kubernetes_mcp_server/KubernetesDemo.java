@@ -80,9 +80,9 @@ public class KubernetesDemo {
                 // LLM Configuration
                 HttpLlm.builder()
                         .name("default_llm")
-                        .apiKey(EnvUtils.getEnv("DEFAULT_LLM_API_KEY"))
-                        .baseUrl(EnvUtils.getEnv("DEFAULT_LLM_BASE_URL"))
-                        .modelName(EnvUtils.getEnv("DEFAULT_LLM_MODEL_NAME"))
+                        .apiKey(EnvUtils.getEnv("OXY_LLM_API_KEY"))
+                        .baseUrl(EnvUtils.getEnv("OXY_LLM_BASE_URL"))
+                        .modelName(EnvUtils.getEnv("OXY_LLM_MODEL_NAME"))
                         .llmParams(Map.of("temperature", 0.01f))
                         .semaphore(new Semaphore(4))
                         .timeout(240)
@@ -117,9 +117,9 @@ public class KubernetesDemo {
         System.out.println("-".repeat(50));
 
         System.out.println("Checking environment variables:");
-        System.out.println("DEFAULT_LLM_API_KEY: " + (EnvUtils.getEnv("DEFAULT_LLM_API_KEY") != null ? "Set" : "Not set"));
-        System.out.println("DEFAULT_LLM_BASE_URL: " + (EnvUtils.getEnv("DEFAULT_LLM_BASE_URL") != null ? "Set" : "Not set"));
-        System.out.println("DEFAULT_LLM_MODEL_NAME: " + (EnvUtils.getEnv("DEFAULT_LLM_MODEL_NAME") != null ? "Set" : "Not set"));
+        System.out.println("OXY_LLM_API_KEY: " + (EnvUtils.getEnv("OXY_LLM_API_KEY") != null ? "Set" : "Not set"));
+        System.out.println("OXY_LLM_BASE_URL: " + (EnvUtils.getEnv("OXY_LLM_BASE_URL") != null ? "Set" : "Not set"));
+        System.out.println("OXY_LLM_MODEL_NAME: " + (EnvUtils.getEnv("OXY_LLM_MODEL_NAME") != null ? "Set" : "Not set"));
 
         // Check Kubernetes configuration
         System.out.println("\nChecking Kubernetes configuration:");

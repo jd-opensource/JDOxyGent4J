@@ -801,4 +801,9 @@ public class LocalEs extends BaseDB implements BaseEs {
         List<?> hitsList = (List<?>) hits.getOrDefault("hits", List.of());
         return hitsList.size();
     }
+
+    @Override
+    public Map<String, Object> cleanOldDocs(String indexName, int daysBefore) {
+        return Map.of();
+    }
 }

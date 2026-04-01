@@ -36,9 +36,9 @@ public class DemoBankReactAgentAutonomyByMCP {
                 // Default LLM
                 HttpLlm.builder()
                         .name("default_llm")
-                        .apiKey(EnvUtils.getEnv("DEFAULT_LLM_API_KEY"))
-                        .baseUrl(EnvUtils.getEnv("DEFAULT_LLM_BASE_URL"))
-                        .modelName(EnvUtils.getEnv("DEFAULT_LLM_MODEL_NAME"))
+                        .apiKey(EnvUtils.getEnv("OXY_LLM_API_KEY"))
+                        .baseUrl(EnvUtils.getEnv("OXY_LLM_BASE_URL"))
+                        .modelName(EnvUtils.getEnv("OXY_LLM_MODEL_NAME"))
                         .llmParams(new HashMap<String, Object>() {{
                             put("temperature", 0.01);
                         }})
