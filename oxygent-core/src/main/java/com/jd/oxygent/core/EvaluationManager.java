@@ -187,9 +187,9 @@ public class EvaluationManager implements InitializingBean {
                 Map<String, Object> source = (Map<String, Object>) hit.getOrDefault("_source", Map.of());
                 String ratingType = (String) source.getOrDefault("rating_type", "");
 
-                if (RatingType.LIKE.toString().equals(ratingType)) {
+                if (RatingType.LIKE.toString().equalsIgnoreCase(ratingType)) {
                     likeCount++;
-                } else if (RatingType.DISLIKE.toString().equals(ratingType)) {
+                } else if (RatingType.DISLIKE.toString().equalsIgnoreCase(ratingType)) {
                     dislikeCount++;
                 }
             }
@@ -726,7 +726,7 @@ public class EvaluationManager implements InitializingBean {
                 totalRatings++;
 
                 String ratingType = (String) source.getOrDefault("rating_type", "");
-                if (RatingType.LIKE.toString().equals(ratingType)) {
+                if (RatingType.LIKE.toString().equalsIgnoreCase(ratingType)) {
                     likeCount++;
                 } else {
                     dislikeCount++;
