@@ -157,8 +157,10 @@ public class DemoPlanAndSolve {
                         .llmModel("default_llm")
                         .isMaster(true)
                         .plannerAgentName("planner_agent")
+                        .replannerAgentName("planner_agent")
                         .executorAgentName("executor_agent")
-                        .enableReplanner(false)
+                        .enableReplanner(true)
+                        .maxReplanRounds(1)
                         .timeout(100)
                         .build(),
                 ReActAgent.builder()

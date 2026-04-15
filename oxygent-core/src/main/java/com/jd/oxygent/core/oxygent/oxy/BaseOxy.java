@@ -882,7 +882,7 @@ public class BaseOxy {
                 response.setOxyRequest(oxyRequest);
                 return response;
             } catch (Exception throwable) {
-                log.warn("Error executing oxy {}: {}. Attempt {} of {}.", this.getName(), throwable.getMessage(), attempt + 1, this.getRetries());
+                log.warn("Error executing oxy {}: {}. Attempt {} of {}.", this.getName(), throwable.getMessage(), attempt + 1, this.getRetries(), throwable);
                 if (attempt < this.getRetries() - 1) {
                     try {
                         Thread.sleep((long) (this.delay * 1000));

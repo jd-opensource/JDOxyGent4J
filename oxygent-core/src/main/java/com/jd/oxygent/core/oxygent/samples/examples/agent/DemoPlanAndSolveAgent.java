@@ -102,7 +102,7 @@ public class DemoPlanAndSolveAgent {
                         .llmModel("default_llm")
                         .plannerAgent("planner_agent")
                         .executorAgent("executor_agent")
-                        .maxReplanRounds(30)
+                        .maxReplanRounds(1)
                         .build()
         );
     }

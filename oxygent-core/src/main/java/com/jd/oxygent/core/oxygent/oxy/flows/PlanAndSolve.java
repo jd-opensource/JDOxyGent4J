@@ -15,10 +15,12 @@
  */
 package com.jd.oxygent.core.oxygent.oxy.flows;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jd.oxygent.core.oxygent.oxy.BaseFlow;
+import com.jd.oxygent.core.oxygent.schemas.memory.Memory;
 import com.jd.oxygent.core.oxygent.schemas.memory.Message;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyRequest;
 import com.jd.oxygent.core.oxygent.schemas.oxy.OxyResponse;
@@ -159,6 +161,7 @@ public class PlanAndSolve extends BaseFlow {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Action {
         /**
          * Action content
@@ -511,18 +514,16 @@ public class PlanAndSolve extends BaseFlow {
         var userInputWithResults = String.format("Your objective was this：%s\n---\nFor the following plan：%s",
                 originalQuery, planStr);
 
-        var messageDicts = Arrays.asList(
-                        Message.systemMessage("Please answer user questions based on the given plan."),
-                        Message.userMessage(userInputWithResults)
-                ).stream()
-                .map(Message::toDict)
-                .collect(Collectors.toList());
+        Memory tempMemory = new Memory();
+        tempMemory.addMessage(Message.systemMessage("Please answer user questions based on the given plan."));
+        // Add user's current question to enable multi-turn conversation
+        tempMemory.addMessage(Message.userMessage(userInputWithResults));
 
         var response = oxyRequest.call(
                 new HashMap<String, Object>() {{
                     put("callee", llmModel);
                     put("arguments", new HashMap<String, Object>() {{
-                        put("messages", messageDicts);
+                        put("messages", tempMemory);
                     }});
                 }}
         );

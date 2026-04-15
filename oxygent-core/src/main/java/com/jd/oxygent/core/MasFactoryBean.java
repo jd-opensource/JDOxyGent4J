@@ -21,6 +21,7 @@ import com.jd.oxygent.core.oxygent.utils.CommonUtils;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -92,6 +93,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @since 1.0.0
  */
 @Component
+@DependsOn("config")
 public class MasFactoryBean implements FactoryBean<Mas> {
 
     /**
@@ -237,7 +239,6 @@ public class MasFactoryBean implements FactoryBean<Mas> {
                     return entry.mas;
                 }
             }
-
             // Generate new Mas instance and put into cache with FIFO strategy (LinkedHashMap handles overflow removal)
             Mas mas = new Mas(name, oxySpace);
             beanFactory.autowireBean(mas); // Inject Spring managed dependencies
