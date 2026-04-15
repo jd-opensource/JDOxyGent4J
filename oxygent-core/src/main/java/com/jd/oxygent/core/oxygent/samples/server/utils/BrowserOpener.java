@@ -19,13 +19,12 @@ public class BrowserOpener {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop desktop = Desktop.getDesktop();
                 desktop.browse(new URI(url));
-                log.info("Browser successfully opened: {}", url);
                 return true;
             } else {
-                log.warn("Current environment does not support opening browser for: {}", url);
+                log.warn("please visit: {}", url);
             }
         } catch (Exception e) {
-            log.error("Failed to open browser: {}", e.getMessage());
+            log.warn("please visit: {}", url);
         }
         // Try to open browser via command line
         return openBrowserViaCommand(url);

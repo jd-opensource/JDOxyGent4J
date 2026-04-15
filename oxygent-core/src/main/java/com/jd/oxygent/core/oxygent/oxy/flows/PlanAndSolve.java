@@ -207,8 +207,21 @@ public class PlanAndSolve extends BaseFlow {
             if (action instanceof Plan plan) {
                 return Optional.of(plan);
             } else if (action instanceof Map<?, ?> map) {
-                return Optional.ofNullable(map.get("steps"))
-                        .map(steps -> new Plan((List<String>) steps));
+                Object stepsObj = map.get("steps");
+                Plan plan = null;
+                if (stepsObj != null) {
+                    List stepsList = (List) stepsObj;
+                    List<String> stringList = new ArrayList<>();
+                    for (Object each : stepsList) {
+                        if (each instanceof String) {
+                            stringList.add((String) each);
+                        } else if (each instanceof Map eachMap) {
+                            stringList.add((String) eachMap.values().stream().findFirst().orElse(null));
+                        }
+                    }
+                    plan = new Plan(stringList);
+                }
+                return Optional.of(plan);
             }
             return Optional.empty();
         }

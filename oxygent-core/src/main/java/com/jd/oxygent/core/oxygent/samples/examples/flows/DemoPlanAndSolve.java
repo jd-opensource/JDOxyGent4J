@@ -100,6 +100,19 @@ public class DemoPlanAndSolve {
                                         Do not add any redundant steps, and do not skip any necessary steps.
                                 """)
                         .build(),
+                ChatAgent.builder()
+                        .name("replanner_agent")
+                        .desc("An agent capable of making plans")
+                        .llmModel("default_llm")
+                        .prompt("""
+                                        For a given goal, create a simple and step-by-step executable plan. \
+                                        The plan should be concise, with each step being an independent and complete functional module—not an atomic function—to avoid over-fragmentation. \
+                                        The plan should consist of independent tasks that, if executed correctly, will lead to the correct answer. \
+                                        Ensure that each step is actionable and includes all necessary information for execution. \
+                                        The result of the final step should be the final answer. Make sure each step contains all the information required for its execution. \
+                                        Do not add any redundant steps, and do not skip any necessary steps.
+                                """)
+                        .build(),
                 ReActAgent.builder()
                         .name("executor_agent")
                         .desc("An agent capable of executing tools")
@@ -157,7 +170,7 @@ public class DemoPlanAndSolve {
                         .llmModel("default_llm")
                         .isMaster(true)
                         .plannerAgentName("planner_agent")
-                        .replannerAgentName("planner_agent")
+                        .replannerAgentName("replanner_agent")
                         .executorAgentName("executor_agent")
                         .enableReplanner(true)
                         .maxReplanRounds(1)
@@ -190,55 +203,6 @@ public class DemoPlanAndSolve {
                         .tools(Arrays.asList("file_tools"))
                         .llmModel("default_llm")
                         .build()
-//                ,
-//                WorkflowAgent.builder()
-//                        .name("math_agent")
-//                        .desc("A tool for querying the value of pi")
-//                        .subAgents(Arrays.asList("time_agent"))
-//                        .tools(Arrays.asList("math_tools"))
-//                        .llmModel("default_llm")
-//                        .isRetainMasterShortMemory(true)
-//                        .funcWorkflow(x -> {
-//                            //Get memory
-//                            List<Map<String, Object>> shortMemory = x.getShortMemory(false);
-//                            log.info("--- History --- :{}", shortMemory);
-//                            List<Map<String, Object>> masterShortMemory = x.getShortMemory(true);
-//                            log.info("--- User-level History  --- :{}", masterShortMemory);
-//
-//                            //Get query
-//                            String masterQuery = x.getQuery(true);
-//                            log.info("--- user query:--- :{}", masterQuery);
-//
-//                            //Send message
-//                            //x.sendMessage(Map.of("msg", "send message"));
-//
-//                            //Call Agent
-//                            OxyResponse callChatAgent = x.call(new HashMap<>(Map.of("callee", "time_agent", "arguments", new HashMap<>(Map.of("query", "What time is it now?")))));
-//                            log.info("--- Current Time ---:{}", callChatAgent.getOutput());
-//
-//                            // Use regular expressions to find all numbers
-//                            Pattern pattern = Pattern.compile("\\d+");
-//                            Matcher matcher = pattern.matcher(callChatAgent.getOutput().toString());
-//
-//                            String n = null;
-//                            // Find all matches, get the last number
-//                            while (matcher.find()) {
-//                                n = matcher.group();
-//                            }
-//
-//                            if (n != null) {
-//                                // Call calc_pi method
-//                                OxyResponse callCalcPiResponse = x.call(new HashMap<>(Map.of("callee", "calc_pi", "arguments", new HashMap<>(Map.of("prec", n)))));
-//                                return String.format("Save %s positions: %s", n, callCalcPiResponse.getOutput());
-//                            } else {
-//                                return CompletableFuture.completedFuture(
-//                                        "Save 2 positions: 3.14, or you could ask me to save how many positions you want."
-//                                );
-//                            }
-//
-//                        })
-//                        .llmModel("default_llm")
-//                        .build()
         );
     }
 
