@@ -306,7 +306,7 @@ public class HttpLlm extends RemoteLlm {
                             Map<String, Object> streamMessage = new HashMap<>();
                             streamMessage.put("type", this.getStreamOutputType());
                             Map<String, Object> contentMap = new HashMap<>();
-                            contentMap.put("delta", "   " + contentAndUsage[0] + "    ");
+                            contentMap.put("delta", contentAndUsage[0]);
                             contentMap.put("agent", oxyRequest.getCaller());
                             contentMap.put("node_id", oxyRequest.getNodeId());
                             streamMessage.put("content", contentMap);
