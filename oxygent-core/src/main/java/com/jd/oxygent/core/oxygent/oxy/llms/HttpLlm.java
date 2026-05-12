@@ -300,13 +300,13 @@ public class HttpLlm extends RemoteLlm {
                     try {
                         JsonNode node = JsonUtils.readTree(jsonData);
                         String[] contentAndUsage = extractStreamContent(node, isGemini, useOpenai);
-                        if (contentAndUsage != null && StringUtils.isNotBlank(contentAndUsage[0])) {
+                        if (contentAndUsage != null && StringUtils.isNotEmpty(contentAndUsage[0])) {
                             result.append(contentAndUsage[0]);
 
                             Map<String, Object> streamMessage = new HashMap<>();
                             streamMessage.put("type", this.getStreamOutputType());
                             Map<String, Object> contentMap = new HashMap<>();
-                            contentMap.put("delta", contentAndUsage[0]);
+                            contentMap.put("delta", "   " + contentAndUsage[0] + "    ");
                             contentMap.put("agent", oxyRequest.getCaller());
                             contentMap.put("node_id", oxyRequest.getNodeId());
                             streamMessage.put("content", contentMap);
@@ -326,7 +326,7 @@ public class HttpLlm extends RemoteLlm {
                         if (line.trim().startsWith("{")) {
                             JsonNode node = JsonUtils.readTree(line);
                             String[] contentAndUsage = extractStreamContent(node, isGemini, useOpenai);
-                            if (contentAndUsage != null && StringUtils.isNotBlank(contentAndUsage[0])) {
+                            if (contentAndUsage != null && StringUtils.isNotEmpty(contentAndUsage[0])) {
                                 result.append(contentAndUsage[0]);
 
                                 Map<String, Object> streamMessage = new HashMap<>();
