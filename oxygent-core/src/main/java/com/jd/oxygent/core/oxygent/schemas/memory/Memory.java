@@ -64,7 +64,7 @@ public class Memory {
     /**
      * Maximum message count limit, default is 10
      */
-    private int maxMessages = 10;
+    private int maxMessages = 100;
 
     /**
      * Default constructor
