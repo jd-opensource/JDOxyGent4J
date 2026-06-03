@@ -158,19 +158,6 @@ public class Mas {
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private Map<String, Object> globalData = new HashMap<>();
 
-    /**
-     * User's first query marker, used to implement query record saving only once, key is request_id, value is boolean
-     */
-    @JsonIgnore
-    public Set firstQuerySet = ConcurrentHashMap.newKeySet();
-
-    /**
-     * Temporarily store user query parameters, used to solve the problem of missing parameters in response when concatenating streaming answers
-     * key is request_id
-     * value is body
-     */
-    @JsonIgnore
-    public Map<Object, Map> queryParamMap = new ConcurrentHashMap();
 
     /**
      * function customization and message processing
@@ -1018,10 +1005,6 @@ public class Mas {
             payload.put("first_query_struct", payload.get("query"));
         }
         Object requestId = JsonUtils.firstNotBlank(payload.get("request_id"), payload.get("req_id"), payload.get("requestId"));
-        if (requestId != null) {
-            firstQuerySet.add(requestId);
-            queryParamMap.put(requestId, payload);
-        }
 
         Object query = payload.get("query");
         String queryString = (query instanceof String) ? (String) query : (query != null ? JsonUtils.toJSONString(query) : null);
@@ -1451,7 +1434,7 @@ Start Time   : %s
             if (_content.get("shared_data") instanceof Map sharedDataMap) {
                 sharedDataMap.remove("_headers");
                 Object requestId = JsonUtils.firstNotBlank(_content.get("request_id"), _content.get("req_id"), _content.get("requestId"));
-                if (!"tool_call".equals(_copy.get("type")) || requestId == null || !firstQuerySet.contains(requestId)) {
+                if (!"tool_call".equals(_copy.get("type")) || requestId == null) {
                     sharedDataMap.remove("files");
                     sharedDataMap.remove("first_query_struct");
                 }
@@ -1469,6 +1452,7 @@ Start Time   : %s
                     feedbackDict.remove(channelId);
                 }
             }
+            channelIdDict.remove(traceId);
         }
     }
 }
