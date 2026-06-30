@@ -73,7 +73,8 @@ public class JsonUtils {
 
     public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .configure(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true)
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .findAndRegisterModules();
 
 //    public static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
 //            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)

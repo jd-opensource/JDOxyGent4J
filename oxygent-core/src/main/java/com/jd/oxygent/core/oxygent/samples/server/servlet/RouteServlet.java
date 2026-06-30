@@ -27,6 +27,8 @@ import com.jd.oxygent.core.oxygent.liveprompt.PromptOptimizer;
 import com.jd.oxygent.core.oxygent.oxy.BaseOxy;
 import com.jd.oxygent.core.oxygent.samples.server.masprovider.MasFactoryRegistry;
 import com.jd.oxygent.core.oxygent.samples.server.utils.FileValidationUtil;
+import com.jd.oxygent.core.Config;
+import com.jd.oxygent.core.oxygent.transport.a2a.A2AServerGateway;
 import com.jd.oxygent.core.oxygent.samples.server.utils.RecursivePackageInstantiator;
 import com.jd.oxygent.core.oxygent.samples.server.vo.AgentNodeConverter;
 import com.jd.oxygent.core.oxygent.samples.server.vo.ItemRequest;
@@ -107,6 +109,18 @@ import static com.jd.oxygent.core.oxygent.samples.server.ServerConstants.RESTRIC
 public class RouteServlet extends HttpServlet {
 
     private final Mas mas = MasFactoryRegistry.getFactory().createMas();
+
+    private final A2AServerGateway a2aGateway;
+    private boolean a2aInitialized = false;
+
+    {
+        Config.ServerConfig serverConfig = Config.getServer();
+        if (serverConfig.isEnableA2aServer()) {
+            a2aGateway = new A2AServerGateway(serverConfig.getA2aBasePath(), "0.1.0");
+        } else {
+            a2aGateway = null;
+        }
+    }
 
     private EvaluationManager evaluationManager = new EvaluationManager();
 
@@ -194,8 +208,17 @@ public class RouteServlet extends HttpServlet {
                     analyticsRatings(request, response);
                     break;
                 default:
+                    // Handle A2A routes
+                    if (a2aGateway != null && path.startsWith(a2aGateway.getA2aBasePath())) {
+                        if (!a2aInitialized) {
+                            a2aGateway.setMas(mas);
+                            a2aInitialized = true;
+                        }
+                        String subPath = path.substring(a2aGateway.getA2aBasePath().length());
+                        a2aGateway.handleRequest(request, response, subPath);
+                    }
                     // Handle prompt API routes
-                    if (path.startsWith("/api/prompts/")) {
+                    else if (path.startsWith("/api/prompts/")) {
                         promptApiRoutes(path, request, response);
                     }
                     // Handle debug routes

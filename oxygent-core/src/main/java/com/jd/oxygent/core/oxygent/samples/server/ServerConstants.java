@@ -76,6 +76,8 @@ public final class ServerConstants {
         this.put("/rating/*", "RouteServlet");
         this.put("/history_with_ratings", "RouteServlet");
         this.put("/analytics/ratings", "RouteServlet");
+        this.put("/a2a/*", "RouteServlet");
+        this.put("/a2a", "RouteServlet");
     }};
     public static final List<String> WEBAPP_RESOURCE_DIR_PATHS = List.of(
             "webapp",

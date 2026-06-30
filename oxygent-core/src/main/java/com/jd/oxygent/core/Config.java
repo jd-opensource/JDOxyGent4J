@@ -318,6 +318,8 @@ public class Config {
         private String logLevel = "INFO";
         private String firstQuery = "What time is it now?";
         private int workers = 1;
+        private boolean enableA2aServer = false;
+        private String a2aBasePath = "/a2a";
     }
 
     @Data

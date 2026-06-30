@@ -1683,42 +1683,53 @@ public class RouteController implements InitializingBean {
 
     @OxySpaceBean(value = "myOxySpace", defaultStart = true, query = "what skills do you have?")
     public List<BaseOxy> getDefaultOxySpace() {
+
         return Arrays.asList(
                 HttpLlm.builder()
                         .name("default_llm")
                         .apiKey(EnvUtils.getEnv("OXY_LLM_API_KEY"))
                         .baseUrl(EnvUtils.getEnv("OXY_LLM_BASE_URL"))
                         .modelName(EnvUtils.getEnv("OXY_LLM_MODEL_NAME"))
-                        .llmParams(Map.of("temperature", 0.01))
-                        .timeout(600)
+                        .llmParams(Map.of("temperature", 0.01)) // Using Map.of to create immutable Map
+                        .timeout(30)
                         .build(),
+
+                // 2. Time tools
+                PresetTools.TIME_TOOLS,
+
+                // 3. Time agent
+                ReActAgent.builder()
+                        .name("time_agent")
+                        .desc("Tool agent capable of querying time")
+                        .tools(Arrays.asList("time_tools")) // Tool name list
+                        .build(),
+
+                // 4. File tools
                 PresetTools.FILE_TOOLS,
-                PresetTools.SHELL_TOOLS,
-                PresetTools.SSH_TOOLS,
-                SkillAgent.builder()
-                        .name("skill_agent")
-                        .isMaster(true)
-                        .prompt(Prompts.SYSTEM_PROMPT_SKILLS) // must be set
-                        .desc("Agent to discover and use skills")
-                        .tools(List.of("file_tools",
-                                "shell_tools",
-                                "ssh_tool"
-                        ))
-                        .skills(List.of(".oxygent/skills",
-                                "D:/workspace/skills",
-                                "classpath:skills",
-                                "classpath:com/jd/oxygent/core/oxygent/preset_skills/skill_creator",
-                                Path.of(System.getProperty("user.home"), "skills").toString()
-                        ))
-                        .trustMode(true)
-                        .build(), // Supports absolute paths, project root relative paths, classpath resources, and paths within JAR files.
+
+                // 5. File agent
+                ReActAgent.builder()
+                        .name("file_agent")
+                        .desc("Tool agent capable of file system operations")
+                        .tools(Arrays.asList("file_tools"))
+                        .build(),
+
+                // 6. Math tools
+                PresetTools.MATH_TOOLS,
+
+                // 7. Math agent
+                ReActAgent.builder()
+                        .name("math_agent")
+                        .desc("Tool agent capable of mathematical calculations")
+                        .tools(Arrays.asList("math_tools"))
+                        .build(),
+
+                // 8. Master Agent
                 ReActAgent.builder()
                         .isMaster(true) // Set as master agent
                         .name("master_agent")
-                        .prompt(Prompts.SYSTEM_PROMPT_SKILLS) // must be set
                         .llmModel("default_llm")
-                        .subAgents(Arrays.asList("skill_agent")) // Sub-agent list
-                        .trustMode(true)
+                        .subAgents(Arrays.asList("time_agent", "file_agent", "math_agent")) // Sub-agent list
                         .build()
         );
     }

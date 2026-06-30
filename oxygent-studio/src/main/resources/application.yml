@@ -1,5 +1,6 @@
 server:
-  port: 8080
+#  port: 8080
+  port: 8090
 
 spring:
   application:
@@ -50,6 +51,8 @@ oxygent:
     log-level: INFO
     first-question: "What is the meaning of life?"
     welcome-message: "Hi, I'm Oxygent. How can I help you?"
+    enable-a2a-server: true
+    a2a-base-path: /a2a
 
   xfile:
     save-dir: ./cache_dir/xfile

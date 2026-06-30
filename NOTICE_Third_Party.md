@@ -697,6 +697,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ================
+oxygent-core: A2A Java SDK (a2a-java-sdk-client / a2a-java-sdk-spec / a2a-java-sdk-common / a2a-java-sdk-http-client / a2a-java-sdk-client-transport-spi / a2a-java-sdk-client-transport-jsonrpc)
+- io.github.a2asdk:a2a-java-sdk-client:0.3.3.Final
+
+Apache License 2.0
+Official Java SDK for the Agent2Agent Protocol (A2A), an open protocol under the Linux Foundation contributed by Google.
+See https://github.com/a2aproject/a2a-java and https://a2a-protocol.org/
+
+================
 uad2midi
 
 MIT License

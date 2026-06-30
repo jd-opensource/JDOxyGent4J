@@ -914,7 +914,7 @@ public class Mas {
                     if (funcProcessMessageBody != null) {
                         _copy = funcProcessMessageBody.apply(body);
                     } else {
-                        _copy = removeAbandonedFields(body);
+                        _copy = (body);
                     }
                     Map<String, Object> nonStreamMessageData = new HashMap<>();
                     nonStreamMessageData.put("message_id", sseMessage.getId());
